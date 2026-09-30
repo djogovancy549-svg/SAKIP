@@ -399,10 +399,7 @@ export default function App() {
   const currentOpdDocsCount = documents.filter((d) => d.opdId === activeOpd.id).length;
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans selection:bg-blue-500/20 relative">
-      {/* Clean Solid Subtle Gradient Backdrop */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-b from-slate-50 via-slate-100 to-blue-50/40" aria-hidden="true" />
-
+    <div className="min-h-screen bg-slate-100 text-slate-950 flex flex-col font-sans selection:bg-blue-500/20 font-medium">
       {/* Top Bar with User Info, Password Trigger, and Logout */}
       <Header
         activeOpd={activeOpd}

@@ -73,22 +73,22 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
         </div>
 
         {/* Security & Isolation Notice Banner */}
-        <div className="p-3.5 bg-white/90 backdrop-blur-xl border border-white/80 rounded-2xl text-xs text-slate-900 space-y-1.5 shadow-xl">
-          <div className="flex items-center gap-2 font-bold text-blue-900 text-xs">
-            <Lock className="w-4 h-4 text-blue-600" />
+        <div className="p-3.5 bg-white border-2 border-slate-300 rounded-2xl text-xs text-slate-900 space-y-1.5 shadow-xl">
+          <div className="flex items-center gap-2 font-black text-blue-950 text-xs">
+            <Lock className="w-4 h-4 text-blue-700" />
             <span>Isolasi Akses &amp; Keamanan Dokumen</span>
           </div>
-          <p className="text-[11px] text-slate-700 leading-relaxed font-medium">
+          <p className="text-[11px] text-slate-800 leading-relaxed font-bold">
             Setiap Dinas memiliki akun dan password sendiri sehingga <strong>hanya dapat membuka dan mengupload dokumen miliknya</strong> tanpa dapat melihat milik dinas lain.
           </p>
-          <div className="text-[10px] text-slate-600 font-mono pt-0.5 flex items-center gap-1.5">
-            <Database className="w-3.5 h-3.5 text-blue-600" />
+          <div className="text-[10px] text-slate-700 font-mono pt-0.5 flex items-center gap-1.5 font-bold">
+            <Database className="w-3.5 h-3.5 text-blue-700" />
             <span>Akun &amp; Password tersimpan di Google Sheet: <strong>DATABASE_PENGGUNA</strong></span>
           </div>
         </div>
 
         {/* Login Box */}
-        <div className="bg-white/95 backdrop-blur-2xl border border-white rounded-3xl p-6 shadow-2xl shadow-black/40 space-y-5">
+        <div className="bg-white border-2 border-slate-300 rounded-3xl p-6 shadow-2xl shadow-black/40 space-y-5">
           {/* Role Tab Selector */}
           <div className="grid grid-cols-2 p-1 bg-blue-50 rounded-2xl border border-blue-200/80 text-xs font-semibold">
             <button
