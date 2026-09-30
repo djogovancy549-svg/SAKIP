@@ -12,7 +12,7 @@ import { uploadFileToGoogleDriveFolder } from './googleDriveApi';
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
-  'https://script.google.com/macros/s/AKfycbwwRmP6_EkQe5kZ_uXNTK2hqCtfkksAgFo9xo-SlMR1NcXTIRuieoQLF6GYErAdYBy-qw/exec';
+  'https://script.google.com/macros/s/AKfycbyLYq6HIeJnA1nLxpOBATG__RSadGhYf8QjEXbDLoj0hEQ3JhyR_IDpGEWqIXmnGyLOcA/exec';
 
 // Embedded Google Drive Induk Server Folder ID & URL
 export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
