@@ -52,7 +52,26 @@ export function saveGoogleDriveFolderId(id: string): void {
 
 export function getGoogleDriveFolderUrl(): string {
   const folderId = getGoogleDriveFolderId();
-  return `https://drive.google.com/drive/folders/${folderId}`;
+  if (
+    !folderId ||
+    folderId.trim() === '' ||
+    folderId === DEFAULT_GOOGLE_DRIVE_FOLDER_ID ||
+    folderId === '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7'
+  ) {
+    return 'https://drive.google.com';
+  }
+  if (folderId.startsWith('http://') || folderId.startsWith('https://')) {
+    return folderId;
+  }
+  return `https://drive.google.com/drive/folders/${folderId.trim()}`;
+}
+
+export function sanitizeGoogleDriveUrl(url?: string): string {
+  if (!url || url.trim() === '') return getGoogleDriveFolderUrl();
+  if (url.includes('1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7')) {
+    return getGoogleDriveFolderUrl();
+  }
+  return url;
 }
 
 export function getSyncLogs(): WebhookSyncLog[] {

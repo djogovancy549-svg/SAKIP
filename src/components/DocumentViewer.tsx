@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { DocumentItem } from '../types';
 import { DocumentWatermark } from './DocumentWatermark';
-import { getGoogleDriveFolderUrl } from '../services/googleSheetsWebhook';
+import { getGoogleDriveFolderUrl, sanitizeGoogleDriveUrl } from '../services/googleSheetsWebhook';
 
 interface DocumentViewerProps {
   document: DocumentItem;
@@ -57,7 +57,9 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
   const handleRotate = () => setRotation((prev) => (prev + 90) % 360);
 
   // Google Drive folder URL for this OPD or general server
-  const driveUrl = document.googleDrive?.viewUrl || document.googleDrive?.downloadUrl || getGoogleDriveFolderUrl();
+  const driveUrl = sanitizeGoogleDriveUrl(
+    document.googleDrive?.viewUrl || document.googleDrive?.downloadUrl || getGoogleDriveFolderUrl()
+  );
 
   const handleDownloadFile = () => {
     if (document.fileBlobUrl) {
