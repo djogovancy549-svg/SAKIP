@@ -261,11 +261,27 @@ export default function App() {
   };
 
   // Handle New Document Upload by Dinas
-  const handleAddDocument = (newDoc: DocumentItem) => {
+  const handleAddDocument = async (newDoc: DocumentItem) => {
     setDocuments((prev) => [newDoc, ...prev]);
     setSelectedDocument(newDoc);
     if (layoutMode === 'SINGLE') {
       setActiveView('VIEWER');
+    }
+
+    // Instantly transmit uploaded document file base64 & metadata to Google Drive Folder & Sheet Webhook
+    const firstVer = newDoc.versions[0];
+    if (firstVer) {
+      try {
+        const opdFolderReg = folderRegistrations[newDoc.opdId]?.driveFolderId || currentUser?.driveFolderId;
+        await sendUploadToGoogleDriveAndSheet(
+          newDoc,
+          firstVer,
+          'UPLOAD_DOCUMENT',
+          opdFolderReg
+        );
+      } catch (e) {
+        console.warn('Google Drive transmission log note:', e);
+      }
     }
   };
 
@@ -286,7 +302,13 @@ export default function App() {
     setSelectedDocument(updatedDoc);
 
     try {
-      await sendUploadToGoogleDriveAndSheet(updatedDoc, newVersion, 'UPLOAD_REVISION');
+      const opdFolderReg = folderRegistrations[updatedDoc.opdId]?.driveFolderId || currentUser?.driveFolderId;
+      await sendUploadToGoogleDriveAndSheet(
+        updatedDoc,
+        newVersion,
+        'UPLOAD_REVISION',
+        opdFolderReg
+      );
     } catch (e) {
       console.warn('Webhook logging note for revision upload', e);
     }

@@ -259,10 +259,11 @@ export async function sendVerificationToGoogleSheet(
 export async function sendUploadToGoogleDriveAndSheet(
   doc: DocumentItem,
   version: DocumentVersion,
-  actionType: 'UPLOAD_DOCUMENT' | 'UPLOAD_REVISION'
+  actionType: 'UPLOAD_DOCUMENT' | 'UPLOAD_REVISION',
+  customTargetFolderId?: string
 ): Promise<{ success: boolean; message: string; timestamp: string }> {
   const webhookUrl = getGoogleSheetsWebhookUrl();
-  const masterFolderId = getGoogleDriveFolderId();
+  const masterFolderId = customTargetFolderId || getGoogleDriveFolderId();
   const timestamp = new Date().toLocaleString('id-ID', {
     timeZone: 'Asia/Jakarta',
     dateStyle: 'medium',

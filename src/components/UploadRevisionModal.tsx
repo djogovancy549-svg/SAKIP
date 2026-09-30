@@ -79,6 +79,24 @@ export function UploadRevisionModal({
 
     const effectiveFileName = newFileName.trim() || suggestedFileName;
 
+    const defaultRevisionText = `========================================================================
+PEMERINTAH KABUPATEN NAGEKEO - SAKIP NAGEKEO
+DOKUMEN HASIL REVISI DILAMPIRKAN UNTUK GOOGLE DRIVE SERVER
+========================================================================
+NOMOR BERKAS : ${document.nomorBerkas}
+JUDUL        : ${document.judul}
+OPD          : ${document.opdName}
+VERSI REVISI : Versi ${nextVersionNumber}
+CATATAN DINAS: ${changeSummary.trim()}
+TANGGAL      : ${new Date().toLocaleString('id-ID')}
+
+Dokumen revisi ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan di Folder Google Drive Induk Server.
+========================================================================`;
+
+    const base64ToUse =
+      fileBase64 ||
+      btoa(unescape(encodeURIComponent(defaultRevisionText)));
+
     // Create updated Google Drive storage reference for revised version
     const googleDriveInfo: GoogleDriveStorageInfo = createGoogleDriveStorageInfo(
       document.id,
@@ -99,7 +117,7 @@ export function UploadRevisionModal({
       changeSummary: changeSummary.trim(),
       status: 'PENDING',
       googleDrive: googleDriveInfo,
-      fileBase64,
+      fileBase64: base64ToUse,
       fileBlobUrl,
     };
 
