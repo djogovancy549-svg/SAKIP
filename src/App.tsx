@@ -50,10 +50,10 @@ import {
 } from './services/googleSheetsWebhook';
 import { calculateRetention, formatArchiveSubfolder } from './utils/retentionUtils';
 
-const STORAGE_KEY_DOCS = 'simverif_documents_db_v3';
-const STORAGE_KEY_USERS = 'simverif_users_db_v3';
-const STORAGE_KEY_CURRENT_USER = 'simverif_current_user_v3';
-const STORAGE_KEY_FOLDER_REGISTRATIONS = 'simverif_folder_registrations_v1';
+const STORAGE_KEY_DOCS = 'simverif_clean_docs_v5';
+const STORAGE_KEY_USERS = 'simverif_clean_users_v5';
+const STORAGE_KEY_CURRENT_USER = 'simverif_clean_session_v5';
+const STORAGE_KEY_FOLDER_REGISTRATIONS = 'simverif_clean_folder_registrations_v5';
 const STORAGE_KEY_LAYOUT_MODE = 'simverif_layout_mode_v2';
 
 export default function App() {
@@ -81,19 +81,19 @@ export default function App() {
     return INITIAL_USER_ACCOUNTS;
   });
 
-  // Current Logged In User Session
+  // Current Logged In User Session (Defaults to Master Admin)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    if (typeof window === 'undefined') return INITIAL_USER_ACCOUNTS[1]; // default to Dinas Pendidikan
+    if (typeof window === 'undefined') return INITIAL_USER_ACCOUNTS[0];
     try {
       const saved = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error('Error loading session', e);
     }
-    return INITIAL_USER_ACCOUNTS[1];
+    return INITIAL_USER_ACCOUNTS[0];
   });
 
-  // Load persisted documents or fallback
+  // Load persisted documents or fallback to empty array
   const [documents, setDocuments] = useState<DocumentItem[]>(() => {
     if (typeof window === 'undefined') return INITIAL_DOCUMENTS;
     try {
@@ -105,9 +105,9 @@ export default function App() {
     return INITIAL_DOCUMENTS;
   });
 
-  // Active OPD State (If Dinas, fixed to their OPD; if Verifikator, selectable)
+  // Active OPD State
   const [activeOpd, setActiveOpd] = useState<OPD>(() => {
-    const initialOpdId = currentUser?.opdId || 'DISDIK';
+    const initialOpdId = currentUser?.opdId || 'DISKOMINFO';
     const found = OPD_LIST.find((o) => o.id === initialOpdId);
     return found || OPD_LIST[0];
   });
@@ -116,11 +116,8 @@ export default function App() {
   const verifier: VerifierProfile =
     DEFAULT_VERIFIERS[activeOpd.id] || DEFAULT_VERIFIERS.DISKOMINFO;
 
-  // Selected Document for Verification Workbench
-  const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(() => {
-    const initialDocs = INITIAL_DOCUMENTS.filter((d) => d.opdId === (currentUser?.opdId || 'DISDIK'));
-    return initialDocs[0] || INITIAL_DOCUMENTS[0] || null;
-  });
+  // Selected Document for Verification Workbench (Starts as null in clean state)
+  const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(null);
 
   // Layout Display Mode: 'SINGLE' (Satu per satu - Jauh Lebih Besar) vs 'SPLIT' (3 Kolom Sekaligus)
   const [layoutMode, setLayoutMode] = useState<'SINGLE' | 'SPLIT'>(() => {

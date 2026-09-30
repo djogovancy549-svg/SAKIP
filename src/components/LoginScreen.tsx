@@ -21,11 +21,11 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) {
-  const [username, setUsername] = useState<string>('dinas.pendidikan');
-  const [password, setPassword] = useState<string>('Disdik@Password2026');
+  const [username, setUsername] = useState<string>('admin');
+  const [password, setPassword] = useState<string>('Admin@2026!');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState<AppRole>('DINAS_PEMOHON');
+  const [roleFilter, setRoleFilter] = useState<AppRole>('VERIFIKATOR');
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,43 +206,56 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
           {/* Quick Demo Credentials Switcher */}
           <div className="pt-3 border-t border-slate-100 space-y-2">
             <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-semibold text-slate-700">Pilih Cepat Akun Demo:</span>
+              <span className="font-semibold text-slate-700">Akun Master Bawaan:</span>
               <span className="text-[10px] text-slate-400">Klik untuk isi otomatis</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5">
-              {demoDinasAccounts.slice(0, 4).map((acc) => (
-                <button
-                  key={acc.id}
-                  type="button"
-                  onClick={() => handleSelectDemoAccount(acc)}
-                  className={`p-2 rounded-xl border text-left text-[11px] transition-colors cursor-pointer ${
-                    username === acc.username
-                      ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50/50 hover:text-blue-900'
-                  }`}
-                >
-                  <div className="truncate font-semibold">{acc.opdName.split(' ')[0]} {acc.opdName.split(' ')[1] || ''}</div>
-                  <div className="text-[10px] text-slate-400 font-mono truncate">{acc.username}</div>
-                </button>
-              ))}
-            </div>
+            {demoVerifAccounts.map((acc) => (
+              <button
+                key={acc.id}
+                type="button"
+                onClick={() => handleSelectDemoAccount(acc)}
+                className={`w-full p-2.5 rounded-xl border text-left text-[11px] transition-colors flex items-center justify-between cursor-pointer ${
+                  username === acc.username
+                    ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold shadow-xs'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50/50 hover:text-blue-900'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <div>
+                    <span className="font-bold text-blue-950">{acc.nama}</span>
+                    <span className="text-slate-500 font-mono ml-1.5">(@{acc.username})</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded">
+                  {acc.password}
+                </span>
+              </button>
+            ))}
 
-            <button
-              type="button"
-              onClick={() => handleSelectDemoAccount(demoVerifAccounts[0])}
-              className={`w-full p-2.5 rounded-xl border text-left text-[11px] transition-colors flex items-center justify-between cursor-pointer ${
-                username === demoVerifAccounts[0]?.username
-                  ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold'
-                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50/50 hover:text-blue-900'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span>Akun Tim Verifikator Pusat ({demoVerifAccounts[0]?.username})</span>
+            {demoDinasAccounts.length > 0 && (
+              <div className="pt-1">
+                <div className="text-[10px] text-slate-500 font-semibold mb-1">Akun Dinas Terdaftar:</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {demoDinasAccounts.map((acc) => (
+                    <button
+                      key={acc.id}
+                      type="button"
+                      onClick={() => handleSelectDemoAccount(acc)}
+                      className={`p-2 rounded-xl border text-left text-[11px] transition-colors cursor-pointer ${
+                        username === acc.username
+                          ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50/50 hover:text-blue-900'
+                      }`}
+                    >
+                      <div className="truncate font-semibold">{acc.opdName}</div>
+                      <div className="text-[10px] text-slate-400 font-mono truncate">@{acc.username}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <span className="text-[10px] font-mono text-blue-700 font-bold bg-blue-100 px-1.5 py-0.5 rounded">Verifikator</span>
-            </button>
+            )}
           </div>
         </div>
 

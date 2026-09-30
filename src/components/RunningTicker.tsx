@@ -55,29 +55,40 @@ export function RunningTicker({ documents, onSelectDocument }: RunningTickerProp
         </div>
 
         {/* Marquee Viewport */}
-        <div className="overflow-hidden flex-1 relative py-1.5">
-          <div className="animate-marquee flex items-center gap-8 text-xs text-slate-700 whitespace-nowrap">
-            {loopedFeed.map((item, idx) => (
-              <button
-                key={`${item.doc.id}-${idx}`}
-                onClick={() => onSelectDocument(item.doc)}
-                className="flex items-center gap-2 hover:text-blue-900 transition-colors cursor-pointer group"
-                title="Klik untuk membuka dokumen"
-              >
-                {item.icon}
-                <span className={`font-bold text-[11px] ${item.statusColor}`}>
-                  [{item.statusLabel}]
-                </span>
-                <span className="text-slate-800 font-medium group-hover:underline">
-                  {item.text}
-                </span>
-                <span className="text-[10px] text-slate-500 font-mono">
-                  ({item.time})
-                </span>
-                <span className="text-blue-300 mx-2">/</span>
-              </button>
-            ))}
-          </div>
+        <div className="overflow-hidden flex-1 relative py-1.5 px-3">
+          {feedItems.length === 0 ? (
+            <div className="flex items-center gap-3 text-xs text-blue-900 font-medium">
+              <span className="font-bold text-blue-700 bg-blue-200/80 px-2 py-0.5 rounded text-[10px] uppercase font-mono">
+                [SERVER SIAP]
+              </span>
+              <span>
+                Sistem Siap &amp; Terhubung ke Google Drive Induk Server. Belum ada antrean dokumen. Silakan unggah berkas baru melalui tombol "Upload Dokumen".
+              </span>
+            </div>
+          ) : (
+            <div className="animate-marquee flex items-center gap-8 text-xs text-slate-700 whitespace-nowrap">
+              {loopedFeed.map((item, idx) => (
+                <button
+                  key={`${item.doc.id}-${idx}`}
+                  onClick={() => onSelectDocument(item.doc)}
+                  className="flex items-center gap-2 hover:text-blue-900 transition-colors cursor-pointer group"
+                  title="Klik untuk membuka dokumen"
+                >
+                  {item.icon}
+                  <span className={`font-bold text-[11px] ${item.statusColor}`}>
+                    [{item.statusLabel}]
+                  </span>
+                  <span className="text-slate-800 font-medium group-hover:underline">
+                    {item.text}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    ({item.time})
+                  </span>
+                  <span className="text-blue-300 mx-2">/</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right Counter */}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Building2,
   Database,
@@ -13,6 +13,8 @@ import {
   Lock,
   FolderPlus,
   ExternalLink,
+  Settings2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { OPD, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
@@ -41,66 +43,82 @@ export function Header({
   onLogout,
 }: HeaderProps) {
   const [isOpdDropdownOpen, setIsOpdDropdownOpen] = useState<boolean>(false);
+  const [isServerMenuOpen, setIsServerMenuOpen] = useState<boolean>(false);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
 
   const isDinas = currentUser.role === 'DINAS_PEMOHON';
 
+  // Close menus on outside click
+  const opdRef = useRef<HTMLDivElement>(null);
+  const serverRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (opdRef.current && !opdRef.current.contains(e.target as Node)) {
+        setIsOpdDropdownOpen(false);
+      }
+      if (serverRef.current && !serverRef.current.contains(e.target as Node)) {
+        setIsServerMenuOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-blue-200/80 shadow-xs sticky top-0 z-40 select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-        {/* Zone 1: Wordmark & Emblem */}
+        {/* Zone 1: Logo & Brand */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-600 shadow-xs">
-            <ShieldCheck className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <ShieldCheck className="w-6 h-6" />
           </div>
           <div className="leading-tight">
             <span className="text-base font-black tracking-tight text-blue-950 block">
               SIMVERIF OPD
             </span>
             <span className="text-[10px] font-mono text-blue-600 tracking-wider uppercase font-semibold">
-              Pemeriksaan & Verifikasi Dokumen
+              Verifikasi Dokumen Pemda
             </span>
           </div>
         </div>
 
-        {/* Zone 2: Active OPD / Designated Google Drive Folder */}
+        {/* Zone 2: Antrean Dinas Selector (Clean & Minimalist) */}
         <div className="flex items-center gap-2">
-          {/* OPD Selector or Locked Dinas Banner */}
           {isDinas ? (
-            // Dinas mode: locked to their own OPD
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs shadow-xs">
+            // Dinas Mode: Clean locked badge
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50 border border-blue-200 rounded-xl text-xs shadow-xs">
               <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
               <div className="text-left">
-                <span className="text-[9px] text-blue-600/80 block uppercase font-mono font-semibold">Dinas Anda (Terkunci):</span>
+                <span className="text-[9px] text-slate-500 block uppercase font-mono font-semibold">Instansi OPD:</span>
                 <span className="font-bold text-blue-950 text-xs">
                   {currentUser.opdName}
                 </span>
               </div>
-              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono ml-1 font-semibold">
-                Akses Mandiri
-              </span>
             </div>
           ) : (
-            // Verifikator mode: can switch OPD queue
-            <div className="relative">
+            // Verifikator Mode: Single clean dropdown for choosing OPD queue
+            <div className="relative" ref={opdRef}>
               <button
                 onClick={() => {
                   setIsOpdDropdownOpen((v) => !v);
+                  setIsServerMenuOpen(false);
                   setIsProfileOpen(false);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 bg-blue-50/70 hover:bg-blue-100/80 border border-blue-200 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
+                className="flex items-center gap-2.5 px-3.5 py-1.5 bg-blue-50/80 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
                 title="Pilih Antrean Dinas / OPD"
               >
                 <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
-                <div className="text-left hidden sm:block max-w-[160px] md:max-w-[200px]">
-                  <span className="text-[9px] text-blue-600/80 block uppercase font-mono font-semibold">Antrean Dinas:</span>
-                  <span className="font-bold text-blue-950 truncate block text-xs">
-                    {activeOpd.shortName}
+                <div className="text-left">
+                  <span className="text-[9px] text-blue-700 block uppercase font-mono font-bold">Antrean Dinas:</span>
+                  <span className="font-bold text-blue-950 truncate block text-xs max-w-[140px] sm:max-w-[200px]">
+                    {activeOpd.name}
                   </span>
                 </div>
-                <span className="sm:hidden font-bold text-blue-950 text-xs truncate max-w-[90px]">
-                  {activeOpd.id}
-                </span>
                 <ChevronDown className="w-3.5 h-3.5 text-blue-500 shrink-0" />
               </button>
 
@@ -109,7 +127,7 @@ export function Header({
                   <div className="p-3 bg-blue-50/70 border-b border-blue-100 text-xs">
                     <div className="font-bold text-blue-950">Pilih Antrean Dinas / OPD</div>
                     <div className="text-[11px] text-slate-500">
-                      Sebagai Verifikator, Anda dapat memeriksa berkas seluruh dinas
+                      Pilih instansi untuk memeriksa antrean berkas
                     </div>
                   </div>
                   <div className="max-h-72 overflow-y-auto divide-y divide-blue-50 p-1">
@@ -147,92 +165,134 @@ export function Header({
               )}
             </div>
           )}
-
-          {/* Designated Google Drive Subfolder Pill */}
-          <button
-            type="button"
-            onClick={onOpenDriveExplorer}
-            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200 text-blue-800 rounded-xl text-xs transition-colors cursor-pointer"
-            title="Buka Penjelajah Folder Google Drive Server Langsung di Web"
-          >
-            <HardDrive className="w-3.5 h-3.5 text-blue-600" />
-            <span className="font-mono text-[11px] truncate max-w-[150px]">
-              {currentUser.driveFolderName}
-            </span>
-          </button>
         </div>
 
-        {/* Zone 3: Actions, Google Sheet, Upload, and User Menu */}
+        {/* Zone 3: Clean Actions (Consolidated into 3 items: Upload, Server Integrasi, Profil) */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Admin: Register Folder Links per OPD (Requested by user) */}
-          {!isDinas && (
-            <button
-              onClick={onOpenAdminFolderRegistration}
-              className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs"
-              title="Daftarkan & Kelola Tautan Folder Google Drive Tiap Dinas (Admin)"
-            >
-              <FolderPlus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span className="hidden sm:inline font-mono">Daftar Folder Dinas</span>
-            </button>
-          )}
-
-          {/* Direct Drive Folder Explorer Button (Requested by user) */}
-          <button
-            onClick={onOpenDriveExplorer}
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs"
-            title="Buka Data Folder Google Drive Langsung dari Web Aplikasi"
-          >
-            <FolderTree className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            <span className="hidden sm:inline font-mono">Folder Drive</span>
-          </button>
-
-          {/* Google Sheets Webhook Sync Button */}
-          <button
-            onClick={onOpenGoogleSheetModal}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-blue-50 border border-blue-200 text-slate-700 hover:text-blue-900 rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs"
-            title="Pengaturan Webhook Google Sheets & Drive Induk"
-          >
-            <Database className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span className="hidden lg:inline font-mono">Google Sheet</span>
-          </button>
-
-          {/* New Document Button (Only if Dinas or Verifikator) */}
+          {/* 1. Main Action Button: Upload Dokumen */}
           <button
             onClick={onOpenUploadModal}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm active:scale-95"
-            title="Tambah Berkas Dokumen ke Google Drive"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-blue-500/20 active:scale-95"
+            title="Upload Dokumen Baru"
           >
-            <PlusCircle className="w-3.5 h-3.5 shrink-0" />
+            <PlusCircle className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Upload Dokumen</span>
           </button>
 
-          {/* User Profile & Password Menu */}
-          <div className="relative">
+          {/* 2. Consolidated Server & Storage Menu Dropdown */}
+          <div className="relative" ref={serverRef}>
+            <button
+              onClick={() => {
+                setIsServerMenuOpen((v) => !v);
+                setIsOpdDropdownOpen(false);
+                setIsProfileOpen(false);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs ${
+                isServerMenuOpen
+                  ? 'bg-blue-100 text-blue-900 border-blue-300'
+                  : 'bg-white hover:bg-blue-50 text-slate-700 border-slate-200'
+              }`}
+              title="Menu Server, Google Drive, dan Integrasi Spreadsheet"
+            >
+              <HardDrive className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="hidden md:inline">Server &amp; Integrasi</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            </button>
+
+            {/* Server Menu Dropdown Content */}
+            {isServerMenuOpen && (
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-blue-200 rounded-2xl shadow-xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-2 border-b border-blue-50 mb-1">
+                  <div className="font-bold text-blue-950 text-xs">Pusat Server &amp; Integrasi</div>
+                  <div className="text-[10px] text-slate-500">Akses penyimpanan Google Drive &amp; Webhook</div>
+                </div>
+
+                <div className="space-y-1">
+                  {/* Option 1: Drive Folder Explorer */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsServerMenuOpen(false);
+                      onOpenDriveExplorer();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-blue-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <FolderTree className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-slate-900">Penjelajah Google Drive</div>
+                      <div className="text-[10px] text-slate-500">Lihat arsip berkas di server Google Drive</div>
+                    </div>
+                  </button>
+
+                  {/* Option 2: Admin Folder & Account Registration (Admin only) */}
+                  {!isDinas && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsServerMenuOpen(false);
+                        onOpenAdminFolderRegistration();
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-blue-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <FolderPlus className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold text-slate-900">Pendaftaran Akun &amp; Folder Dinas</div>
+                        <div className="text-[10px] text-slate-500">Daftarkan akun login &amp; mapping folder OPD</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Option 3: Google Sheets & Webhook */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsServerMenuOpen(false);
+                      onOpenGoogleSheetModal();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-blue-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Database className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-slate-900">Google Spreadsheet &amp; Webhook</div>
+                      <div className="text-[10px] text-slate-500">Konfigurasi endpoint webhook &amp; script sync</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3. User Profile Button */}
+          <div className="relative" ref={profileRef}>
             <button
               onClick={() => {
                 setIsProfileOpen((v) => !v);
+                setIsServerMenuOpen(false);
                 setIsOpdDropdownOpen(false);
               }}
-              className="flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1.5 bg-blue-50/80 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors text-xs cursor-pointer shadow-xs"
+              className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-blue-50/80 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors text-xs cursor-pointer shadow-xs"
               title="Profil Pengguna & Password"
             >
               <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                 {currentUser.nama.charAt(0)}
               </div>
-              <div className="hidden xl:block text-left text-xs max-w-[120px]">
-                <div className="font-semibold text-slate-900 truncate">{currentUser.nama}</div>
-                <div className="text-[10px] text-slate-500 font-mono truncate">{currentUser.username}</div>
+              <div className="hidden lg:block text-left text-xs max-w-[120px]">
+                <div className="font-bold text-blue-950 truncate">{currentUser.nama}</div>
+                <div className="text-[10px] text-slate-500 font-mono truncate">@{currentUser.username}</div>
               </div>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
             </button>
 
-            {/* Profile Dropdown */}
+            {/* Profile Dropdown Content */}
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-72 bg-white border border-blue-200 rounded-2xl shadow-xl p-4 z-50 text-xs text-slate-700 animate-in fade-in zoom-in-95 duration-100">
                 <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 mb-3">
-                  <UserCheck className="w-6 h-6 text-blue-600" />
-                  <div>
-                    <div className="font-bold text-slate-900">{currentUser.nama}</div>
-                    <div className="text-[11px] text-slate-500 font-mono">@{currentUser.username}</div>
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                    {currentUser.nama.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-900 truncate">{currentUser.nama}</div>
+                    <div className="text-[11px] text-blue-600 font-mono">@{currentUser.username}</div>
                   </div>
                 </div>
 
@@ -240,54 +300,21 @@ export function Header({
                   <div>
                     <span className="text-slate-400">Peran Akun:</span>
                     <div className="text-blue-700 font-bold">
-                      {currentUser.role === 'VERIFIKATOR' ? 'Petugas Verifikator' : 'Dinas Pemohon'}
+                      {currentUser.role === 'VERIFIKATOR' ? 'Petugas Verifikator / Admin' : 'Dinas Pemohon'}
                     </div>
                   </div>
                   <div>
-                    <span className="text-slate-400">OPD:</span>
-                    <div className="text-slate-800 font-medium">{currentUser.opdName}</div>
+                    <span className="text-slate-400">Instansi:</span>
+                    <div className="text-slate-800 font-semibold truncate">{currentUser.opdName}</div>
                   </div>
                   <div>
                     <span className="text-slate-400">NIP:</span>
                     <div className="font-mono text-slate-700">{currentUser.nip}</div>
                   </div>
-                  <div>
-                    <span className="text-slate-400">Password Terakhir Diubah:</span>
-                    <div className="font-mono text-slate-500 text-[10px]">
-                      {currentUser.lastPasswordChangedAt}
-                    </div>
-                  </div>
                 </div>
 
-                {/* Account Action Buttons */}
+                {/* Account Actions */}
                 <div className="space-y-1.5">
-                  {!isDinas ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsProfileOpen(false);
-                        onOpenAdminFolderRegistration();
-                      }}
-                      className="w-full py-2 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 flex items-center gap-2 font-medium transition-colors cursor-pointer text-xs"
-                    >
-                      <FolderPlus className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Daftarkan Folder Tiap Dinas</span>
-                    </button>
-                  ) : (
-                    <a
-                      href={currentUser.driveFolderUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full py-2 px-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 flex items-center justify-between font-medium transition-colors text-xs"
-                    >
-                      <span className="flex items-center gap-2">
-                        <HardDrive className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Folder Resmi di Drive</span>
-                      </span>
-                      <ExternalLink className="w-3 h-3 text-blue-600" />
-                    </a>
-                  )}
-
                   <button
                     type="button"
                     onClick={() => {
