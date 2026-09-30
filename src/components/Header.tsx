@@ -15,9 +15,11 @@ import {
   ExternalLink,
   Settings2,
   SlidersHorizontal,
+  CheckCircle2,
 } from 'lucide-react';
 import { OPD, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
+import { initDriveAuth, googleSignIn, googleSignOut } from '../services/googleDriveAuth';
 
 interface HeaderProps {
   activeOpd: OPD;
@@ -47,6 +49,32 @@ export function Header({
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
 
   const isDinas = currentUser.role === 'DINAS_PEMOHON';
+
+  const [googleDriveUser, setGoogleDriveUser] = useState<any>(null);
+  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = initDriveAuth((user) => {
+      setGoogleDriveUser(user);
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  const handleConnectGoogle = async () => {
+    setIsConnectingGoogle(true);
+    try {
+      const res = await googleSignIn();
+      if (res) {
+        setGoogleDriveUser(res.user);
+      }
+    } catch (e) {
+      console.error('Failed to sign in with Google Drive', e);
+    } finally {
+      setIsConnectingGoogle(false);
+    }
+  };
 
   // Close menus on outside click
   const opdRef = useRef<HTMLDivElement>(null);
@@ -169,6 +197,27 @@ export function Header({
 
         {/* Zone 3: Clean Actions (Consolidated into 3 items: Upload, Server Integrasi, Profil) */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Google Drive Direct OAuth Connect Status */}
+          {googleDriveUser ? (
+            <div
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 shadow-2xs"
+              title={`Terhubung ke Google Drive: ${googleDriveUser.email}`}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span className="truncate max-w-[130px] font-mono text-[11px]">{googleDriveUser.email}</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnectGoogle}
+              disabled={isConnectingGoogle}
+              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+              title="Hubungkan akun Google Drive untuk pengunggahan berkas langsung"
+            >
+              <HardDrive className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <span className="hidden lg:inline">{isConnectingGoogle ? 'Menghubungkan...' : 'Hubungkan Drive'}</span>
+            </button>
+          )}
+
           {/* 1. Main Action Button: Upload Dokumen */}
           <button
             onClick={onOpenUploadModal}

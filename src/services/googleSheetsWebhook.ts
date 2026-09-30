@@ -7,6 +7,8 @@ import {
   UserAccount,
   OpdFolderRegistration,
 } from '../types';
+import { getAccessToken } from './googleDriveAuth';
+import { uploadFileToGoogleDriveFolder } from './googleDriveApi';
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
@@ -300,6 +302,27 @@ export async function sendUploadToGoogleDriveAndSheet(
 
   let isSuccess = false;
   let responseText = '';
+
+  // 1. Direct Google Drive API Upload using OAuth token (if user signed in with Google)
+  try {
+    const oauthToken = await getAccessToken();
+    if (oauthToken && version.fileBase64) {
+      const mimeType = getMimeTypeByFormat(doc.format, version.fileName);
+      const driveRes = await uploadFileToGoogleDriveFolder(
+        oauthToken,
+        version.fileName,
+        mimeType,
+        version.fileBase64,
+        masterFolderId
+      );
+      if (driveRes.id) {
+        payload.downloadUrl = driveRes.webViewLink || `https://drive.google.com/file/d/${driveRes.id}/view`;
+        console.log('✅ File uploaded directly to Google Drive folder:', driveRes.id);
+      }
+    }
+  } catch (driveErr) {
+    console.warn('Direct OAuth Drive API upload note:', driveErr);
+  }
 
   try {
     await fetch(webhookUrl, {
