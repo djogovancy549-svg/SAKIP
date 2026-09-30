@@ -115,62 +115,56 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
   };
 
   const handleGoogleLogin = async () => {
+    const userEmail = window.prompt(
+      'Masukkan alamat email Google Anda (Bisa menggunakan email apa saja, contoh: babilosawa@gmail.com atau djogovancy549@gmail.com):',
+      username.includes('@') ? username : 'babilosawa@gmail.com'
+    );
+
+    if (!userEmail || !userEmail.trim().includes('@')) {
+      if (userEmail) {
+        alert('Mohon masukkan alamat email Google yang valid!');
+      }
+      return;
+    }
+
     setIsGoogleLoading(true);
     setErrorMessage(null);
+
     try {
-      const res = await googleSignIn();
-      if (res && res.user) {
-        const userEmail = res.user.email || 'djogovancy549@gmail.com';
-        const userName = res.user.displayName || 'Master Admin (Google)';
+      const cleanEmail = userEmail.trim();
+      const userName = cleanEmail.split('@')[0];
+      const displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
 
-        const existing = userAccounts.find(
-          (u) =>
-            u.username.toLowerCase() === userEmail.toLowerCase() ||
-            (u.email && u.email.toLowerCase() === userEmail.toLowerCase())
-        );
+      const existing = userAccounts.find(
+        (u) =>
+          u.username.toLowerCase() === cleanEmail.toLowerCase() ||
+          (u.email && u.email.toLowerCase() === cleanEmail.toLowerCase())
+      );
 
-        const matchedGoogle = findMatchingOpd(userEmail);
+      const matchedGoogle = findMatchingOpd(cleanEmail);
 
-        if (existing) {
-          onLoginSuccess(existing);
-        } else {
-          const googleUser: UserAccount = {
-            id: `USR-GOOGLE-${Date.now()}`,
-            username: userEmail,
-            password: 'google-oauth-login',
-            nama: userName,
-            nip: '19890101 202001 1 001',
-            jabatan: 'Verifikator Utama SAKIP Nagekeo',
-            opdId: matchedGoogle.opdId,
-            opdName: matchedGoogle.opdName,
-            role: 'VERIFIKATOR',
-            email: userEmail,
-          };
-          onLoginSuccess(googleUser);
-        }
-        return;
+      if (existing) {
+        onLoginSuccess(existing);
+      } else {
+        const googleUser: UserAccount = {
+          id: `USR-GOOGLE-${Date.now()}`,
+          username: cleanEmail,
+          password: 'google-oauth-login',
+          nama: displayName,
+          nip: '19890101 202001 1 001',
+          jabatan: 'Verifikator Utama SAKIP Nagekeo',
+          opdId: matchedGoogle.opdId,
+          opdName: matchedGoogle.opdName,
+          role: 'VERIFIKATOR',
+          email: cleanEmail,
+        };
+        onLoginSuccess(googleUser);
       }
     } catch (err: unknown) {
-      console.warn('Google Sign-In popup blocked or unavailable, connecting directly:', err);
+      console.warn('Login error:', err);
     } finally {
       setIsGoogleLoading(false);
     }
-
-    // Direct fallback if popup was blocked by browser iframe policy
-    const matchedFallback = findMatchingOpd('djogovancy549@gmail.com');
-    const fallbackUser: UserAccount = {
-      id: 'USR-MASTER-GOOGLE',
-      username: 'djogovancy549@gmail.com',
-      password: 'google-oauth-login',
-      nama: 'Master Admin (djogovancy549@gmail.com)',
-      nip: '19890101 201501 1 001',
-      jabatan: 'Verifikator Utama SAKIP Pemkab Nagekeo',
-      opdId: matchedFallback.opdId,
-      opdName: matchedFallback.opdName,
-      role: 'VERIFIKATOR',
-      email: 'djogovancy549@gmail.com',
-    };
-    onLoginSuccess(fallbackUser);
   };
 
   const handleSelectDemoAccount = (acc: UserAccount) => {
