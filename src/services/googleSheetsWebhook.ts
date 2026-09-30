@@ -66,6 +66,69 @@ export function getGoogleDriveFolderUrl(): string {
   return `https://drive.google.com/drive/folders/${folderId.trim()}`;
 }
 
+export async function fetchDatabaseFromGoogleSheet(): Promise<{
+  documents: DocumentItem[];
+  users: UserAccount[];
+  folders: OpdFolderRegistration[];
+} | null> {
+  const webhookUrl = getGoogleSheetsWebhookUrl();
+  try {
+    const res = await fetch(`${webhookUrl}?action=get_all_data`);
+    if (!res.ok) throw new Error('Network response was not ok');
+    const data = await res.json();
+    if (data && data.status === 'success') {
+      // Map back plain Google Sheet cells to app-specific DocumentItem format
+      const docs: DocumentItem[] = (data.documents || []).map((d: any) => {
+        const docId = d.id || `DOC-SYN-${Date.now()}`;
+        return {
+          id: docId,
+          nomorBerkas: d.nomorBerkas || 'Draf',
+          judul: d.judul || 'Dokumen SAKIP',
+          perihal: d.notes || d.judul || 'Berkas SAKIP',
+          opdId: d.opdId || 'DISKOMINFO',
+          opdName: d.opdName || 'Umum',
+          pemohon: {
+            nama: d.pemohon?.nama || 'Pemohon',
+            instansi: d.pemohon?.instansi || d.opdName || 'Dinas',
+            kontak: '0812-0000-1111',
+            email: `${(d.pemohon?.nama || 'user').toLowerCase().replace(/\s+/g, '.')}@daerah.go.id`,
+          },
+          tanggalMasuk: d.tanggalMasuk || new Date().toLocaleString('id-ID'),
+          format: d.format || 'PDF',
+          fileSize: '3.5 MB',
+          fileName: d.fileName || 'dokumen_sakip.pdf',
+          status: d.status || 'PENDING',
+          urgency: 'TINGGI',
+          currentVersion: d.currentVersion || 1,
+          isLocked: d.status === 'APPROVED',
+          googleDrive: d.googleDrive,
+          versions: [
+            {
+              versionNumber: d.currentVersion || 1,
+              uploadedAt: d.tanggalMasuk || new Date().toLocaleString('id-ID'),
+              uploadedBy: d.pemohon?.nama || 'Pemohon',
+              fileName: d.fileName || 'dokumen_sakip.pdf',
+              fileSize: '3.5 MB',
+              changeSummary: d.notes || 'Pengajuan berkas awal.',
+              status: d.status || 'PENDING',
+              googleDrive: d.googleDrive,
+            },
+          ],
+        };
+      });
+
+      return {
+        documents: docs,
+        users: data.users || [],
+        folders: data.folders || [],
+      };
+    }
+  } catch (err) {
+    console.warn('Failed to fetch live database from Google Sheet', err);
+  }
+  return null;
+}
+
 export function sanitizeGoogleDriveUrl(url?: string): string {
   if (!url || url.trim() === '') return getGoogleDriveFolderUrl();
   if (
@@ -1004,7 +1067,96 @@ function getOrCreateSubfolder(parentFolder, subfolderName) {
 }
 
 function doGet(e) {
-  return ContentService.createTextOutput("Endpoint SIMVERIF Multi-Sheet & Drive Server Aktif.");
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = e && e.parameter ? e.parameter.action : "";
+    
+    // Kembalikan semua data dokumen, akun, dan folder jika diminta
+    if (!action || action === "get_all_data") {
+      var docSheet = ss.getSheetByName("DATA_VERIFIKASI_DOKUMEN");
+      var userSheet = ss.getSheetByName("DATABASE_PENGGUNA");
+      var folderSheet = ss.getSheetByName("MAPPING_FOLDER_OPD");
+      
+      var docs = [];
+      if (docSheet && docSheet.getLastRow() > 1) {
+        var docVals = docSheet.getDataRange().getValues();
+        for (var i = 1; i < docVals.length; i++) {
+          docs.push({
+            tanggalMasuk: docVals[i][0] ? String(docVals[i][0]) : "",
+            id: docVals[i][1] ? String(docVals[i][1]) : "DOC-" + i,
+            nomorBerkas: docVals[i][2] ? String(docVals[i][2]) : "",
+            judul: docVals[i][3] ? String(docVals[i][3]) : "",
+            opdName: docVals[i][4] ? String(docVals[i][4]) : "",
+            currentVersion: docVals[i][5] ? Number(String(docVals[i][5]).replace("v", "")) || 1 : 1,
+            format: docVals[i][6] ? String(docVals[i][6]) : "PDF",
+            pemohon: {
+              nama: docVals[i][7] ? String(docVals[i][7]) : "Pemohon",
+              instansi: docVals[i][8] ? String(docVals[i][8]) : "",
+            },
+            status: docVals[i][9] ? String(docVals[i][9]) : "PENDING",
+            verifierName: docVals[i][10] ? String(docVals[i][10]) : "",
+            verifierNip: docVals[i][11] ? String(docVals[i][11]) : "",
+            bavNumber: docVals[i][12] ? String(docVals[i][12]) : "",
+            googleDrive: {
+              viewUrl: docVals[i][13] ? String(docVals[i][13]) : "",
+              downloadUrl: docVals[i][13] ? String(docVals[i][13]) : "",
+              fileId: docVals[i][14] ? String(docVals[i][14]) : "",
+              storageStatus: "SYNCED"
+            },
+            notes: docVals[i][15] ? String(docVals[i][15]) : "",
+            digitalSealHash: docVals[i][16] ? String(docVals[i][16]) : ""
+          });
+        }
+      }
+      
+      var users = [];
+      if (userSheet && userSheet.getLastRow() > 1) {
+        var userVals = userSheet.getDataRange().getValues();
+        for (var u = 1; u < userVals.length; u++) {
+          users.push({
+            id: userVals[u][1] ? String(userVals[u][1]) : "USR-" + u,
+            username: userVals[u][2] ? String(userVals[u][2]) : "",
+            nama: userVals[u][3] ? String(userVals[u][3]) : "",
+            role: userVals[u][4] ? String(userVals[u][4]) : "DINAS_PEMOHON",
+            opdName: userVals[u][5] ? String(userVals[u][5]) : "",
+            nip: userVals[u][6] ? String(userVals[u][6]) : "",
+            password: userVals[u][7] ? String(userVals[u][7]) : "",
+            opdId: userVals[u][5] ? String(userVals[u][5]).replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 10) : "OPD"
+          });
+        }
+      }
+
+      var folders = [];
+      if (folderSheet && folderSheet.getLastRow() > 1) {
+        var foldVals = folderSheet.getDataRange().getValues();
+        for (var f = 1; f < foldVals.length; f++) {
+          folders.push({
+            opdId: foldVals[f][1] ? String(foldVals[f][1]) : "",
+            opdName: foldVals[f][2] ? String(foldVals[f][2]) : "",
+            driveFolderUrl: foldVals[f][3] ? String(foldVals[f][3]) : "",
+            driveFolderId: foldVals[f][4] ? String(foldVals[f][4]) : "",
+            driveFolderName: foldVals[f][5] ? String(foldVals[f][5]) : "",
+            registeredByAdmin: foldVals[f][6] ? String(foldVals[f][6]) : "",
+            registeredAt: foldVals[f][0] ? String(foldVals[f][0]) : ""
+          });
+        }
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        documents: docs,
+        users: users,
+        folders: folders
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    return ContentService.createTextOutput("Endpoint SIMVERIF SAKIP Aktif & Terhubung.").setMimeType(ContentService.MimeType.TEXT);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 /**

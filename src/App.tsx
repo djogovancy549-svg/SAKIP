@@ -54,6 +54,7 @@ import databaseBg from './assets/images/digital_database_modern_bg_1790734176384
 import {
   sendVerificationToGoogleSheet,
   sendUploadToGoogleDriveAndSheet,
+  fetchDatabaseFromGoogleSheet,
 } from './services/googleSheetsWebhook';
 import { calculateRetention, formatArchiveSubfolder } from './utils/retentionUtils';
 
@@ -291,6 +292,59 @@ export default function App() {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+  const syncWithGoogleSheet = async () => {
+    setIsSyncing(true);
+    try {
+      const data = await fetchDatabaseFromGoogleSheet();
+      if (data) {
+        if (data.documents && data.documents.length > 0) {
+          setDocuments(data.documents);
+          setSelectedDocument((prev) => {
+            if (prev) {
+              const updated = data.documents.find((d) => d.id === prev.id);
+              return updated || data.documents[0];
+            }
+            return data.documents[0];
+          });
+        }
+        if (data.users && data.users.length > 0) {
+          setUserAccounts((prev) => {
+            const merged = [...prev];
+            data.users.forEach((nu) => {
+              const idx = merged.findIndex((u) => u.username === nu.username);
+              if (idx >= 0) {
+                merged[idx] = { ...merged[idx], ...nu };
+              } else {
+                merged.push(nu);
+              }
+            });
+            return merged;
+          });
+        }
+        if (data.folders && data.folders.length > 0) {
+          const record: Record<string, OpdFolderRegistration> = {};
+          data.folders.forEach((reg) => {
+            if (reg.opdId) {
+              record[reg.opdId] = reg;
+            }
+          });
+          setFolderRegistrations(record);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync database with Google Sheet', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Run on mount
+  useEffect(() => {
+    syncWithGoogleSheet();
   }, []);
 
   // Handle Login
@@ -652,6 +706,8 @@ export default function App() {
         onOpenDriveExplorer={() => setIsDriveExplorerOpen(true)}
         onOpenAdminFolderRegistration={() => setIsFolderRegistrationOpen(true)}
         onLogout={handleLogout}
+        onSync={syncWithGoogleSheet}
+        isSyncing={isSyncing}
       />
 
       {/* Running Data Ticker ("Data Berjalan") */}

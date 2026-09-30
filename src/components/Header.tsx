@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
   CheckCircle2,
   Bell,
+  RefreshCw,
 } from 'lucide-react';
 import { OPD, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
@@ -34,6 +35,8 @@ interface HeaderProps {
   onOpenDriveExplorer: () => void;
   onOpenAdminFolderRegistration: () => void;
   onLogout: () => void;
+  onSync?: () => void;
+  isSyncing?: boolean;
 }
 
 export function Header({
@@ -48,6 +51,8 @@ export function Header({
   onOpenDriveExplorer,
   onOpenAdminFolderRegistration,
   onLogout,
+  onSync,
+  isSyncing = false,
 }: HeaderProps) {
   const [isOpdDropdownOpen, setIsOpdDropdownOpen] = useState<boolean>(false);
   const [isServerMenuOpen, setIsServerMenuOpen] = useState<boolean>(false);
@@ -202,6 +207,21 @@ export function Header({
 
         {/* Zone 3: Clean Actions (Consolidated into 3 items: Upload, Server Integrasi, Profil) */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Manual Google Sheet Real-time Sync Button */}
+          {onSync && (
+            <button
+              onClick={onSync}
+              disabled={isSyncing}
+              className={`p-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl text-emerald-800 transition-colors cursor-pointer shadow-xs flex items-center gap-1.5 font-bold text-xs ${
+                isSyncing ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+              title="Sinkronkan dengan Google Sheet Database"
+            >
+              <RefreshCw className={`w-4 h-4 text-emerald-700 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Sinkron Sheet</span>
+            </button>
+          )}
+
           {/* Notification Bell Button */}
           <button
             onClick={onOpenNotificationModal}
