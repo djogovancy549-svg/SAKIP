@@ -260,6 +260,39 @@ export default function App() {
     }
   }, [currentUser]);
 
+  // Real-time synchronization across browser tabs and windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY_DOCS && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setDocuments(parsed);
+        } catch (err) {
+          console.error('Failed to parse updated documents from storage', err);
+        }
+      }
+      if (e.key === STORAGE_KEY_USERS && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setUserAccounts(parsed);
+        } catch (err) {
+          console.error('Failed to parse updated users from storage', err);
+        }
+      }
+      if (e.key === STORAGE_KEY_FOLDER_REGISTRATIONS && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setFolderRegistrations(parsed);
+        } catch (err) {
+          console.error('Failed to parse updated folder registrations', err);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Handle Login
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);

@@ -49,10 +49,11 @@ export interface UserAccount {
   jabatan: string;
   pangkat?: string;
   password: string; // Plain/hashed password that can be changed
-  lastPasswordChangedAt: string;
-  driveFolderId: string; // Folder Google Drive khusus OPD ini
-  driveFolderName: string;
-  driveFolderUrl: string;
+  lastPasswordChangedAt?: string;
+  driveFolderId?: string; // Folder Google Drive khusus OPD ini
+  driveFolderName?: string;
+  driveFolderUrl?: string;
+  email?: string;
 }
 
 export type NotificationType =
