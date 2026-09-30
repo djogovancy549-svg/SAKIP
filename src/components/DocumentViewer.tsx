@@ -52,28 +52,28 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
   return (
     <div
-      className={`flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden transition-all duration-200 ${
-        isFullscreen ? 'fixed inset-4 z-50 shadow-2xl bg-slate-950' : 'h-full min-h-[600px]'
+      className={`flex flex-col bg-white border border-blue-200/90 rounded-2xl shadow-md overflow-hidden transition-all duration-200 ${
+        isFullscreen ? 'fixed inset-4 z-50 shadow-2xl bg-white ring-8 ring-blue-600/20' : 'h-full min-h-[600px]'
       }`}
     >
-      {/* Top Document Action & Control Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-950 border-b border-slate-800 text-xs text-slate-300">
+      {/* Top Document Action & Control Toolbar - Elegant Vibrant Blue */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 border-b border-blue-500 text-xs text-white shadow-sm">
         {/* Left: Format & Document Title Info */}
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 font-medium text-slate-200 truncate">
-            {document.format === 'PDF' && <FileText className="w-4 h-4 text-rose-400 shrink-0" />}
-            {document.format === 'DOCX' && <FileText className="w-4 h-4 text-blue-400 shrink-0" />}
-            {document.format === 'XLSX' && <FileSpreadsheet className="w-4 h-4 text-emerald-400 shrink-0" />}
-            {document.format === 'IMAGE' && <ImageIcon className="w-4 h-4 text-amber-400 shrink-0" />}
-            <span className="font-semibold text-slate-100 truncate">{document.fileName}</span>
+          <div className="flex items-center gap-1.5 font-medium text-white truncate">
+            {document.format === 'PDF' && <FileText className="w-4 h-4 text-rose-200 shrink-0" />}
+            {document.format === 'DOCX' && <FileText className="w-4 h-4 text-sky-200 shrink-0" />}
+            {document.format === 'XLSX' && <FileSpreadsheet className="w-4 h-4 text-emerald-200 shrink-0" />}
+            {document.format === 'IMAGE' && <ImageIcon className="w-4 h-4 text-amber-200 shrink-0" />}
+            <span className="font-bold text-white truncate drop-shadow-xs">{document.fileName}</span>
           </div>
 
           {/* Version & Lock Badges */}
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-800/80 text-blue-100 border border-blue-400/50 shrink-0 font-semibold">
             v{document.currentVersion}
           </span>
           {isLocked && (
-            <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 shrink-0">
+            <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500 text-white border border-emerald-300 font-bold shrink-0 shadow-xs">
               <Lock className="w-2.5 h-2.5" /> Terkunci
             </span>
           )}
@@ -81,22 +81,22 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
         {/* Center: Page Navigation (if PDF has multiple pages) */}
         {document.format === 'PDF' && totalPages > 1 && (
-          <div className="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">
+          <div className="flex items-center gap-1 bg-blue-800/70 px-2 py-1 rounded-lg border border-blue-400/40">
             <button
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
               disabled={currentPage <= 1}
-              className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+              className="p-1 text-blue-200 hover:text-white disabled:opacity-40 disabled:hover:text-blue-200 transition-colors cursor-pointer"
               title="Halaman Sebelumnya"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <span className="text-xs font-mono text-slate-300 px-1">
+            <span className="text-xs font-mono text-white px-1 font-semibold">
               Halaman {currentPage} dari {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage >= totalPages}
-              className="p-1 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition-colors"
+              className="p-1 text-blue-200 hover:text-white disabled:opacity-40 disabled:hover:text-blue-200 transition-colors cursor-pointer"
               title="Halaman Selanjutnya"
             >
               <ChevronRight className="w-3.5 h-3.5" />
@@ -106,24 +106,24 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
         {/* Right: Zoom, Rotate, Watermark & View Controls */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center bg-slate-900 rounded-md border border-slate-800 p-0.5">
+          <div className="flex items-center bg-blue-800/70 rounded-lg border border-blue-400/40 p-0.5">
             <button
               onClick={handleZoomOut}
-              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
+              className="p-1 text-blue-100 hover:text-white hover:bg-blue-700/80 rounded transition-colors cursor-pointer"
               title="Perkecil Tampilan"
             >
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={handleResetZoom}
-              className="px-1.5 py-0.5 text-[11px] font-mono text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
+              className="px-1.5 py-0.5 text-[11px] font-mono text-blue-100 hover:text-white hover:bg-blue-700/80 rounded transition-colors cursor-pointer font-bold"
               title="Reset Skala 100%"
             >
               {zoom}%
             </button>
             <button
               onClick={handleZoomIn}
-              className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
+              className="p-1 text-blue-100 hover:text-white hover:bg-blue-700/80 rounded transition-colors cursor-pointer"
               title="Perbesar Tampilan"
             >
               <ZoomIn className="w-3.5 h-3.5" />
@@ -132,7 +132,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
           <button
             onClick={handleRotate}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md border border-slate-800 transition-colors"
+            className="p-1.5 text-blue-100 hover:text-white hover:bg-blue-700/80 rounded-lg border border-blue-400/40 transition-colors cursor-pointer"
             title="Putar Dokumen 90 Derajat"
           >
             <RotateCw className="w-3.5 h-3.5" />
@@ -141,10 +141,10 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
           {/* Watermark Toggle */}
           <button
             onClick={() => setShowWatermark((v) => !v)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
               showWatermark
-                ? 'bg-slate-800 text-emerald-400 border-emerald-500/30'
-                : 'bg-slate-900 text-slate-500 border-slate-800'
+                ? 'bg-blue-900/80 text-emerald-300 border-emerald-400/50 shadow-xs'
+                : 'bg-blue-800/60 text-blue-200 border-blue-400/30'
             }`}
             title="Aktifkan / Sembunyikan Watermark Pengamanan"
           >
@@ -155,8 +155,8 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
           {/* Settings */}
           <button
             onClick={() => setShowSettings((v) => !v)}
-            className={`p-1.5 rounded-md border border-slate-800 transition-colors ${
-              showSettings ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+            className={`p-1.5 rounded-lg border border-blue-400/40 transition-colors cursor-pointer ${
+              showSettings ? 'bg-white text-blue-900 shadow-xs' : 'text-blue-100 hover:text-white hover:bg-blue-700/80'
             }`}
             title="Pengaturan Watermark"
           >
@@ -166,7 +166,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
           {/* Fullscreen Toggle */}
           <button
             onClick={() => setIsFullscreen((v) => !v)}
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md border border-slate-800 transition-colors"
+            className="p-1.5 text-blue-100 hover:text-white hover:bg-blue-700/80 rounded-lg border border-blue-400/40 transition-colors cursor-pointer"
             title={isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh'}
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -176,9 +176,9 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
       {/* Settings Bar */}
       {showSettings && (
-        <div className="flex items-center justify-between gap-4 px-4 py-2 bg-slate-950/90 border-b border-slate-800 text-xs">
+        <div className="flex items-center justify-between gap-4 px-4 py-2 bg-blue-800/95 border-b border-blue-600 text-xs text-white">
           <div className="flex items-center gap-3">
-            <span className="text-slate-400 font-medium">Ketebalan Watermark:</span>
+            <span className="text-blue-200 font-medium">Ketebalan Watermark:</span>
             <input
               type="range"
               min="0.05"
@@ -186,20 +186,20 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
               step="0.02"
               value={watermarkOpacity}
               onChange={(e) => setWatermarkOpacity(parseFloat(e.target.value))}
-              className="w-28 accent-emerald-500 cursor-pointer"
+              className="w-28 accent-sky-300 cursor-pointer"
             />
-            <span className="text-[11px] font-mono text-slate-300">
+            <span className="text-[11px] font-mono text-blue-100 font-bold">
               {Math.round(watermarkOpacity * 100)}%
             </span>
           </div>
 
           {document.format === 'IMAGE' && (
-            <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
+            <label className="flex items-center gap-2 cursor-pointer text-blue-100 hover:text-white">
               <input
                 type="checkbox"
                 checked={imageHighContrast}
                 onChange={(e) => setImageHighContrast(e.target.checked)}
-                className="rounded accent-emerald-500"
+                className="rounded accent-sky-300"
               />
               <span>Tingkatkan Kontras Pindai</span>
             </label>
@@ -207,15 +207,15 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
           <button
             onClick={() => setShowSettings(false)}
-            className="text-slate-400 hover:text-white text-xs"
+            className="text-blue-200 hover:text-white text-xs cursor-pointer font-semibold underline underline-offset-2"
           >
             Tutup
           </button>
         </div>
       )}
 
-      {/* Main Document Content Canvas Viewport */}
-      <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-950 flex justify-center items-start relative select-text">
+      {/* Main Document Content Canvas Viewport - Elegant Bright Blue Backdrop */}
+      <div className="flex-1 overflow-auto p-4 md:p-6 bg-gradient-to-br from-blue-100 via-sky-100/70 to-blue-200/80 flex justify-center items-start relative select-text shadow-inner">
         <div
           className="transition-transform duration-150 origin-top"
           style={{
@@ -223,7 +223,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
           }}
         >
           {/* Paper Canvas Container */}
-          <div className="relative w-full max-w-[840px] min-w-[320px] sm:min-w-[560px] md:min-w-[760px] bg-white text-slate-900 shadow-2xl rounded-sm p-6 sm:p-10 md:p-14 border border-slate-200">
+          <div className="relative w-full max-w-[840px] min-w-[320px] sm:min-w-[560px] md:min-w-[760px] bg-white text-slate-900 shadow-xl shadow-blue-900/10 rounded-xl p-6 sm:p-10 md:p-14 border border-blue-200/80">
             {/* Dynamic Watermark Layer */}
             {showWatermark && (
               <DocumentWatermark document={document} opacity={watermarkOpacity} />
@@ -571,37 +571,43 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
       </div>
 
       {/* Bottom Summary Bar for Document Info */}
-      <div className="px-4 py-2.5 bg-slate-950 border-t border-slate-800 text-xs text-slate-400 flex flex-wrap items-center justify-between gap-3">
+      <div className="px-4 py-2.5 bg-blue-50/90 border-t border-blue-200/90 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5 text-slate-500" />
-            <span>Pemohon:</span>
-            <span className="font-medium text-slate-200">{document.pemohon.nama}</span>
+            <User className="w-3.5 h-3.5 text-blue-600" />
+            <span className="font-semibold text-slate-500">Pemohon:</span>
+            <span className="font-bold text-slate-900">{document.pemohon.nama}</span>
             <span className="text-slate-500 text-[11px]">({document.pemohon.instansi})</span>
           </div>
           <div className="hidden md:flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-slate-500" />
-            <span>Tgl Masuk:</span>
-            <span className="font-mono text-slate-300">{document.tanggalMasuk}</span>
+            <Calendar className="w-3.5 h-3.5 text-blue-600" />
+            <span className="text-slate-500">Tgl Masuk:</span>
+            <span className="font-mono text-slate-700 font-semibold">{document.tanggalMasuk}</span>
           </div>
         </div>
 
         {/* Status in Footer */}
         <div className="flex items-center gap-2 font-medium">
-          <span className="text-slate-400">Status Alur:</span>
+          <span className="text-slate-500 text-xs">Status:</span>
           {document.status === 'APPROVED' && (
-            <span className="text-emerald-400 font-semibold flex items-center gap-1 font-mono">
-              <ShieldCheck className="w-3.5 h-3.5" /> Terverifikasi & Terkunci
+            <span className="text-emerald-700 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 font-mono text-[11px] shadow-xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Terverifikasi & Terkunci
             </span>
           )}
           {document.status === 'PENDING' && (
-            <span className="text-amber-400 font-semibold">Dalam Pemeriksaan</span>
+            <span className="text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
+              Dalam Pemeriksaan
+            </span>
           )}
           {document.status === 'REVISION' && (
-            <span className="text-orange-400 font-semibold">Butuh Revisi Dinas</span>
+            <span className="text-orange-800 bg-orange-100 border border-orange-300 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
+              Butuh Revisi Dinas
+            </span>
           )}
           {document.status === 'REJECTED' && (
-            <span className="text-rose-400 font-semibold">Ditolak</span>
+            <span className="text-rose-800 bg-rose-100 border border-rose-300 px-2.5 py-0.5 rounded-full font-bold text-[11px]">
+              Ditolak
+            </span>
           )}
         </div>
       </div>

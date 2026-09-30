@@ -98,51 +98,51 @@ export function ChangePasswordModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="px-5 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/40 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="bg-white border border-blue-200/90 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+        {/* Header - Elegant Bright Blue */}
+        <div className="px-5 py-4 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 border-b border-blue-500 text-white flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400">
+            <div className="p-2 bg-white/10 border border-white/20 rounded-xl text-white">
               <KeyRound className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-100">
+              <h2 className="text-sm font-bold text-white drop-shadow-xs">
                 Ubah Password Akun
               </h2>
-              <p className="text-[11px] text-slate-400">
-                {currentUser.opdName} ({currentUser.username})
+              <p className="text-[11px] text-blue-100">
+                {currentUser.opdName} (@{currentUser.username})
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-blue-100 hover:text-white rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs text-slate-300">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs text-slate-700 bg-white">
           {/* Storage Sheet Notice */}
-          <div className="p-3 bg-slate-950 rounded-lg border border-slate-800 flex items-center gap-2.5 text-[11px] text-slate-400">
-            <Database className="w-4 h-4 text-blue-400 shrink-0" />
+          <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-100 flex items-center gap-2.5 text-[11px] text-slate-600">
+            <Database className="w-4 h-4 text-blue-600 shrink-0" />
             <span>
-              Password tersimpan di worksheet terpisah: <strong className="text-blue-300 font-mono">DATABASE_PENGGUNA</strong> (tidak tercampur dengan data dokumen).
+              Password tersimpan di worksheet terpisah: <strong className="text-blue-900 font-mono font-bold">DATABASE_PENGGUNA</strong> (tidak tercampur dengan data dokumen).
             </span>
           </div>
 
           {errorMessage && (
-            <div className="p-3 bg-rose-950/40 border border-rose-500/30 rounded-lg text-rose-300 flex items-center gap-2 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 flex items-center gap-2 text-xs font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successResult && (
-            <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-lg text-emerald-300 flex items-center gap-2 text-xs">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 flex items-center gap-2 text-xs font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
               <div className="flex-1">
                 <div>{successResult.message}</div>
                 <div className="text-[10px] opacity-75 font-mono mt-0.5">
@@ -154,7 +154,7 @@ export function ChangePasswordModal({
 
           {/* Password Lama */}
           <div>
-            <label className="block font-medium text-slate-300 mb-1">
+            <label className="block font-bold text-slate-700 mb-1">
               Password Saat Ini *
             </label>
             <div className="relative">
@@ -164,12 +164,12 @@ export function ChangePasswordModal({
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
                 placeholder="Masukkan password lama"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 pr-10 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 pr-10 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 font-mono shadow-2xs"
               />
               <button
                 type="button"
                 onClick={() => setShowOld((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -178,7 +178,7 @@ export function ChangePasswordModal({
 
           {/* Password Baru */}
           <div>
-            <label className="block font-medium text-slate-300 mb-1">
+            <label className="block font-bold text-slate-700 mb-1">
               Password Baru *
             </label>
             <div className="relative">
@@ -188,12 +188,12 @@ export function ChangePasswordModal({
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimal 6 karakter"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 pr-10 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 pr-10 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 font-mono shadow-2xs"
               />
               <button
                 type="button"
                 onClick={() => setShowNew((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -202,7 +202,7 @@ export function ChangePasswordModal({
 
           {/* Konfirmasi Password Baru */}
           <div>
-            <label className="block font-medium text-slate-300 mb-1">
+            <label className="block font-bold text-slate-700 mb-1">
               Konfirmasi Password Baru *
             </label>
             <input
@@ -211,22 +211,22 @@ export function ChangePasswordModal({
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Ulangi password baru"
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 font-mono shadow-2xs"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-lg text-xs transition-colors"
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
             >
               Tutup
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors shadow-sm cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? 'Menyimpan...' : 'Simpan Password Baru'}
             </button>

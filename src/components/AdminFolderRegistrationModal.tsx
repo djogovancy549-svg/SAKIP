@@ -169,24 +169,24 @@ export function AdminFolderRegistrationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
-        {/* Modal Top Header */}
-        <div className="px-5 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-blue-950/40 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="bg-white border border-blue-200/90 rounded-2xl w-full max-w-5xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+        {/* Modal Top Header - Elegant Bright Blue */}
+        <div className="px-5 py-4 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 border-b border-blue-500 text-white flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 shrink-0">
+            <div className="p-2.5 bg-white/10 border border-white/20 rounded-xl text-white shrink-0 shadow-xs">
               <FolderPlus className="w-6 h-6" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm md:text-base font-bold text-slate-100 truncate">
+                <h2 className="text-sm md:text-base font-bold text-white truncate drop-shadow-xs">
                   Pendaftaran Tautan Folder Google Drive Tiap Dinas
                 </h2>
-                <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30 shrink-0">
+                <span className="text-[10px] font-mono bg-white/20 text-white font-bold px-2 py-0.5 rounded-full border border-white/30 shrink-0">
                   Hak Akses Admin
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 truncate">
+              <p className="text-[11px] text-blue-100 truncate">
                 Admin mendaftarkan link folder resmi Google Drive untuk setiap dinas agar pemberkasan terisolasi dan tertata rapi
               </p>
             </div>
@@ -194,30 +194,30 @@ export function AdminFolderRegistrationModal({
 
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-blue-100 hover:text-white rounded-lg hover:bg-white/15 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Informative Banner */}
-        <div className="bg-slate-950/80 px-5 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300">
-          <div className="flex items-center gap-2 text-slate-300">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div className="bg-blue-50/70 px-5 py-3 border-b border-blue-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-700">
+          <div className="flex items-center gap-2 text-slate-700 font-medium">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
               Administrator aktif:{' '}
-              <strong className="text-white">{currentUser.nama}</strong> ({currentUser.username})
+              <strong className="text-blue-950 font-bold">{currentUser.nama}</strong> (@{currentUser.username})
             </span>
           </div>
 
-          <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
-            <Database className="w-3.5 h-3.5 text-blue-400" />
-            <span>Worksheet Terdaftar: <strong>MAPPING_FOLDER_OPD</strong></span>
+          <div className="flex items-center gap-2 font-mono text-[11px] text-slate-600">
+            <Database className="w-3.5 h-3.5 text-blue-600" />
+            <span>Worksheet Terdaftar: <strong className="text-blue-900 font-bold">MAPPING_FOLDER_OPD</strong></span>
           </div>
         </div>
 
         {/* Toolbar & Search Bar */}
-        <div className="p-4 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 bg-white border-b border-blue-100 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
           <div className="relative flex-1 min-w-[240px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -225,7 +225,7 @@ export function AdminFolderRegistrationModal({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari dinas berdasarkan nama, kode, atau kategori..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-colors shadow-2xs"
             />
           </div>
 
@@ -233,7 +233,7 @@ export function AdminFolderRegistrationModal({
             <button
               onClick={handleSaveAll}
               disabled={isSavingAll}
-              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
             >
               {isSavingAll ? (
                 <>
@@ -252,14 +252,14 @@ export function AdminFolderRegistrationModal({
 
         {/* Feedback Alert Toast */}
         {successToast && (
-          <div className="mx-4 mt-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-300 animate-in fade-in duration-200">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="mx-4 mt-3 p-3 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-800 animate-in fade-in duration-200 shadow-xs">
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{successToast}</span>
             </div>
             <button
               onClick={() => setSuccessToast(null)}
-              className="text-emerald-400 hover:text-emerald-200 text-xs"
+              className="text-emerald-700 hover:text-emerald-950 text-xs font-semibold cursor-pointer"
             >
               Tutup
             </button>
@@ -267,7 +267,7 @@ export function AdminFolderRegistrationModal({
         )}
 
         {/* OPD Folder Registration Cards List */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-sky-50/30">
           {filteredOpds.length === 0 ? (
             <div className="p-8 text-center text-slate-500 text-xs">
               Tidak ada dinas yang cocok dengan pencarian "{searchQuery}".
@@ -292,22 +292,22 @@ export function AdminFolderRegistrationModal({
               return (
                 <div
                   key={opd.id}
-                  className="bg-slate-950/70 border border-slate-800/90 hover:border-slate-700/80 rounded-2xl p-4 transition-all space-y-3"
+                  className="bg-white border border-blue-200/90 hover:border-blue-400 hover:shadow-md rounded-2xl p-4 transition-all space-y-3 shadow-xs"
                 >
                   {/* Top Row: OPD Identity & Badges */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/60 pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 pb-3">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-slate-900 border border-slate-800 rounded-xl text-emerald-400">
+                      <div className="p-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-600">
                         <Building2 className="w-4 h-4" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-slate-100">{opd.name}</span>
-                          <span className="text-[10px] font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                          <span className="font-bold text-sm text-slate-900">{opd.name}</span>
+                          <span className="text-[10px] font-mono bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded border border-blue-100">
                             {opd.code}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-400">
+                        <div className="text-[11px] text-slate-500">
                           {opd.category} · {opd.shortName}
                         </div>
                       </div>
@@ -315,13 +315,13 @@ export function AdminFolderRegistrationModal({
 
                     <div className="flex items-center gap-2">
                       {hasLink ? (
-                        <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span className="text-[10px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                           Folder Terdaftar
                         </span>
                       ) : (
-                        <span className="text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3 text-amber-400" />
+                        <span className="text-[10px] font-mono bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
                           Belum Didaftarkan
                         </span>
                       )}
@@ -332,9 +332,9 @@ export function AdminFolderRegistrationModal({
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
                     {/* Input 1: Google Drive Folder URL / ID */}
                     <div className="md:col-span-6 space-y-1">
-                      <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
                         <span>Tautan URL Folder Google Drive:</span>
-                        <span className="text-[10px] text-slate-500 font-mono">
+                        <span className="text-[10px] text-slate-400 font-mono">
                           Format: URL atau ID Folder
                         </span>
                       </label>
@@ -344,20 +344,20 @@ export function AdminFolderRegistrationModal({
                           value={reg.driveFolderUrl}
                           onChange={(e) => handleInputChange(opd.id, 'driveFolderUrl', e.target.value)}
                           placeholder="https://drive.google.com/drive/folders/1abcxyz..."
-                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-600 font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 font-mono focus:bg-white focus:outline-none focus:border-blue-500 transition-colors shadow-2xs"
                         />
                       </div>
                       {reg.driveFolderId && (
-                        <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1">
+                        <div className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
                           <span>ID Folder:</span>
-                          <span className="text-emerald-400 truncate max-w-[200px]">{reg.driveFolderId}</span>
+                          <span className="text-blue-700 font-bold truncate max-w-[200px]">{reg.driveFolderId}</span>
                         </div>
                       )}
                     </div>
 
                     {/* Input 2: Subfolder Name on Drive Induk */}
                     <div className="md:col-span-3 space-y-1">
-                      <label className="text-[11px] font-semibold text-slate-300">
+                      <label className="text-[11px] font-bold text-slate-700">
                         Nama Folder / Jalur Server:
                       </label>
                       <input
@@ -365,13 +365,13 @@ export function AdminFolderRegistrationModal({
                         value={reg.driveFolderName}
                         onChange={(e) => handleInputChange(opd.id, 'driveFolderName', e.target.value)}
                         placeholder="Google Drive Induk / 01_Nama_Dinas"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-colors shadow-2xs"
                       />
                     </div>
 
                     {/* Input 3: Notes / Keterangan Berkas */}
                     <div className="md:col-span-3 space-y-1">
-                      <label className="text-[11px] font-semibold text-slate-300">
+                      <label className="text-[11px] font-bold text-slate-700">
                         Keterangan Dokumen:
                       </label>
                       <input
@@ -379,19 +379,19 @@ export function AdminFolderRegistrationModal({
                         value={reg.notes || ''}
                         onChange={(e) => handleInputChange(opd.id, 'notes', e.target.value)}
                         placeholder="Contoh: Berkas SK, SPM, Perizinan..."
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 transition-colors"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-colors shadow-2xs"
                       />
                     </div>
                   </div>
 
                   {/* Bottom Row: Registration Meta & Action Buttons */}
-                  <div className="pt-1 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-400 border-t border-slate-900">
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500 border-t border-slate-100">
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-500">Didaftarkan oleh:</span>
-                      <span className="font-semibold text-slate-300">{reg.registeredByAdmin || '-'}</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="text-slate-500">Waktu:</span>
-                      <span className="text-slate-400 font-mono">{reg.registeredAt || '-'}</span>
+                      <span className="text-slate-400">Didaftarkan oleh:</span>
+                      <span className="font-semibold text-slate-800">{reg.registeredByAdmin || '-'}</span>
+                      <span className="text-slate-300">·</span>
+                      <span className="text-slate-400">Waktu:</span>
+                      <span className="text-slate-600 font-mono">{reg.registeredAt || '-'}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -400,17 +400,17 @@ export function AdminFolderRegistrationModal({
                           <button
                             type="button"
                             onClick={() => handleCopyLink(testUrl, opd.id)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg text-xs transition-colors cursor-pointer"
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                             title="Salin Tautan Folder Google Drive"
                           >
                             {copiedId === opd.id ? (
                               <>
-                                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="text-emerald-400">Tersalin</span>
+                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-700 font-bold">Tersalin</span>
                               </>
                             ) : (
                               <>
-                                <Copy className="w-3.5 h-3.5 text-slate-400" />
+                                <Copy className="w-3.5 h-3.5 text-slate-500" />
                                 <span>Salin Link</span>
                               </>
                             )}
@@ -420,7 +420,7 @@ export function AdminFolderRegistrationModal({
                             href={testUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg text-xs font-medium border border-blue-500/30 transition-colors"
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 transition-colors"
                           >
                             <span>Uji Buka Folder</span>
                             <ExternalLink className="w-3 h-3" />
@@ -431,7 +431,7 @@ export function AdminFolderRegistrationModal({
                       <button
                         onClick={() => handleSaveSingle(opd.id)}
                         disabled={isSavingThis}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
                       >
                         {isSavingThis ? (
                           <>
@@ -454,10 +454,10 @@ export function AdminFolderRegistrationModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="p-4 bg-blue-50/70 border-t border-blue-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
           <div className="flex items-center gap-2">
-            <Lock className="w-3.5 h-3.5 text-emerald-400" />
-            <span>
+            <Lock className="w-3.5 h-3.5 text-blue-600" />
+            <span className="font-medium text-slate-700">
               Ketika dinas login, sistem otomatis mengunci akses folder Google Drive mereka ke tautan yang didaftarkan di atas.
             </span>
           </div>
@@ -465,7 +465,7 @@ export function AdminFolderRegistrationModal({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs transition-colors cursor-pointer"
             >
               Tutup
             </button>
