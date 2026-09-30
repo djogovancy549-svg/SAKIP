@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   FileCheck,
@@ -6,6 +6,7 @@ import {
   Layers,
   Sparkles,
   ChevronRight,
+  ChevronDown,
   ShieldCheck,
   UploadCloud,
   History,
@@ -129,6 +130,19 @@ export default function App() {
 
   // Active View Tab when in 'SINGLE' mode: 'LIST' | 'VIEWER' | 'FORM'
   const [activeView, setActiveView] = useState<'LIST' | 'VIEWER' | 'FORM'>('LIST');
+  const [isViewDropdownOpen, setIsViewDropdownOpen] = useState<boolean>(false);
+  const viewDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close view dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (viewDropdownRef.current && !viewDropdownRef.current.contains(event.target as Node)) {
+        setIsViewDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Modals
   const [isGoogleSheetOpen, setIsGoogleSheetOpen] = useState<boolean>(false);
@@ -390,11 +404,8 @@ export default function App() {
     );
   }
 
-  // Filter documents shown in running ticker:
-  const tickerDocuments =
-    currentUser.role === 'DINAS_PEMOHON'
-      ? documents.filter((d) => d.opdId === currentUser.opdId)
-      : documents;
+  // Dynamic ticker documents (show all SAKIP documents across Pemkab Nagekeo):
+  const tickerDocuments = documents;
 
   const currentOpdDocsCount = documents.filter((d) => d.opdId === activeOpd.id).length;
 
@@ -453,79 +464,138 @@ export default function App() {
       {/* Top View Navigation & Layout Mode Switcher Bar */}
       <div className="bg-white border-b-2 border-slate-300 sticky top-16 z-30 px-3 sm:px-6 py-2 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          {/* Main 3 Navigation Tabs */}
-          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
-            {/* Tab 1: Daftar Berkas */}
+          {/* View Dropdown Selector */}
+          <div className="relative" ref={viewDropdownRef}>
             <button
-              onClick={() => setActiveView('LIST')}
-              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-                activeView === 'LIST'
-                  ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-500/40'
-                  : 'text-slate-900 hover:bg-slate-100 bg-slate-50 border border-slate-300 shadow-2xs'
-              }`}
+              onClick={() => setIsViewDropdownOpen((v) => !v)}
+              className="flex items-center gap-2.5 px-4 py-2 bg-gradient-to-r from-blue-700 to-sky-600 hover:from-blue-800 hover:to-sky-700 text-white rounded-xl text-xs font-black shadow-md cursor-pointer transition-all border border-blue-500"
+              title="Pilih Mode Tampilan Halaman"
             >
-              <Layers className="w-4 h-4 shrink-0" />
-              <span>1. Daftar Berkas OPD</span>
-              <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                  activeView === 'LIST' ? 'bg-white text-blue-800' : 'bg-blue-100 text-blue-900 border border-blue-200'
-                }`}
-              >
-                {currentOpdDocsCount}
-              </span>
+              {activeView === 'LIST' && <Layers className="w-4 h-4 text-sky-200 shrink-0" />}
+              {activeView === 'VIEWER' && <FileText className="w-4 h-4 text-sky-200 shrink-0" />}
+              {activeView === 'FORM' && <FileCheck className="w-4 h-4 text-sky-200 shrink-0" />}
+
+              <div className="text-left">
+                <span className="text-[9px] text-sky-200 block uppercase font-mono font-bold leading-none">
+                  Mode Tampilan:
+                </span>
+                <span className="font-bold text-white text-xs truncate block mt-0.5">
+                  {activeView === 'LIST' && `1. Daftar Berkas OPD (${currentOpdDocsCount})`}
+                  {activeView === 'VIEWER' && `2. Penampil Dokumen (Lebar & Jelas)`}
+                  {activeView === 'FORM' &&
+                    (currentUser.role === 'VERIFIKATOR'
+                      ? '3. Lembar Verifikasi & Pengesahan (Admin)'
+                      : '3. Informasi Status & Catatan Verifikasi')}
+                </span>
+              </div>
+
+              <ChevronDown className="w-4 h-4 text-white shrink-0 ml-1" />
             </button>
 
-            {/* Tab 2: Pratinjau Dokumen (Penampil Besar) */}
-            <button
-              onClick={() => setActiveView('VIEWER')}
-              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-                activeView === 'VIEWER'
-                  ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-500/40'
-                  : 'text-slate-900 hover:bg-slate-100 bg-slate-50 border border-slate-300 shadow-2xs'
-              }`}
-            >
-              <FileText className="w-4 h-4 shrink-0" />
-              <span>2. Penampil Dokumen (Lebar &amp; Jelas)</span>
-              {selectedDocument && (
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded font-mono truncate max-w-[100px] hidden md:inline font-bold ${
-                    activeView === 'VIEWER' ? 'bg-blue-900 text-white' : 'bg-slate-200 text-slate-900'
-                  }`}
-                >
-                  v{selectedDocument.currentVersion}
-                </span>
-              )}
-            </button>
+            {isViewDropdownOpen && (
+              <div className="absolute left-0 mt-2 w-80 bg-white border-2 border-slate-300 rounded-2xl shadow-2xl overflow-hidden z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                <div className="p-2.5 bg-blue-50 rounded-xl border border-blue-200 text-xs mb-1">
+                  <div className="font-black text-blue-950">Navigasi Halaman Dokumen</div>
+                  <div className="text-[10px] text-slate-700 font-bold">
+                    Pilih salah satu tampilan untuk membuka lembar kerja
+                  </div>
+                </div>
 
-            {/* Tab 3: Formulir & Lembar Verifikasi */}
-            <button
-              onClick={() => setActiveView('FORM')}
-              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
-                activeView === 'FORM'
-                  ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-500/40'
-                  : 'text-slate-900 hover:bg-slate-100 bg-slate-50 border border-slate-300 shadow-2xs'
-              }`}
-            >
-              <FileCheck className="w-4 h-4 shrink-0" />
-              <span>
-                {currentUser.role === 'VERIFIKATOR'
-                  ? '3. Lembar Verifikasi & Pengesahan (Admin)'
-                  : '3. Informasi Status & Catatan Verifikasi'}
-              </span>
-              {selectedDocument && (
-                <span
-                  className={`text-[9px] px-1.5 py-0.5 rounded-full uppercase font-mono font-bold ${
-                    selectedDocument.status === 'APPROVED'
-                      ? 'bg-emerald-600 text-white'
-                      : selectedDocument.status === 'REVISION'
-                      ? 'bg-amber-600 text-white'
-                      : 'bg-blue-500 text-white'
+                {/* Option 1: Daftar Berkas */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('LIST');
+                    setIsViewDropdownOpen(false);
+                  }}
+                  className={`w-full text-left p-3 rounded-xl flex items-center justify-between text-xs transition-all cursor-pointer ${
+                    activeView === 'LIST'
+                      ? 'bg-blue-600 text-white font-black shadow-xs'
+                      : 'text-slate-900 hover:bg-slate-100 font-bold'
                   }`}
                 >
-                  {selectedDocument.status === 'APPROVED' ? 'SAH' : selectedDocument.status === 'REVISION' ? 'REVISI' : 'PERIKSA'}
-                </span>
-              )}
-            </button>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Layers className={`w-4 h-4 shrink-0 ${activeView === 'LIST' ? 'text-white' : 'text-blue-600'}`} />
+                    <span className="truncate">1. Daftar Berkas OPD</span>
+                  </div>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold shrink-0 ${
+                      activeView === 'LIST' ? 'bg-white text-blue-900' : 'bg-blue-100 text-blue-900 border border-blue-200'
+                    }`}
+                  >
+                    {currentOpdDocsCount} Berkas
+                  </span>
+                </button>
+
+                {/* Option 2: Penampil Dokumen */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('VIEWER');
+                    setIsViewDropdownOpen(false);
+                  }}
+                  className={`w-full text-left p-3 rounded-xl flex items-center justify-between text-xs transition-all cursor-pointer ${
+                    activeView === 'VIEWER'
+                      ? 'bg-blue-600 text-white font-black shadow-xs'
+                      : 'text-slate-900 hover:bg-slate-100 font-bold'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileText className={`w-4 h-4 shrink-0 ${activeView === 'VIEWER' ? 'text-white' : 'text-blue-600'}`} />
+                    <span className="truncate">2. Penampil Dokumen (Lebar &amp; Jelas)</span>
+                  </div>
+                  {selectedDocument && (
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold shrink-0 ${
+                        activeView === 'VIEWER' ? 'bg-blue-900 text-white' : 'bg-slate-200 text-slate-900'
+                      }`}
+                    >
+                      v{selectedDocument.currentVersion}
+                    </span>
+                  )}
+                </button>
+
+                {/* Option 3: Formulir & Lembar Verifikasi */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveView('FORM');
+                    setIsViewDropdownOpen(false);
+                  }}
+                  className={`w-full text-left p-3 rounded-xl flex items-center justify-between text-xs transition-all cursor-pointer ${
+                    activeView === 'FORM'
+                      ? 'bg-blue-600 text-white font-black shadow-xs'
+                      : 'text-slate-900 hover:bg-slate-100 font-bold'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FileCheck className={`w-4 h-4 shrink-0 ${activeView === 'FORM' ? 'text-white' : 'text-blue-600'}`} />
+                    <span className="truncate">
+                      {currentUser.role === 'VERIFIKATOR'
+                        ? '3. Lembar Verifikasi & Pengesahan'
+                        : '3. Informasi Status & Catatan'}
+                    </span>
+                  </div>
+                  {selectedDocument && (
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded-full uppercase font-mono font-bold shrink-0 ${
+                        selectedDocument.status === 'APPROVED'
+                          ? 'bg-emerald-600 text-white'
+                          : selectedDocument.status === 'REVISION'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-blue-500 text-white'
+                      }`}
+                    >
+                      {selectedDocument.status === 'APPROVED'
+                        ? 'SAH'
+                        : selectedDocument.status === 'REVISION'
+                        ? 'REVISI'
+                        : 'PERIKSA'}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Mode Tampilan Switcher (Satu per satu vs 3 Kolom) */}
