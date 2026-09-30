@@ -11,8 +11,12 @@ import {
   XCircle,
   Lock,
   UploadCloud,
+  Layers,
+  CheckCircle2,
+  Filter,
 } from 'lucide-react';
 import { DocumentItem, DocumentFormat, VerificationStatus, OPD, AppRole } from '../types';
+import { OPD_LIST } from '../data/opdData';
 
 interface DocumentListProps {
   documents: DocumentItem[];
@@ -21,6 +25,7 @@ interface DocumentListProps {
   activeOpd: OPD;
   appRole: AppRole;
   onOpenRevisionModalForDoc?: (doc: DocumentItem) => void;
+  onSelectOpd?: (opd: OPD) => void;
 }
 
 export function DocumentList({
@@ -30,19 +35,25 @@ export function DocumentList({
   activeOpd,
   appRole,
   onOpenRevisionModalForDoc,
+  onSelectOpd,
 }: DocumentListProps) {
+  const isVerifier = appRole === 'VERIFIKATOR';
+  const [opdScope, setOpdScope] = useState<'ALL' | 'SINGLE'>(isVerifier ? 'ALL' : 'SINGLE');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | VerificationStatus>('ALL');
   const [formatFilter, setFormatFilter] = useState<'ALL' | DocumentFormat>('ALL');
 
-  // Strict OPD Isolation: only filter documents belonging to the active OPD
-  const opdDocuments = documents.filter((doc) => doc.opdId === activeOpd.id);
+  // If verifier and opdScope is ALL, show all documents across all 38 OPDs; otherwise filter by active OPD
+  const opdDocuments = isVerifier && opdScope === 'ALL'
+    ? documents
+    : documents.filter((doc) => doc.opdId === activeOpd.id);
 
-  // Apply search and status filters within the OPD
+  // Apply search and status filters
   const filteredDocuments = opdDocuments.filter((doc) => {
     const matchesSearch =
       doc.nomorBerkas.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.judul.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.opdName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.pemohon.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.pemohon.instansi.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -52,63 +63,93 @@ export function DocumentList({
     return matchesSearch && matchesStatus && matchesFormat;
   });
 
-  // Calculate status counts for active OPD
+  // Calculate status counts
   const pendingCount = opdDocuments.filter((d) => d.status === 'PENDING').length;
   const approvedCount = opdDocuments.filter((d) => d.status === 'APPROVED').length;
   const revisionCount = opdDocuments.filter((d) => d.status === 'REVISION').length;
   const rejectedCount = opdDocuments.filter((d) => d.status === 'REJECTED').length;
 
   return (
-    <div className="flex flex-col h-full bg-white/45 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl overflow-hidden">
-      {/* OPD Header Strip */}
-      <div className="p-3.5 bg-white/40 border-b border-white/40">
-        <div className="flex items-center gap-2 mb-1">
-          <Building2 className="w-4 h-4 text-blue-600" />
-          <h2 className="font-bold text-blue-950 text-xs truncate">
-            {activeOpd.name}
-          </h2>
-        </div>
-        <div className="flex items-center justify-between text-[11px] text-slate-700">
-          <span>Kode: <span className="font-mono text-slate-900 font-bold">{activeOpd.code}</span></span>
-          <span className="text-blue-800 font-bold font-mono">
-            {opdDocuments.length} Dokumen Terdaftar
+    <div className="flex flex-col h-full bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden text-slate-800">
+      {/* Top Header Strip: Scope & OPD Info */}
+      <div className="p-3.5 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 text-white border-b border-blue-500 shadow-xs">
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <Building2 className="w-4 h-4 text-sky-200 shrink-0" />
+            <h2 className="font-bold text-white text-xs truncate">
+              {isVerifier && opdScope === 'ALL'
+                ? 'Semua Antrean Masuk Pemkab Nagekeo'
+                : activeOpd.name}
+            </h2>
+          </div>
+
+          <span className="text-[10px] bg-white/20 border border-white/30 text-white px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
+            {opdDocuments.length} Berkas
           </span>
         </div>
+
+        {/* Verifier Scope Toggle Bar */}
+        {isVerifier && (
+          <div className="grid grid-cols-2 p-1 bg-white/15 backdrop-blur-md rounded-xl border border-white/20 text-[11px] font-semibold mt-2">
+            <button
+              onClick={() => setOpdScope('ALL')}
+              className={`py-1 px-2 rounded-lg transition-all cursor-pointer truncate flex items-center justify-center gap-1 ${
+                opdScope === 'ALL'
+                  ? 'bg-white text-blue-900 shadow-xs font-bold'
+                  : 'text-white/80 hover:text-white'
+              }`}
+            >
+              <Layers className="w-3 h-3" />
+              <span>Semua OPD ({documents.length})</span>
+            </button>
+            <button
+              onClick={() => setOpdScope('SINGLE')}
+              className={`py-1 px-2 rounded-lg transition-all cursor-pointer truncate flex items-center justify-center gap-1 ${
+                opdScope === 'SINGLE'
+                  ? 'bg-white text-blue-900 shadow-xs font-bold'
+                  : 'text-white/80 hover:text-white'
+              }`}
+            >
+              <Building2 className="w-3 h-3" />
+              <span>Hanya {activeOpd.shortName}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Search Bar */}
-      <div className="p-3 border-b border-white/40 bg-white/30">
+      <div className="p-2.5 border-b border-slate-200 bg-slate-50">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nomor berkas, judul, pemohon..."
-            className="w-full bg-white/60 border border-white/70 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-500 focus:bg-white/90 focus:outline-none focus:border-blue-500 transition-colors shadow-xs"
+            placeholder="Cari nomor berkas, judul, dinas, pemohon..."
+            className="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 shadow-2xs"
           />
         </div>
       </div>
 
       {/* Status Segmented Tabs */}
-      <div className="p-2 border-b border-white/40 bg-white/20">
+      <div className="p-2 border-b border-slate-200 bg-white">
         <div className="grid grid-cols-4 gap-1 text-[11px] font-medium">
           <button
             onClick={() => setStatusFilter('ALL')}
-            className={`py-1.5 px-1.5 rounded-lg transition-colors truncate text-center cursor-pointer ${
+            className={`py-1.5 px-1 rounded-lg transition-colors truncate text-center cursor-pointer ${
               statusFilter === 'ALL'
                 ? 'bg-blue-600 text-white font-bold shadow-xs'
-                : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
+                : 'text-slate-700 hover:bg-slate-100'
             }`}
           >
             Semua ({opdDocuments.length})
           </button>
           <button
             onClick={() => setStatusFilter('PENDING')}
-            className={`py-1.5 px-1.5 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
+            className={`py-1.5 px-1 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'PENDING'
-                ? 'bg-blue-600 text-white font-bold shadow-xs'
-                : 'text-amber-800 hover:bg-white/60'
+                ? 'bg-amber-600 text-white font-bold shadow-xs'
+                : 'text-amber-800 hover:bg-amber-50'
             }`}
             title="Dalam Pemeriksaan Awal"
           >
@@ -117,10 +158,10 @@ export function DocumentList({
           </button>
           <button
             onClick={() => setStatusFilter('REVISION')}
-            className={`py-1.5 px-1.5 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
+            className={`py-1.5 px-1 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'REVISION'
                 ? 'bg-orange-600 text-white font-bold shadow-xs'
-                : 'text-orange-800 hover:bg-white/60'
+                : 'text-orange-800 hover:bg-orange-50'
             }`}
             title="Perlu Revisi Dinas"
           >
@@ -129,10 +170,10 @@ export function DocumentList({
           </button>
           <button
             onClick={() => setStatusFilter('APPROVED')}
-            className={`py-1.5 px-1.5 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
+            className={`py-1.5 px-1 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'APPROVED'
                 ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                : 'text-emerald-800 hover:bg-white/60'
+                : 'text-emerald-800 hover:bg-emerald-50'
             }`}
             title="Diverifikasi & Terkunci"
           >
@@ -143,8 +184,8 @@ export function DocumentList({
       </div>
 
       {/* Format Filter Badges */}
-      <div className="px-3 py-1.5 bg-white/20 border-b border-white/40 flex items-center gap-2 overflow-x-auto text-[10px] no-scrollbar">
-        <span className="text-slate-600 font-semibold shrink-0">Format:</span>
+      <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-[10px] no-scrollbar">
+        <span className="text-slate-500 font-semibold shrink-0">Format:</span>
         {(['ALL', 'PDF', 'DOCX', 'XLSX', 'IMAGE'] as const).map((fmt) => (
           <button
             key={fmt}
@@ -152,7 +193,7 @@ export function DocumentList({
             className={`px-2 py-0.5 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
               formatFilter === fmt
                 ? 'bg-blue-600 text-white font-bold'
-                : 'bg-white/50 border border-white/60 text-slate-700 hover:text-slate-950 hover:bg-white/80'
+                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
             }`}
           >
             {fmt === 'ALL' ? 'Semua Format' : fmt}
@@ -161,13 +202,15 @@ export function DocumentList({
       </div>
 
       {/* Document Items List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-white/40 p-2 space-y-1.5 bg-transparent">
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2 space-y-1.5 bg-slate-50/50">
         {filteredDocuments.length === 0 ? (
-          <div className="py-12 px-4 text-center text-slate-600 text-xs space-y-2">
-            <FileText className="w-8 h-8 mx-auto opacity-40 text-blue-600" />
-            <div className="font-semibold text-slate-800">Tidak ada dokumen ditemukan untuk {activeOpd.shortName}.</div>
-            <p className="text-[11px] text-slate-600">
-              Ubah kata kunci pencarian atau ganti status filter.
+          <div className="py-12 px-4 text-center text-slate-500 text-xs space-y-2 bg-white rounded-xl border border-slate-200 m-2">
+            <FileText className="w-8 h-8 mx-auto text-slate-300" />
+            <div className="font-bold text-slate-700">Tidak ada dokumen ditemukan.</div>
+            <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+              {isVerifier
+                ? 'Belum ada dokumen yang diunggah oleh OPD atau ubah filter pencarian di atas.'
+                : `Belum ada dokumen yang diajukan oleh ${activeOpd.name}.`}
             </p>
           </div>
         ) : (
@@ -181,10 +224,23 @@ export function DocumentList({
                 onClick={() => onSelectDocument(doc)}
                 className={`w-full text-left p-3 rounded-xl transition-all border cursor-pointer ${
                   isSelected
-                    ? 'bg-blue-500/20 border-blue-600 shadow-md ring-2 ring-blue-500/30 backdrop-blur-md'
-                    : 'bg-white/50 border-white/60 hover:bg-white/80 hover:border-blue-300 backdrop-blur-md shadow-xs'
+                    ? 'bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-400/30'
+                    : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-blue-300 shadow-2xs'
                 }`}
               >
+                {/* OPD Badge if in ALL view */}
+                {isVerifier && opdScope === 'ALL' && (
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md font-mono">
+                      <Building2 className="w-3 h-3" />
+                      <span>{doc.opdName}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {doc.tanggalMasuk.split(' ')[0]}
+                    </span>
+                  </div>
+                )}
+
                 {/* Header: Nomor Berkas & Status Indicator */}
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-slate-800 truncate">

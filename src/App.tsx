@@ -193,12 +193,20 @@ export default function App() {
     const userOpd = OPD_LIST.find((o) => o.id === user.opdId) || OPD_LIST[0];
     setActiveOpd(userOpd);
 
-    // Pick first document for this OPD if available
-    const opdDocs = documents.filter((d) => d.opdId === userOpd.id);
-    if (opdDocs.length > 0) {
-      setSelectedDocument(opdDocs[0]);
+    // Pick first document: if Verifier, pick any available document, else pick OPD-specific document
+    if (user.role === 'VERIFIKATOR') {
+      if (documents.length > 0) {
+        setSelectedDocument(documents[0]);
+      } else {
+        setSelectedDocument(null);
+      }
     } else {
-      setSelectedDocument(null);
+      const opdDocs = documents.filter((d) => d.opdId === userOpd.id);
+      if (opdDocs.length > 0) {
+        setSelectedDocument(opdDocs[0]);
+      } else {
+        setSelectedDocument(null);
+      }
     }
     setActiveView('LIST');
   };
