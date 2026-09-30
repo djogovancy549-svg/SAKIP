@@ -15,7 +15,7 @@ export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
   'https://script.google.com/macros/s/AKfycbz2pTM3tvaNcvO-lCYvpPzPN3HNivWjFvrQrQh6fkfpzwfn5Pn6KL2e0Vs-nqY8feyTuA/exec';
 
 // Embedded Google Drive Induk Server Folder ID & URL
-export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '13xfuPmCvTLMNFycz5JLLLajzv04A55cy';
+export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
 export const DEFAULT_GOOGLE_DRIVE_MASTER_NAME = 'GOOGLE_DRIVE_INDUK_SIMVERIF_OPD_SERVER';
 export const DEFAULT_GOOGLE_DRIVE_FOLDER_URL = `https://drive.google.com/drive/folders/${DEFAULT_GOOGLE_DRIVE_FOLDER_ID}`;
 
