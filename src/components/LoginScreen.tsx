@@ -57,18 +57,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
   const demoVerifAccounts = userAccounts.filter((u) => u.role === 'VERIFIKATOR');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-sky-950 to-slate-900 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
-      {/* Aesthetic Pinterest-Style Modern Database Background (Soft Ambient) */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-25 bg-center bg-cover bg-no-repeat transition-opacity mix-blend-screen"
-        style={{
-          backgroundImage: `url(${databaseBg})`,
-        }}
-        aria-hidden="true"
-      />
-      {/* Subtle ambient overlay */}
-      <div className="fixed inset-0 pointer-events-none bg-sky-950/40 backdrop-brightness-105" aria-hidden="true" />
-
+    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-slate-900 to-sky-950 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
       <div className="w-full max-w-md relative z-10 space-y-5">
         {/* Brand & Emblem Header */}
         <div className="text-center space-y-2">
