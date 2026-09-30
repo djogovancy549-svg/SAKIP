@@ -64,8 +64,19 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
   if (!isOpen) return null;
 
   const handleSaveAll = () => {
+    // Extract real ID if full URL was pasted
+    let cleanedDriveId = driveFolderId.trim();
+    if (cleanedDriveId.includes('drive.google.com')) {
+      const match = cleanedDriveId.match(/folders\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        cleanedDriveId = match[1];
+      }
+    }
+
     saveGoogleSheetsWebhookUrl(webhookUrl);
-    saveGoogleDriveFolderId(driveFolderId);
+    saveGoogleDriveFolderId(cleanedDriveId);
+    setDriveFolderId(cleanedDriveId);
+
     setTestResult({
       success: true,
       message: 'Pengaturan Google Drive Server & Webhook berhasil disimpan!',
@@ -201,33 +212,67 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                 </p>
               </div>
 
+              {/* Step-by-Step Guide for Google Drive Folder ID */}
+              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-2 text-xs">
+                <div className="font-bold text-amber-950 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                  <span>Cara Menghubungkan Folder Google Drive Anda :</span>
+                </div>
+                <ol className="list-decimal list-inside space-y-1 text-[11px] text-amber-900 leading-relaxed pl-1">
+                  <li>
+                    Buka{' '}
+                    <a
+                      href="https://drive.google.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-bold text-blue-700 hover:text-blue-900"
+                    >
+                      Google Drive Anda (drive.google.com)
+                    </a>
+                    .
+                  </li>
+                  <li>
+                    Buat atau Buka folder tempat penyimpanan berkas (misal:{' '}
+                    <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">
+                      Folder SAKIP Pemkab
+                    </code>
+                    ).
+                  </li>
+                  <li>Salin (*copy*) seluruh URL dari address bar browser Anda.</li>
+                  <li>
+                    Tempelkan (*paste*) URL/ID tersebut pada kolom di bawah ini, lalu klik tombol{' '}
+                    <strong>Simpan Pengaturan Server</strong>.
+                  </li>
+                </ol>
+              </div>
+
               {/* Master Folder ID Configuration */}
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                     <Folder className="w-4 h-4 text-blue-600" />
-                    <span>ID Folder Google Drive Induk (Server) :</span>
+                    <span>URL atau ID Folder Google Drive Anda :</span>
                   </label>
                   <span className="text-[10px] text-blue-600 font-mono font-bold">
-                    *Tertanam di coding
+                    *Tempel URL/ID Drive Anda
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     type="text"
                     value={driveFolderId}
                     onChange={(e) => setDriveFolderId(e.target.value)}
-                    placeholder="1B_SIMVERIF_INDUK_PEMDA_DRIVE_SERVER_2026"
+                    placeholder="Contoh: https://drive.google.com/drive/folders/1a2b3c4d5e..."
                     className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
                   />
                   <a
                     href={getGoogleDriveFolderUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium flex items-center gap-1.5 transition-colors whitespace-nowrap shadow-xs"
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shadow-xs"
                   >
-                    <span>Buka Google Drive</span>
+                    <span>Uji Buka Folder</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
