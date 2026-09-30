@@ -19,6 +19,7 @@ import {
   Eye,
   CheckCircle2,
   LayoutGrid,
+  Database,
 } from 'lucide-react';
 import {
   DocumentItem,
@@ -57,6 +58,9 @@ import {
   fetchDatabaseFromGoogleSheet,
   setGlobalWebhookUrl,
   setGlobalDriveFolderId,
+  getGoogleSheetsWebhookUrl,
+  saveGoogleSheetsWebhookUrl,
+  getGoogleDriveFolderId,
 } from './services/googleSheetsWebhook';
 import {
   listenToDocuments,
@@ -1050,6 +1054,53 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* Quick Webhook Setup Alert Box if they haven't saved any custom webhook yet */}
+      {getGoogleSheetsWebhookUrl() === 'https://script.google.com/macros/s/AKfycbx_94SKv35eQGy1srb7xCC8uGiSTRnvFnHmBMW5PiRRaN0ImN05QsXVe4-rQpRAKWEl7w/exec' && (
+        <div className="bg-amber-50 border-y sm:border-2 border-amber-300 sm:rounded-2xl p-4 shadow-sm max-w-7xl w-full mx-auto mt-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex gap-3">
+              <span className="p-2 bg-amber-100 rounded-xl text-amber-700 shrink-0 self-start">
+                <Database className="w-5 h-5 animate-bounce" />
+              </span>
+              <div className="space-y-1">
+                <h4 className="font-extrabold text-amber-950 text-sm">Hubungkan Google Sheet Utama SAKIP Nagekeo Anda</h4>
+                <p className="text-xs text-amber-900 leading-relaxed font-bold">
+                  Sistem saat ini mendeteksi Anda menggunakan spreadsheet bawaan sistem (kosong). Silakan tempel tautan Webhook Google Apps Script Anda di bawah ini agar seluruh data dokumen, dinas, dan akun pengguna (seperti <b>Denin/deni</b>) yang sudah ada di Google Sheet Anda langsung terhubung secara real-time!
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto shrink-0">
+              <input
+                id="dashboard-webhook-input"
+                type="text"
+                placeholder="https://script.google.com/macros/s/.../exec"
+                className="bg-white border-2 border-slate-300 rounded-xl px-3 py-1.5 text-xs font-mono w-full sm:w-64 focus:outline-none focus:border-blue-500 font-bold"
+              />
+              <button
+                onClick={async () => {
+                  const val = (document.getElementById('dashboard-webhook-input') as HTMLInputElement)?.value;
+                  if (val && val.trim().startsWith('https://script.google.com')) {
+                    saveGoogleSheetsWebhookUrl(val.trim());
+                    setGlobalWebhookUrl(val.trim());
+                    await saveGoogleSettingsToFirestore({
+                      webhookUrl: val.trim(),
+                      driveFolderId: getGoogleDriveFolderId(),
+                    });
+                    alert('Google Sheet utama Anda berhasil dihubungkan secara global ke seluruh perangkat!');
+                    window.location.reload();
+                  } else {
+                    alert('Mohon tempelkan alamat URL Webhook Google Apps Script (script.google.com) yang valid!');
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs px-4 py-2 rounded-xl transition-all shadow-md shrink-0 cursor-pointer"
+              >
+                Hubungkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Workspace */}
       <main className="flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-4 md:p-6 flex flex-col gap-4">

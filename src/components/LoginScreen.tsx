@@ -94,11 +94,15 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
 
     // Dynamic login for any custom email/username on any device
     const matched = findMatchingOpd(username);
+    let finalNama = username.trim().includes('@') ? username.split('@')[0] : username.trim();
+    if (inputClean === 'deni' || inputClean === 'denin') {
+      finalNama = 'Denin';
+    }
     const dynamicUser: UserAccount = {
       id: `USR-DYN-${Date.now()}`,
       username: username.trim(),
       password,
-      nama: username.trim().includes('@') ? username.split('@')[0] : username.trim(),
+      nama: finalNama,
       nip: '19890101 202001 1 001',
       jabatan: roleFilter === 'VERIFIKATOR' ? 'Verifikator SAKIP Pemkab' : 'Pemohon Berkas OPD',
       opdId: matched.opdId,
