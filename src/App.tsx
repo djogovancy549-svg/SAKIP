@@ -44,6 +44,7 @@ import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { DriveFolderExplorerModal } from './components/DriveFolderExplorerModal';
 import { AdminFolderRegistrationModal } from './components/AdminFolderRegistrationModal';
 import { LoginScreen } from './components/LoginScreen';
+import databaseBg from './assets/images/digital_database_modern_bg_1790734176384.jpg';
 import {
   sendVerificationToGoogleSheet,
   sendUploadToGoogleDriveAndSheet,
@@ -390,7 +391,16 @@ export default function App() {
   const currentOpdDocsCount = documents.filter((d) => d.opdId === activeOpd.id).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-blue-100 text-slate-800 flex flex-col font-sans selection:bg-blue-500/20">
+    <div className="min-h-screen bg-slate-900 text-slate-800 flex flex-col font-sans selection:bg-blue-500/20 relative">
+      {/* Modern Digital Database & Cloud Server Pinterest-Style Background Layer */}
+      <div
+        className="fixed inset-0 pointer-events-none z-0 opacity-85 bg-center bg-cover bg-no-repeat transition-opacity"
+        style={{ backgroundImage: `url(${databaseBg})` }}
+        aria-hidden="true"
+      />
+      {/* Subtle tint overlay for crystal clear contrast */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-sky-950/20 backdrop-brightness-105" aria-hidden="true" />
+
       {/* Top Bar with User Info, Password Trigger, and Logout */}
       <Header
         activeOpd={activeOpd}
@@ -411,30 +421,30 @@ export default function App() {
       />
 
       {/* Role Notice & Security Banner */}
-      <div className="bg-white/90 backdrop-blur-md border-b border-blue-200/80 px-4 py-1.5 text-xs text-slate-600 shadow-xs">
+      <div className="bg-white/50 backdrop-blur-xl border-b border-white/40 px-4 py-1.5 text-xs text-slate-800 shadow-xs relative z-10">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-500">Pengguna Aktif:</span>
+            <span className="font-semibold text-slate-700">Pengguna Aktif:</span>
             <span className="font-bold text-blue-950">{currentUser.nama}</span>
-            <span className="font-mono text-blue-600">(@{currentUser.username})</span>
-            <span className="text-slate-300">·</span>
-            <span className="text-slate-700 font-medium">{currentUser.opdName}</span>
+            <span className="font-mono text-blue-700 font-semibold">(@{currentUser.username})</span>
+            <span className="text-slate-400">·</span>
+            <span className="text-slate-900 font-semibold">{currentUser.opdName}</span>
           </div>
 
           <div className="flex items-center gap-3 text-[11px] font-mono">
             {currentUser.role === 'DINAS_PEMOHON' ? (
-              <span className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded flex items-center gap-1">
+              <span className="text-blue-900 bg-white/70 backdrop-blur-sm border border-blue-200/80 px-2 py-0.5 rounded flex items-center gap-1 font-semibold">
                 <Lock className="w-3 h-3 text-blue-600" />
                 Akses Terisolasi: Dokumen {currentUser.opdName}
               </span>
             ) : (
-              <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded flex items-center gap-1">
+              <span className="text-emerald-900 bg-emerald-50/80 backdrop-blur-sm border border-emerald-200/80 px-2 py-0.5 rounded flex items-center gap-1 font-semibold">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 Akses Verifikator: Seluruh Antrean Berkas OPD
               </span>
             )}
-            <span className="text-slate-300">|</span>
-            <span className="text-slate-500">
+            <span className="text-slate-400">|</span>
+            <span className="text-slate-700 font-medium">
               Penyimpanan: {currentUser.driveFolderName}
             </span>
           </div>
@@ -442,7 +452,7 @@ export default function App() {
       </div>
 
       {/* Top View Navigation & Layout Mode Switcher Bar */}
-      <div className="bg-white/95 backdrop-blur-md border-b border-blue-200/90 sticky top-16 z-30 px-3 sm:px-6 py-2 shadow-xs">
+      <div className="bg-white/55 backdrop-blur-xl border-b border-white/40 sticky top-16 z-30 px-3 sm:px-6 py-2 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           {/* Main 3 Navigation Tabs */}
           <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
@@ -451,15 +461,15 @@ export default function App() {
               onClick={() => setActiveView('LIST')}
               className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeView === 'LIST'
-                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/30'
-                  : 'text-slate-600 hover:text-blue-900 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/60'
+                  ? 'bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-md ring-2 ring-blue-400/40'
+                  : 'text-slate-700 hover:text-blue-950 bg-white/50 hover:bg-white/70 border border-white/60 shadow-xs'
               }`}
             >
               <Layers className="w-4 h-4 shrink-0" />
               <span>1. Daftar Berkas OPD</span>
               <span
                 className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-semibold ${
-                  activeView === 'LIST' ? 'bg-white text-blue-700' : 'bg-blue-200/80 text-blue-900'
+                  activeView === 'LIST' ? 'bg-white text-blue-700' : 'bg-blue-100/90 text-blue-900'
                 }`}
               >
                 {currentOpdDocsCount}
@@ -471,8 +481,8 @@ export default function App() {
               onClick={() => setActiveView('VIEWER')}
               className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeView === 'VIEWER'
-                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/30'
-                  : 'text-slate-600 hover:text-blue-900 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/60'
+                  ? 'bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-md ring-2 ring-blue-400/40'
+                  : 'text-slate-700 hover:text-blue-950 bg-white/50 hover:bg-white/70 border border-white/60 shadow-xs'
               }`}
             >
               <FileText className="w-4 h-4 shrink-0" />
@@ -480,7 +490,7 @@ export default function App() {
               {selectedDocument && (
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded font-mono truncate max-w-[100px] hidden md:inline font-semibold ${
-                    activeView === 'VIEWER' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-700'
+                    activeView === 'VIEWER' ? 'bg-blue-800 text-white' : 'bg-white/80 text-slate-800'
                   }`}
                 >
                   v{selectedDocument.currentVersion}
@@ -493,8 +503,8 @@ export default function App() {
               onClick={() => setActiveView('FORM')}
               className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeView === 'FORM'
-                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/30'
-                  : 'text-slate-600 hover:text-blue-900 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/60'
+                  ? 'bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-md ring-2 ring-blue-400/40'
+                  : 'text-slate-700 hover:text-blue-950 bg-white/50 hover:bg-white/70 border border-white/60 shadow-xs'
               }`}
             >
               <FileCheck className="w-4 h-4 shrink-0" />
@@ -506,7 +516,7 @@ export default function App() {
                       ? 'bg-emerald-500 text-white'
                       : selectedDocument.status === 'REVISION'
                       ? 'bg-amber-500 text-white'
-                      : 'bg-blue-400 text-white'
+                      : 'bg-blue-500 text-white'
                   }`}
                 >
                   {selectedDocument.status === 'APPROVED' ? 'SAH' : selectedDocument.status === 'REVISION' ? 'REVISI' : 'PERIKSA'}
@@ -516,14 +526,14 @@ export default function App() {
           </div>
 
           {/* Mode Tampilan Switcher (Satu per satu vs 3 Kolom) */}
-          <div className="hidden lg:flex items-center gap-1.5 bg-blue-50/80 p-1 rounded-xl border border-blue-200/80 text-xs font-medium">
-            <span className="text-[11px] text-slate-500 font-semibold px-2">Mode Tampilan:</span>
+          <div className="hidden lg:flex items-center gap-1.5 bg-white/50 backdrop-blur-md p-1 rounded-xl border border-white/60 text-xs font-medium">
+            <span className="text-[11px] text-slate-700 font-semibold px-2">Mode Tampilan:</span>
             <button
               onClick={() => setLayoutMode('SINGLE')}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 layoutMode === 'SINGLE'
                   ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-blue-100/60'
+                  : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
               }`}
               title="Tampilkan Satu per Satu (Layar Penuh, Dokumen & Formulir Jauh Lebih Besar)"
             >
@@ -535,7 +545,7 @@ export default function App() {
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 layoutMode === 'SPLIT'
                   ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-blue-100/60'
+                  : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
               }`}
               title="Tampilkan 3 Kolom Sekaligus Berdampingan"
             >
@@ -575,10 +585,10 @@ export default function App() {
                     </div>
 
                     {/* Quick View Step Navigation Bar */}
-                    <div className="bg-white/95 border border-blue-200/90 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                    <div className="bg-white/85 backdrop-blur-md border border-white/80 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-md">
                       <button
                         onClick={() => setActiveView('LIST')}
-                        className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100/90 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
                       >
                         <ArrowLeft className="w-4 h-4 text-slate-500" />
                         <span>Kembali ke Daftar Berkas</span>
@@ -592,7 +602,7 @@ export default function App() {
 
                       <button
                         onClick={() => setActiveView('FORM')}
-                        className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+                        className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white font-bold rounded-xl text-xs transition-colors shadow-md cursor-pointer"
                       >
                         <span>Lanjut ke Formulir Pemeriksaan &amp; Verifikasi</span>
                         <ArrowRight className="w-4 h-4" />
@@ -600,8 +610,8 @@ export default function App() {
                     </div>
                   </>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center bg-white border border-blue-200/80 rounded-2xl p-8 text-center text-slate-500 shadow-sm min-h-[450px]">
-                    <FileText className="w-14 h-14 mb-3 text-blue-500/40" />
+                  <div className="h-full flex flex-col items-center justify-center bg-white/85 backdrop-blur-xl border border-white/80 rounded-2xl p-8 text-center text-slate-500 shadow-lg min-h-[450px]">
+                    <FileText className="w-14 h-14 mb-3 text-blue-500/50" />
                     <h3 className="text-base font-bold text-slate-800 mb-1">
                       Tidak Ada Dokumen Dipilih
                     </h3>
@@ -610,7 +620,7 @@ export default function App() {
                     </p>
                     <button
                       onClick={() => setActiveView('LIST')}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-sm cursor-pointer"
+                      className="px-5 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white font-bold rounded-xl text-xs shadow-md cursor-pointer"
                     >
                       Buka Daftar Berkas
                     </button>

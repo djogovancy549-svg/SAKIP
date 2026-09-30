@@ -52,8 +52,8 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
   return (
     <div
-      className={`flex flex-col bg-white border border-blue-200/90 rounded-2xl shadow-md overflow-hidden transition-all duration-200 ${
-        isFullscreen ? 'fixed inset-4 z-50 shadow-2xl bg-white ring-8 ring-blue-600/20' : 'h-full min-h-[600px]'
+      className={`flex flex-col bg-white/45 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl overflow-hidden transition-all duration-200 ${
+        isFullscreen ? 'fixed inset-4 z-50 shadow-2xl bg-white/95 ring-8 ring-blue-600/20' : 'h-full min-h-[600px]'
       }`}
     >
       {/* Top Document Action & Control Toolbar - Elegant Vibrant Blue */}

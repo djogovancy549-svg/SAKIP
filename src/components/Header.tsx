@@ -70,7 +70,7 @@ export function Header({
   }, []);
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-blue-200/80 shadow-xs sticky top-0 z-40 select-none">
+    <header className="bg-white/55 backdrop-blur-xl border-b border-white/40 shadow-sm sticky top-0 z-40 select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Zone 1: Logo & Brand */}
         <div className="flex items-center gap-3 shrink-0">
@@ -81,7 +81,7 @@ export function Header({
             <span className="text-base font-black tracking-tight text-blue-950 block">
               SIMVERIF OPD
             </span>
-            <span className="text-[10px] font-mono text-blue-600 tracking-wider uppercase font-semibold">
+            <span className="text-[10px] font-mono text-blue-700 tracking-wider uppercase font-bold">
               Verifikasi Dokumen Pemda
             </span>
           </div>
@@ -91,10 +91,10 @@ export function Header({
         <div className="flex items-center gap-2">
           {isDinas ? (
             // Dinas Mode: Clean locked badge
-            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-blue-50 border border-blue-200 rounded-xl text-xs shadow-xs">
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl text-xs shadow-xs">
               <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
               <div className="text-left">
-                <span className="text-[9px] text-slate-500 block uppercase font-mono font-semibold">Instansi OPD:</span>
+                <span className="text-[9px] text-slate-600 block uppercase font-mono font-bold">Instansi OPD:</span>
                 <span className="font-bold text-blue-950 text-xs">
                   {currentUser.opdName}
                 </span>
@@ -109,7 +109,7 @@ export function Header({
                   setIsServerMenuOpen(false);
                   setIsProfileOpen(false);
                 }}
-                className="flex items-center gap-2.5 px-3.5 py-1.5 bg-blue-50/80 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
+                className="flex items-center gap-2.5 px-3.5 py-1.5 bg-white/60 hover:bg-white/80 backdrop-blur-md border border-white/60 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
                 title="Pilih Antrean Dinas / OPD"
               >
                 <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
@@ -119,11 +119,11 @@ export function Header({
                     {activeOpd.name}
                   </span>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <ChevronDown className="w-3.5 h-3.5 text-blue-600 shrink-0" />
               </button>
 
               {isOpdDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white border border-blue-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white/90 backdrop-blur-xl border border-white/80 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
                   <div className="p-3 bg-blue-50/70 border-b border-blue-100 text-xs">
                     <div className="font-bold text-blue-950">Pilih Antrean Dinas / OPD</div>
                     <div className="text-[11px] text-slate-500">
@@ -189,19 +189,19 @@ export function Header({
               }}
               className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs ${
                 isServerMenuOpen
-                  ? 'bg-blue-100 text-blue-900 border-blue-300'
-                  : 'bg-white hover:bg-blue-50 text-slate-700 border-slate-200'
+                  ? 'bg-blue-100/90 text-blue-900 border-blue-300'
+                  : 'bg-white/60 hover:bg-white/80 backdrop-blur-md text-slate-800 border-white/60'
               }`}
               title="Menu Server, Google Drive, dan Integrasi Spreadsheet"
             >
               <HardDrive className="w-4 h-4 text-blue-600 shrink-0" />
               <span className="hidden md:inline">Server &amp; Integrasi</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-600 shrink-0" />
             </button>
 
             {/* Server Menu Dropdown Content */}
             {isServerMenuOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white border border-blue-200 rounded-2xl shadow-xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+              <div className="absolute right-0 mt-2 w-72 bg-white/90 backdrop-blur-xl border border-white/80 rounded-2xl shadow-xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3 py-2 border-b border-blue-50 mb-1">
                   <div className="font-bold text-blue-950 text-xs">Pusat Server &amp; Integrasi</div>
                   <div className="text-[10px] text-slate-500">Akses penyimpanan Google Drive &amp; Webhook</div>

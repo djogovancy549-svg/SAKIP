@@ -59,46 +59,46 @@ export function DocumentList({
   const rejectedCount = opdDocuments.filter((d) => d.status === 'REJECTED').length;
 
   return (
-    <div className="flex flex-col h-full bg-white border border-blue-200/90 rounded-2xl shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full bg-white/45 backdrop-blur-xl border border-white/60 rounded-2xl shadow-xl overflow-hidden">
       {/* OPD Header Strip */}
-      <div className="p-3.5 bg-gradient-to-r from-blue-50 to-sky-50 border-b border-blue-100">
+      <div className="p-3.5 bg-white/40 border-b border-white/40">
         <div className="flex items-center gap-2 mb-1">
           <Building2 className="w-4 h-4 text-blue-600" />
           <h2 className="font-bold text-blue-950 text-xs truncate">
             {activeOpd.name}
           </h2>
         </div>
-        <div className="flex items-center justify-between text-[11px] text-slate-500">
-          <span>Kode: <span className="font-mono text-slate-700 font-semibold">{activeOpd.code}</span></span>
-          <span className="text-blue-700 font-semibold font-mono">
+        <div className="flex items-center justify-between text-[11px] text-slate-700">
+          <span>Kode: <span className="font-mono text-slate-900 font-bold">{activeOpd.code}</span></span>
+          <span className="text-blue-800 font-bold font-mono">
             {opdDocuments.length} Dokumen Terdaftar
           </span>
         </div>
       </div>
 
       {/* Search Bar */}
-      <div className="p-3 border-b border-blue-100 bg-white">
+      <div className="p-3 border-b border-white/40 bg-white/30">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari nomor berkas, judul, pemohon..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 transition-colors"
+            className="w-full bg-white/60 border border-white/70 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-500 focus:bg-white/90 focus:outline-none focus:border-blue-500 transition-colors shadow-xs"
           />
         </div>
       </div>
 
       {/* Status Segmented Tabs */}
-      <div className="p-2 border-b border-blue-100 bg-blue-50/40">
+      <div className="p-2 border-b border-white/40 bg-white/20">
         <div className="grid grid-cols-4 gap-1 text-[11px] font-medium">
           <button
             onClick={() => setStatusFilter('ALL')}
             className={`py-1.5 px-1.5 rounded-lg transition-colors truncate text-center cursor-pointer ${
               statusFilter === 'ALL'
                 ? 'bg-blue-600 text-white font-bold shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+                : 'text-slate-700 hover:text-slate-950 hover:bg-white/60'
             }`}
           >
             Semua ({opdDocuments.length})
@@ -108,7 +108,7 @@ export function DocumentList({
             className={`py-1.5 px-1.5 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'PENDING'
                 ? 'bg-blue-600 text-white font-bold shadow-xs'
-                : 'text-amber-700 hover:bg-amber-50'
+                : 'text-amber-800 hover:bg-white/60'
             }`}
             title="Dalam Pemeriksaan Awal"
           >
@@ -120,7 +120,7 @@ export function DocumentList({
             className={`py-1.5 px-1.5 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'REVISION'
                 ? 'bg-orange-600 text-white font-bold shadow-xs'
-                : 'text-orange-700 hover:bg-orange-50'
+                : 'text-orange-800 hover:bg-white/60'
             }`}
             title="Perlu Revisi Dinas"
           >
@@ -132,7 +132,7 @@ export function DocumentList({
             className={`py-1.5 px-1.5 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'APPROVED'
                 ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                : 'text-emerald-700 hover:bg-emerald-50'
+                : 'text-emerald-800 hover:bg-white/60'
             }`}
             title="Diverifikasi & Terkunci"
           >
@@ -143,8 +143,8 @@ export function DocumentList({
       </div>
 
       {/* Format Filter Badges */}
-      <div className="px-3 py-1.5 bg-slate-50/70 border-b border-blue-100 flex items-center gap-2 overflow-x-auto text-[10px] no-scrollbar">
-        <span className="text-slate-400 font-medium shrink-0">Format:</span>
+      <div className="px-3 py-1.5 bg-white/20 border-b border-white/40 flex items-center gap-2 overflow-x-auto text-[10px] no-scrollbar">
+        <span className="text-slate-600 font-semibold shrink-0">Format:</span>
         {(['ALL', 'PDF', 'DOCX', 'XLSX', 'IMAGE'] as const).map((fmt) => (
           <button
             key={fmt}
@@ -152,7 +152,7 @@ export function DocumentList({
             className={`px-2 py-0.5 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
               formatFilter === fmt
                 ? 'bg-blue-600 text-white font-bold'
-                : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
+                : 'bg-white/50 border border-white/60 text-slate-700 hover:text-slate-950 hover:bg-white/80'
             }`}
           >
             {fmt === 'ALL' ? 'Semua Format' : fmt}
@@ -161,12 +161,12 @@ export function DocumentList({
       </div>
 
       {/* Document Items List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-blue-50 p-2 space-y-1 bg-slate-50/30">
+      <div className="flex-1 overflow-y-auto divide-y divide-white/40 p-2 space-y-1.5 bg-transparent">
         {filteredDocuments.length === 0 ? (
-          <div className="py-12 px-4 text-center text-slate-500 text-xs space-y-2">
-            <FileText className="w-8 h-8 mx-auto opacity-30 text-blue-500" />
-            <div className="font-semibold text-slate-700">Tidak ada dokumen ditemukan untuk {activeOpd.shortName}.</div>
-            <p className="text-[11px] text-slate-400">
+          <div className="py-12 px-4 text-center text-slate-600 text-xs space-y-2">
+            <FileText className="w-8 h-8 mx-auto opacity-40 text-blue-600" />
+            <div className="font-semibold text-slate-800">Tidak ada dokumen ditemukan untuk {activeOpd.shortName}.</div>
+            <p className="text-[11px] text-slate-600">
               Ubah kata kunci pencarian atau ganti status filter.
             </p>
           </div>
@@ -181,8 +181,8 @@ export function DocumentList({
                 onClick={() => onSelectDocument(doc)}
                 className={`w-full text-left p-3 rounded-xl transition-all border cursor-pointer ${
                   isSelected
-                    ? 'bg-blue-50/90 border-blue-500 shadow-xs ring-1 ring-blue-500/20'
-                    : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-blue-200'
+                    ? 'bg-blue-500/20 border-blue-600 shadow-md ring-2 ring-blue-500/30 backdrop-blur-md'
+                    : 'bg-white/50 border-white/60 hover:bg-white/80 hover:border-blue-300 backdrop-blur-md shadow-xs'
                 }`}
               >
                 {/* Header: Nomor Berkas & Status Indicator */}

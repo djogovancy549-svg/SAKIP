@@ -747,6 +747,44 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Aksi 3: PENDAFTARAN AKUN LOGIN DINAS BARU (REGISTER_USER_ACCOUNT)
+    if (data.action === "REGISTER_USER_ACCOUNT") {
+      var userFound = -1;
+      var uVals = userSheet.getDataRange().getValues();
+      for (var u = 1; u < uVals.length; u++) {
+        if (uVals[u][2] === data.username || uVals[u][1] === data.userId) {
+          userFound = u + 1;
+          break;
+        }
+      }
+
+      if (userFound > 0) {
+        userSheet.getRange(userFound, 1).setValue(data.timestamp || new Date().toISOString());
+        userSheet.getRange(userFound, 4).setValue(data.pemohonName || data.nama || "-");
+        userSheet.getRange(userFound, 5).setValue(data.role || "DINAS_PEMOHON");
+        userSheet.getRange(userFound, 6).setValue(data.opdName);
+        userSheet.getRange(userFound, 7).setValue(data.verifierNip || "-");
+        userSheet.getRange(userFound, 8).setValue(data.newPassword);
+      } else {
+        userSheet.appendRow([
+          data.timestamp || new Date().toISOString(),
+          data.userId || "usr-" + data.username,
+          data.username,
+          data.pemohonName || data.nama || "-",
+          data.role || "DINAS_PEMOHON",
+          data.opdName,
+          data.verifierNip || "-",
+          data.newPassword,
+          "AKTIF"
+        ]);
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        message: "Akun login dinas @" + data.username + " (" + data.opdName + ") berhasil didaftarkan di sheet DATABASE_PENGGUNA"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Aksi 4: PENDAFTARAN FOLDER DINAS OLEH ADMIN (REGISTER_OPD_FOLDER)
     if (data.action === "REGISTER_OPD_FOLDER" && data.folderRegistration) {
       var reg = data.folderRegistration;

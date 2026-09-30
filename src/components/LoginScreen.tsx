@@ -14,6 +14,7 @@ import {
   HardDrive,
 } from 'lucide-react';
 import { UserAccount, AppRole } from '../types';
+import databaseBg from '../assets/images/digital_database_modern_bg_1790734176384.jpg';
 
 interface LoginScreenProps {
   userAccounts: UserAccount[];
@@ -56,46 +57,49 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
   const demoVerifAccounts = userAccounts.filter((u) => u.role === 'VERIFIKATOR');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-sky-50 to-indigo-100 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
-      {/* Background Decorative Mesh */}
+    <div className="min-h-screen bg-slate-900 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
+      {/* Aesthetic Pinterest-Style Modern Database Background */}
       <div
-        className="fixed inset-0 pointer-events-none opacity-40"
+        className="fixed inset-0 pointer-events-none opacity-85 bg-center bg-cover bg-no-repeat transition-opacity"
         style={{
-          backgroundImage: `radial-gradient(circle at 50% 20%, #38bdf8 0%, transparent 60%)`,
+          backgroundImage: `url(${databaseBg})`,
         }}
+        aria-hidden="true"
       />
+      {/* Subtle tint overlay */}
+      <div className="fixed inset-0 pointer-events-none bg-sky-950/20 backdrop-brightness-105" aria-hidden="true" />
 
       <div className="w-full max-w-md relative z-10 space-y-5">
         {/* Brand & Emblem Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600/10 border-2 border-blue-500/30 text-blue-600 mb-2 shadow-xl shadow-blue-500/10">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 text-white mb-2 shadow-xl shadow-blue-500/30">
             <ShieldCheck className="w-8 h-8" />
           </div>
-          <h1 className="text-xl md:text-2xl font-black tracking-tight text-blue-950 uppercase">
+          <h1 className="text-xl md:text-2xl font-black tracking-tight text-white uppercase drop-shadow-md">
             SIMVERIF OPD PEMDA
           </h1>
-          <p className="text-xs text-blue-800/80 max-w-sm mx-auto font-medium">
-            Sistem Autentikasi Mandiri Pemeriksaan & Verifikasi Dokumen Terpadu
+          <p className="text-xs text-sky-100 max-w-sm mx-auto font-medium drop-shadow-sm">
+            Sistem Autentikasi Mandiri Pemeriksaan &amp; Verifikasi Dokumen Terpadu
           </p>
         </div>
 
         {/* Security & Isolation Notice Banner */}
-        <div className="p-3.5 bg-white/90 border border-blue-200/90 rounded-2xl text-xs text-slate-700 space-y-1.5 shadow-sm shadow-blue-500/5">
-          <div className="flex items-center gap-2 font-bold text-blue-700 text-xs">
+        <div className="p-3.5 bg-white/55 backdrop-blur-xl border border-white/60 rounded-2xl text-xs text-slate-900 space-y-1.5 shadow-xl">
+          <div className="flex items-center gap-2 font-bold text-blue-900 text-xs">
             <Lock className="w-4 h-4 text-blue-600" />
-            <span>Isolasi Akses & Keamanan Dokumen</span>
+            <span>Isolasi Akses &amp; Keamanan Dokumen</span>
           </div>
-          <p className="text-[11px] text-slate-600 leading-relaxed">
+          <p className="text-[11px] text-slate-700 leading-relaxed font-medium">
             Setiap Dinas memiliki akun dan password sendiri sehingga <strong>hanya dapat membuka dan mengupload dokumen miliknya</strong> tanpa dapat melihat milik dinas lain.
           </p>
-          <div className="text-[10px] text-slate-500 font-mono pt-0.5 flex items-center gap-1.5">
+          <div className="text-[10px] text-slate-600 font-mono pt-0.5 flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-blue-600" />
-            <span>Akun & Password tersimpan di Google Sheet: <strong>DATABASE_PENGGUNA</strong></span>
+            <span>Akun &amp; Password tersimpan di Google Sheet: <strong>DATABASE_PENGGUNA</strong></span>
           </div>
         </div>
 
         {/* Login Box */}
-        <div className="bg-white border border-blue-200/90 rounded-3xl p-6 shadow-xl shadow-blue-500/10 space-y-5">
+        <div className="bg-white/50 backdrop-blur-2xl border border-white/70 rounded-3xl p-6 shadow-2xl shadow-blue-950/20 space-y-5">
           {/* Role Tab Selector */}
           <div className="grid grid-cols-2 p-1 bg-blue-50 rounded-2xl border border-blue-200/80 text-xs font-semibold">
             <button
