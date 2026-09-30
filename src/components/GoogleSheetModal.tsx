@@ -30,6 +30,7 @@ import {
   sendTestPingToWebhook,
   GOOGLE_APPS_SCRIPT_TEMPLATE,
 } from '../services/googleSheetsWebhook';
+import { saveGoogleSettingsToFirestore } from '../services/firestoreSync';
 import { WebhookSyncLog } from '../types';
 import { OPD_LIST } from '../data/opdData';
 
@@ -63,7 +64,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
 
   if (!isOpen) return null;
 
-  const handleSaveAll = () => {
+  const handleSaveAll = async () => {
     // Extract real ID if full URL was pasted
     let cleanedDriveId = driveFolderId.trim();
     if (cleanedDriveId.includes('drive.google.com')) {
@@ -76,6 +77,12 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
     saveGoogleSheetsWebhookUrl(webhookUrl);
     saveGoogleDriveFolderId(cleanedDriveId);
     setDriveFolderId(cleanedDriveId);
+
+    // Save to global shared Firestore database so all other devices auto-sync to this Webhook and Folder
+    await saveGoogleSettingsToFirestore({
+      webhookUrl: webhookUrl.trim(),
+      driveFolderId: cleanedDriveId,
+    });
 
     setTestResult({
       success: true,

@@ -55,7 +55,20 @@ import {
   sendVerificationToGoogleSheet,
   sendUploadToGoogleDriveAndSheet,
   fetchDatabaseFromGoogleSheet,
+  setGlobalWebhookUrl,
+  setGlobalDriveFolderId,
 } from './services/googleSheetsWebhook';
+import {
+  listenToDocuments,
+  listenToSettings,
+  listenToFolders,
+  listenToUsers,
+  saveDocumentToFirestore,
+  deleteDocumentFromFirestore,
+  saveUserToFirestore,
+  saveFolderToFirestore,
+  saveGoogleSettingsToFirestore,
+} from './services/firestoreSync';
 import { calculateRetention, formatArchiveSubfolder } from './utils/retentionUtils';
 
 const STORAGE_KEY_DOCS = 'simverif_clean_docs_v5';
@@ -296,6 +309,76 @@ export default function App() {
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
+  // Subscribe to real-time shared Firestore state
+  useEffect(() => {
+    // 1. Listen to global documents
+    const unsubDocs = listenToDocuments((docsList) => {
+      if (docsList && docsList.length > 0) {
+        setDocuments(docsList);
+      }
+    });
+
+    // 2. Listen to custom Google Drive/Sheets webhook settings
+    const unsubSettings = listenToSettings((settings) => {
+      if (settings) {
+        setGlobalWebhookUrl(settings.webhookUrl);
+        setGlobalDriveFolderId(settings.driveFolderId);
+      }
+    });
+
+    // 3. Listen to OPD folder registrations
+    const unsubFolders = listenToFolders((foldersList) => {
+      if (foldersList && foldersList.length > 0) {
+        const record: Record<string, OpdFolderRegistration> = {};
+        foldersList.forEach((reg) => {
+          if (reg.opdId) record[reg.opdId] = reg;
+        });
+        setFolderRegistrations(record);
+      }
+    });
+
+    // 4. Listen to user accounts
+    const unsubUsers = listenToUsers((usersList) => {
+      if (usersList && usersList.length > 0) {
+        setUserAccounts((prev) => {
+          const merged = [...prev];
+          usersList.forEach((nu) => {
+            const idx = merged.findIndex((u) => u.username === nu.username);
+            if (idx >= 0) {
+              merged[idx] = { ...merged[idx], ...nu };
+            } else {
+              merged.push(nu);
+            }
+          });
+          return merged;
+        });
+      }
+    });
+
+    return () => {
+      unsubDocs();
+      unsubSettings();
+      unsubFolders();
+      unsubUsers();
+    };
+  }, []);
+
+  // Automatic Firestore data seeder on first install
+  useEffect(() => {
+    const seedIfEmpty = async () => {
+      const unsub = listenToDocuments(async (liveDocs) => {
+        if (liveDocs.length === 0) {
+          console.log('🌱 Seeding initial documents to Firestore...');
+          for (const docItem of INITIAL_DOCUMENTS) {
+            await saveDocumentToFirestore(docItem);
+          }
+        }
+        unsub();
+      });
+    };
+    seedIfEmpty();
+  }, []);
+
   const syncWithGoogleSheet = async () => {
     setIsSyncing(true);
     try {
@@ -303,9 +386,13 @@ export default function App() {
       if (data) {
         if (data.documents && data.documents.length > 0) {
           setDocuments(data.documents);
+          // Persist all retrieved documents to Firestore so all other devices see them
+          for (const d of data.documents) {
+            await saveDocumentToFirestore(d);
+          }
           setSelectedDocument((prev) => {
             if (prev) {
-              const updated = data.documents.find((d) => d.id === prev.id);
+              const updated = data.documents.find((docItem) => docItem.id === prev.id);
               return updated || data.documents[0];
             }
             return data.documents[0];
@@ -324,6 +411,9 @@ export default function App() {
             });
             return merged;
           });
+          for (const u of data.users) {
+            await saveUserToFirestore(u);
+          }
         }
         if (data.folders && data.folders.length > 0) {
           const record: Record<string, OpdFolderRegistration> = {};
@@ -333,6 +423,9 @@ export default function App() {
             }
           });
           setFolderRegistrations(record);
+          for (const f of data.folders) {
+            await saveFolderToFirestore(f);
+          }
         }
       }
     } catch (err) {
@@ -404,6 +497,7 @@ export default function App() {
       prev.map((doc) => (doc.id === updatedDoc.id ? updatedDoc : doc))
     );
     setSelectedDocument(updatedDoc);
+    saveDocumentToFirestore(updatedDoc);
 
     // Notify the OPD regarding the verification status decision
     let notifType: NotificationType = 'SYSTEM';
@@ -441,6 +535,7 @@ export default function App() {
   const handleAddDocument = async (newDoc: DocumentItem) => {
     setDocuments((prev) => [newDoc, ...prev]);
     setSelectedDocument(newDoc);
+    await saveDocumentToFirestore(newDoc);
     if (layoutMode === 'SINGLE') {
       setActiveView('VIEWER');
     }
@@ -489,6 +584,7 @@ export default function App() {
 
     setDocuments((prev) => prev.map((d) => (d.id === docId ? updatedDoc : d)));
     setSelectedDocument(updatedDoc);
+    await saveDocumentToFirestore(updatedDoc);
 
     // Notify Admin regarding revision upload
     addNotification({
@@ -522,13 +618,14 @@ export default function App() {
   };
 
   // Handle Save Edit Document
-  const handleSaveEditDocument = (updatedDoc: DocumentItem) => {
+  const handleSaveEditDocument = async (updatedDoc: DocumentItem) => {
     setDocuments((prev) =>
       prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d))
     );
     if (selectedDocument?.id === updatedDoc.id) {
       setSelectedDocument(updatedDoc);
     }
+    await saveDocumentToFirestore(updatedDoc);
     addNotification({
       title: '✏️ Berkas Diperbarui',
       message: `Data berkas "${updatedDoc.nomorBerkas} - ${updatedDoc.judul}" berhasil diperbarui.`,
@@ -543,13 +640,14 @@ export default function App() {
   };
 
   // Handle Delete Document
-  const handleDeleteDocument = (docId: string) => {
+  const handleDeleteDocument = async (docId: string) => {
     const target = documents.find((d) => d.id === docId);
     setDocuments((prev) => prev.filter((d) => d.id !== docId));
     if (selectedDocument?.id === docId) {
       const remaining = documents.filter((d) => d.id !== docId);
       setSelectedDocument(remaining.length > 0 ? remaining[0] : null);
     }
+    await deleteDocumentFromFirestore(docId);
     if (target) {
       addNotification({
         title: '🗑️ Berkas Dihapus',
