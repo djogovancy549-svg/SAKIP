@@ -44,6 +44,7 @@ import { VerificationForm } from './components/VerificationForm';
 import { GoogleSheetModal } from './components/GoogleSheetModal';
 import { UploadDocumentModal } from './components/UploadDocumentModal';
 import { UploadRevisionModal } from './components/UploadRevisionModal';
+import { EditDocumentModal } from './components/EditDocumentModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { DriveFolderExplorerModal } from './components/DriveFolderExplorerModal';
 import { AdminFolderRegistrationModal } from './components/AdminFolderRegistrationModal';
@@ -204,6 +205,8 @@ export default function App() {
   const [isGoogleSheetOpen, setIsGoogleSheetOpen] = useState<boolean>(false);
   const [isUploadOpen, setIsUploadOpen] = useState<boolean>(false);
   const [isRevisionOpen, setIsRevisionOpen] = useState<boolean>(false);
+  const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
+  const [editingDocument, setEditingDocument] = useState<DocumentItem | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
   const [isDriveExplorerOpen, setIsDriveExplorerOpen] = useState<boolean>(false);
   const [isFolderRegistrationOpen, setIsFolderRegistrationOpen] = useState<boolean>(false);
@@ -422,6 +425,55 @@ export default function App() {
       );
     } catch (e) {
       console.warn('Webhook logging note for revision upload', e);
+    }
+  };
+
+  // Handle Edit Document Open
+  const handleOpenEditModal = (doc: DocumentItem) => {
+    setEditingDocument(doc);
+    setIsEditOpen(true);
+  };
+
+  // Handle Save Edit Document
+  const handleSaveEditDocument = (updatedDoc: DocumentItem) => {
+    setDocuments((prev) =>
+      prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d))
+    );
+    if (selectedDocument?.id === updatedDoc.id) {
+      setSelectedDocument(updatedDoc);
+    }
+    addNotification({
+      title: '✏️ Berkas Diperbarui',
+      message: `Data berkas "${updatedDoc.nomorBerkas} - ${updatedDoc.judul}" berhasil diperbarui.`,
+      type: 'SYSTEM',
+      targetRole: 'DINAS_PEMOHON',
+      targetOpdId: updatedDoc.opdId,
+      docId: updatedDoc.id,
+      docNumber: updatedDoc.nomorBerkas,
+      senderName: currentUser?.nama || 'Pengguna',
+      senderOpd: activeOpd.name,
+    });
+  };
+
+  // Handle Delete Document
+  const handleDeleteDocument = (docId: string) => {
+    const target = documents.find((d) => d.id === docId);
+    setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    if (selectedDocument?.id === docId) {
+      const remaining = documents.filter((d) => d.id !== docId);
+      setSelectedDocument(remaining.length > 0 ? remaining[0] : null);
+    }
+    if (target) {
+      addNotification({
+        title: '🗑️ Berkas Dihapus',
+        message: `Berkas "${target.nomorBerkas} - ${target.judul}" telah dihapus dari sistem.`,
+        type: 'SYSTEM',
+        targetRole: 'VERIFIKATOR',
+        docId,
+        docNumber: target.nomorBerkas,
+        senderName: currentUser?.nama || 'Pengguna',
+        senderOpd: activeOpd.name,
+      });
     }
   };
 
@@ -791,6 +843,8 @@ export default function App() {
                   onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
                   onSelectOpd={handleSelectOpd}
                   onOpenUploadModal={() => setIsUploadOpen(true)}
+                  onOpenEditModal={handleOpenEditModal}
+                  onDeleteDocument={handleDeleteDocument}
                 />
               </div>
             )}
@@ -918,6 +972,8 @@ export default function App() {
                 onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
                 onSelectOpd={handleSelectOpd}
                 onOpenUploadModal={() => setIsUploadOpen(true)}
+                onOpenEditModal={handleOpenEditModal}
+                onDeleteDocument={handleDeleteDocument}
               />
             </div>
 
@@ -983,6 +1039,17 @@ export default function App() {
         onClose={() => setIsRevisionOpen(false)}
         document={selectedDocument}
         onUploadRevision={handleUploadRevision}
+      />
+
+      <EditDocumentModal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingDocument(null);
+        }}
+        document={editingDocument}
+        onSaveEdit={handleSaveEditDocument}
+        onDeleteDocument={handleDeleteDocument}
       />
 
       <ChangePasswordModal

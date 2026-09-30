@@ -12,7 +12,7 @@ import { uploadFileToGoogleDriveFolder } from './googleDriveApi';
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
-  'https://script.google.com/macros/s/AKfycbzPMwo3cbKnzTgfzRc3-6hLqH-Si1YVQyvYv7pc8f1Xaqb3JUSLXj-Uxzps6uu1iTrKmA/exec';
+  'https://script.google.com/macros/s/AKfycbx_94SKv35eQGy1srb7xCC8uGiSTRnvFnHmBMW5PiRRaN0ImN05QsXVe4-rQpRAKWEl7w/exec';
 
 // Embedded Google Drive Induk Server Folder ID & URL
 export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
@@ -68,7 +68,11 @@ export function getGoogleDriveFolderUrl(): string {
 
 export function sanitizeGoogleDriveUrl(url?: string): string {
   if (!url || url.trim() === '') return getGoogleDriveFolderUrl();
-  if (url.includes('1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7')) {
+  if (
+    url.includes('1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7') ||
+    url.includes('GDRIVE-') ||
+    url.includes('/file/d/GDRIVE-')
+  ) {
     return getGoogleDriveFolderUrl();
   }
   return url;
@@ -169,16 +173,24 @@ export function getMimeTypeByFormat(format: string, fileName?: string): string {
 export function createGoogleDriveStorageInfo(
   docId: string,
   opdName: string,
-  fileName: string
+  fileName: string,
+  realDriveFileUrl?: string
 ): GoogleDriveStorageInfo {
   const masterFolderId = getGoogleDriveFolderId();
+  const folderUrl = getGoogleDriveFolderUrl();
   const fileId = `GDRIVE-${docId}-${Date.now().toString(36)}`;
+  
+  const finalFileUrl =
+    realDriveFileUrl && realDriveFileUrl.startsWith('http') && !realDriveFileUrl.includes('GDRIVE-')
+      ? realDriveFileUrl
+      : folderUrl;
+
   return {
     fileId,
     folderId: masterFolderId,
     folderName: opdName,
-    viewUrl: `https://drive.google.com/file/d/${fileId}/view?usp=sharing`,
-    downloadUrl: `https://drive.google.com/uc?id=${fileId}&export=download`,
+    viewUrl: finalFileUrl,
+    downloadUrl: finalFileUrl,
     serverMasterFolder: DEFAULT_GOOGLE_DRIVE_MASTER_NAME,
     syncedAt: new Date().toLocaleString('id-ID', {
       timeZone: 'Asia/Jakarta',

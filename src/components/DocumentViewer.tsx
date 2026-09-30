@@ -485,7 +485,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
               <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
                 <span className="text-xs text-slate-500">Tautan Folder Server:</span>
                 <a
-                  href={driveUrl}
+                  href={getGoogleDriveFolderUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"

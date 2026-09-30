@@ -17,6 +17,8 @@ import {
   Plus,
   RefreshCw,
   FolderOpen,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import { DocumentItem, DocumentFormat, VerificationStatus, OPD, AppRole } from '../types';
 import { OPD_LIST } from '../data/opdData';
@@ -30,6 +32,8 @@ interface DocumentListProps {
   onOpenRevisionModalForDoc?: (doc: DocumentItem) => void;
   onSelectOpd?: (opd: OPD) => void;
   onOpenUploadModal?: () => void;
+  onOpenEditModal?: (doc: DocumentItem) => void;
+  onDeleteDocument?: (docId: string) => void;
 }
 
 export function DocumentList({
@@ -41,6 +45,8 @@ export function DocumentList({
   onOpenRevisionModalForDoc,
   onSelectOpd,
   onOpenUploadModal,
+  onOpenEditModal,
+  onDeleteDocument,
 }: DocumentListProps) {
   const isVerifier = appRole === 'VERIFIKATOR';
   const [opdScope, setOpdScope] = useState<'ALL' | 'SINGLE'>(isVerifier ? 'ALL' : 'SINGLE');
@@ -361,14 +367,47 @@ export function DocumentList({
                   </div>
                 )}
 
-                {/* Pemohon & Tanggal */}
-                <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 mt-2 font-medium">
-                  <span className="truncate max-w-[150px] text-slate-900 font-bold">
+                {/* Pemohon, Tanggal & Tombol Aksi Edit & Hapus */}
+                <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 mt-2 font-medium gap-2">
+                  <span className="truncate max-w-[120px] text-slate-900 font-bold">
                     {doc.pemohon.nama}
                   </span>
-                  <span className="font-mono text-slate-500">
-                    {doc.tanggalMasuk.split(' ')[0]}
-                  </span>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onOpenEditModal) onOpenEditModal(doc);
+                      }}
+                      className="px-2 py-0.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold rounded-md border border-blue-200 text-[10px] inline-flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                      title="Edit Data Berkas"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onDeleteDocument) {
+                          if (confirm(`Apakah Anda yakin ingin menghapus berkas "${doc.nomorBerkas} - ${doc.judul}"?`)) {
+                            onDeleteDocument(doc.id);
+                          }
+                        }
+                      }}
+                      className="px-2 py-0.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 font-bold rounded-md border border-rose-200 text-[10px] inline-flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                      title="Hapus Berkas Ini"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Hapus</span>
+                    </button>
+
+                    <span className="font-mono text-slate-500 text-[10px] pl-1 border-l border-slate-200">
+                      {doc.tanggalMasuk.split(' ')[0]}
+                    </span>
+                  </div>
                 </div>
               </div>
             );

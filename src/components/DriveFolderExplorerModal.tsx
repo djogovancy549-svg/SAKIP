@@ -25,7 +25,7 @@ import {
   FolderCheck,
 } from 'lucide-react';
 import { DocumentItem, OPD, UserAccount, DocumentVersion, OpdFolderRegistration } from '../types';
-import { getGoogleDriveFolderId, getGoogleDriveFolderUrl } from '../services/googleSheetsWebhook';
+import { getGoogleDriveFolderId, getGoogleDriveFolderUrl, sanitizeGoogleDriveUrl } from '../services/googleSheetsWebhook';
 import { calculateRetention, formatArchiveSubfolder } from '../utils/retentionUtils';
 import { OPD_LIST } from '../data/opdData';
 
@@ -424,7 +424,7 @@ export function DriveFolderExplorerModal({
 
                             {doc.googleDrive?.viewUrl && (
                               <a
-                                href={doc.googleDrive.viewUrl}
+                                href={sanitizeGoogleDriveUrl(doc.googleDrive.viewUrl)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="p-1 text-slate-400 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
