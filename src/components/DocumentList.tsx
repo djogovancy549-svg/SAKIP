@@ -14,6 +14,9 @@ import {
   Layers,
   CheckCircle2,
   Filter,
+  Plus,
+  RefreshCw,
+  FolderOpen,
 } from 'lucide-react';
 import { DocumentItem, DocumentFormat, VerificationStatus, OPD, AppRole } from '../types';
 import { OPD_LIST } from '../data/opdData';
@@ -26,6 +29,7 @@ interface DocumentListProps {
   appRole: AppRole;
   onOpenRevisionModalForDoc?: (doc: DocumentItem) => void;
   onSelectOpd?: (opd: OPD) => void;
+  onOpenUploadModal?: () => void;
 }
 
 export function DocumentList({
@@ -36,6 +40,7 @@ export function DocumentList({
   appRole,
   onOpenRevisionModalForDoc,
   onSelectOpd,
+  onOpenUploadModal,
 }: DocumentListProps) {
   const isVerifier = appRole === 'VERIFIKATOR';
   const [opdScope, setOpdScope] = useState<'ALL' | 'SINGLE'>(isVerifier ? 'ALL' : 'SINGLE');
@@ -69,76 +74,82 @@ export function DocumentList({
   const revisionCount = opdDocuments.filter((d) => d.status === 'REVISION').length;
   const rejectedCount = opdDocuments.filter((d) => d.status === 'REJECTED').length;
 
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('ALL');
+    setFormatFilter('ALL');
+  };
+
   return (
-    <div className="flex flex-col h-full bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden text-slate-800">
+    <div className="flex flex-col h-full bg-white border border-slate-300 rounded-2xl shadow-xl overflow-hidden text-slate-900">
       {/* Top Header Strip: Scope & OPD Info */}
       <div className="p-3.5 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 text-white border-b border-blue-500 shadow-xs">
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-2 min-w-0">
             <Building2 className="w-4 h-4 text-sky-200 shrink-0" />
-            <h2 className="font-bold text-white text-xs truncate">
+            <h2 className="font-bold text-white text-xs sm:text-sm truncate drop-shadow-xs">
               {isVerifier && opdScope === 'ALL'
                 ? 'Semua Antrean Masuk Pemkab Nagekeo'
                 : activeOpd.name}
             </h2>
           </div>
 
-          <span className="text-[10px] bg-white/20 border border-white/30 text-white px-2 py-0.5 rounded-full font-mono font-bold shrink-0">
+          <span className="text-[10px] bg-white/20 border border-white/30 text-white px-2.5 py-0.5 rounded-full font-mono font-bold shrink-0">
             {opdDocuments.length} Berkas
           </span>
         </div>
 
         {/* Verifier Scope Toggle Bar */}
         {isVerifier && (
-          <div className="grid grid-cols-2 p-1 bg-white/15 backdrop-blur-md rounded-xl border border-white/20 text-[11px] font-semibold mt-2">
+          <div className="grid grid-cols-2 p-1 bg-white/20 backdrop-blur-md rounded-xl border border-white/25 text-xs font-bold mt-2">
             <button
               onClick={() => setOpdScope('ALL')}
-              className={`py-1 px-2 rounded-lg transition-all cursor-pointer truncate flex items-center justify-center gap-1 ${
+              className={`py-1.5 px-2 rounded-lg transition-all cursor-pointer truncate flex items-center justify-center gap-1.5 ${
                 opdScope === 'ALL'
-                  ? 'bg-white text-blue-900 shadow-xs font-bold'
-                  : 'text-white/80 hover:text-white'
+                  ? 'bg-white text-blue-900 shadow-xs font-black'
+                  : 'text-white/90 hover:text-white'
               }`}
             >
-              <Layers className="w-3 h-3" />
+              <Layers className="w-3.5 h-3.5" />
               <span>Semua OPD ({documents.length})</span>
             </button>
             <button
               onClick={() => setOpdScope('SINGLE')}
-              className={`py-1 px-2 rounded-lg transition-all cursor-pointer truncate flex items-center justify-center gap-1 ${
+              className={`py-1.5 px-2 rounded-lg transition-all cursor-pointer truncate flex items-center justify-center gap-1.5 ${
                 opdScope === 'SINGLE'
-                  ? 'bg-white text-blue-900 shadow-xs font-bold'
-                  : 'text-white/80 hover:text-white'
+                  ? 'bg-white text-blue-900 shadow-xs font-black'
+                  : 'text-white/90 hover:text-white'
               }`}
             >
-              <Building2 className="w-3 h-3" />
+              <Building2 className="w-3.5 h-3.5" />
               <span>Hanya {activeOpd.shortName}</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Search Bar */}
-      <div className="p-2.5 border-b border-slate-200 bg-slate-50">
+      {/* Search Bar with High Contrast */}
+      <div className="p-3 border-b border-slate-200 bg-slate-50">
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari nomor berkas, judul, dinas, pemohon..."
-            className="w-full bg-white border border-slate-300 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 shadow-2xs"
+            className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder:text-slate-500 font-medium focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-500/20 shadow-2xs"
           />
         </div>
       </div>
 
       {/* Status Segmented Tabs */}
       <div className="p-2 border-b border-slate-200 bg-white">
-        <div className="grid grid-cols-4 gap-1 text-[11px] font-medium">
+        <div className="grid grid-cols-4 gap-1 text-[11px] font-bold">
           <button
             onClick={() => setStatusFilter('ALL')}
             className={`py-1.5 px-1 rounded-lg transition-colors truncate text-center cursor-pointer ${
               statusFilter === 'ALL'
-                ? 'bg-blue-600 text-white font-bold shadow-xs'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-700 hover:bg-slate-100'
             }`}
           >
@@ -148,52 +159,52 @@ export function DocumentList({
             onClick={() => setStatusFilter('PENDING')}
             className={`py-1.5 px-1 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'PENDING'
-                ? 'bg-amber-600 text-white font-bold shadow-xs'
-                : 'text-amber-800 hover:bg-amber-50'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'text-amber-900 hover:bg-amber-50'
             }`}
             title="Dalam Pemeriksaan Awal"
           >
             <span>Periksa</span>
-            <span className="font-mono font-bold">({pendingCount})</span>
+            <span className="font-mono">({pendingCount})</span>
           </button>
           <button
             onClick={() => setStatusFilter('REVISION')}
             className={`py-1.5 px-1 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'REVISION'
-                ? 'bg-orange-600 text-white font-bold shadow-xs'
-                : 'text-orange-800 hover:bg-orange-50'
+                ? 'bg-orange-600 text-white shadow-xs'
+                : 'text-orange-900 hover:bg-orange-50'
             }`}
             title="Perlu Revisi Dinas"
           >
             <span>Revisi</span>
-            <span className="font-mono font-bold">({revisionCount})</span>
+            <span className="font-mono">({revisionCount})</span>
           </button>
           <button
             onClick={() => setStatusFilter('APPROVED')}
             className={`py-1.5 px-1 rounded-lg transition-colors truncate flex items-center justify-center gap-1 cursor-pointer ${
               statusFilter === 'APPROVED'
-                ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                : 'text-emerald-800 hover:bg-emerald-50'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : 'text-emerald-900 hover:bg-emerald-50'
             }`}
             title="Diverifikasi & Terkunci"
           >
             <span>Sah</span>
-            <span className="font-mono font-bold">({approvedCount})</span>
+            <span className="font-mono">({approvedCount})</span>
           </button>
         </div>
       </div>
 
       {/* Format Filter Badges */}
-      <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-[10px] no-scrollbar">
-        <span className="text-slate-500 font-semibold shrink-0">Format:</span>
+      <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-[11px] no-scrollbar">
+        <span className="text-slate-700 font-bold shrink-0">Format:</span>
         {(['ALL', 'PDF', 'DOCX', 'XLSX', 'IMAGE'] as const).map((fmt) => (
           <button
             key={fmt}
             onClick={() => setFormatFilter(fmt)}
-            className={`px-2 py-0.5 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
+            className={`px-2.5 py-0.5 rounded-md transition-colors whitespace-nowrap font-semibold cursor-pointer ${
               formatFilter === fmt
                 ? 'bg-blue-600 text-white font-bold'
-                : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
             }`}
           >
             {fmt === 'ALL' ? 'Semua Format' : fmt}
@@ -201,17 +212,62 @@ export function DocumentList({
         ))}
       </div>
 
-      {/* Document Items List */}
+      {/* Document Items List / Clear Empty State */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2 space-y-1.5 bg-slate-50/50">
         {filteredDocuments.length === 0 ? (
-          <div className="py-12 px-4 text-center text-slate-500 text-xs space-y-2 bg-white rounded-xl border border-slate-200 m-2">
-            <FileText className="w-8 h-8 mx-auto text-slate-300" />
-            <div className="font-bold text-slate-700">Tidak ada dokumen ditemukan.</div>
-            <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-              {isVerifier
-                ? 'Belum ada dokumen yang diunggah oleh OPD atau ubah filter pencarian di atas.'
-                : `Belum ada dokumen yang diajukan oleh ${activeOpd.name}.`}
-            </p>
+          <div className="py-10 px-4 text-center bg-white rounded-2xl border-2 border-slate-200 m-2 shadow-sm space-y-4">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto border border-blue-200">
+              <FileText className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="font-black text-slate-900 text-sm md:text-base">
+                Tidak Ada Dokumen pada Antrean Ini
+              </h3>
+              <p className="text-xs text-slate-700 font-medium max-w-sm mx-auto leading-relaxed">
+                {isVerifier
+                  ? `Saat ini belum ada berkas masuk untuk ${activeOpd.name}. Anda dapat melihat berkas dari OPD lain atau membuka antrean seluruh dinas.`
+                  : `Belum ada dokumen yang diajukan oleh akun ${activeOpd.name}. Silakan unggah dokumen baru melalui tombol di bawah.`}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              {/* If Verifier and in SINGLE mode, button to switch to ALL OPDs */}
+              {isVerifier && opdScope === 'SINGLE' && (
+                <button
+                  type="button"
+                  onClick={() => setOpdScope('ALL')}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-2 shadow-md cursor-pointer transition-all"
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Buka Antrean Semua OPD ({documents.length} Berkas)</span>
+                </button>
+              )}
+
+              {/* Upload Document Button */}
+              {onOpenUploadModal && (
+                <button
+                  type="button"
+                  onClick={onOpenUploadModal}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Unggah Dokumen Baru</span>
+                </button>
+              )}
+
+              {/* Reset Search Button if search is active */}
+              {(searchQuery || statusFilter !== 'ALL' || formatFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 border border-slate-300 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Reset Filter Pencarian</span>
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           filteredDocuments.map((doc) => {
@@ -224,18 +280,18 @@ export function DocumentList({
                 onClick={() => onSelectDocument(doc)}
                 className={`w-full text-left p-3 rounded-xl transition-all border cursor-pointer ${
                   isSelected
-                    ? 'bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-400/30'
-                    : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-blue-300 shadow-2xs'
+                    ? 'bg-blue-50 border-blue-600 shadow-md ring-2 ring-blue-500/30'
+                    : 'bg-white border-slate-300 hover:bg-slate-50 hover:border-blue-400 shadow-2xs'
                 }`}
               >
                 {/* OPD Badge if in ALL view */}
                 {isVerifier && opdScope === 'ALL' && (
                   <div className="mb-1.5 flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded-md font-mono">
-                      <Building2 className="w-3 h-3" />
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md font-mono border border-blue-200">
+                      <Building2 className="w-3 h-3 text-blue-700" />
                       <span>{doc.opdName}</span>
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-slate-500 font-mono font-semibold">
                       {doc.tanggalMasuk.split(' ')[0]}
                     </span>
                   </div>
@@ -243,40 +299,40 @@ export function DocumentList({
 
                 {/* Header: Nomor Berkas & Status Indicator */}
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-slate-800 truncate">
-                    {doc.format === 'PDF' && <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />}
-                    {doc.format === 'DOCX' && <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
-                    {doc.format === 'XLSX' && <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                    {doc.format === 'IMAGE' && <ImageIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                  <div className="flex items-center gap-1.5 font-mono text-xs font-black text-slate-900 truncate">
+                    {doc.format === 'PDF' && <FileText className="w-4 h-4 text-rose-600 shrink-0" />}
+                    {doc.format === 'DOCX' && <FileText className="w-4 h-4 text-blue-600 shrink-0" />}
+                    {doc.format === 'XLSX' && <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />}
+                    {doc.format === 'IMAGE' && <ImageIcon className="w-4 h-4 text-amber-600 shrink-0" />}
                     <span className="truncate">{doc.nomorBerkas}</span>
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                    <span className="text-[10px] font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 font-bold">
                       v{doc.currentVersion}
                     </span>
 
                     {/* Status Indicator */}
                     {doc.status === 'APPROVED' && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                        <Lock className="w-3 h-3 text-emerald-600" />
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300">
+                        <Lock className="w-3 h-3 text-emerald-700" />
                         <span>SAH</span>
                       </span>
                     )}
                     {doc.status === 'PENDING' && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-md border border-amber-300">
                         <Clock className="w-3 h-3" />
                         <span>PERIKSA</span>
                       </span>
                     )}
                     {doc.status === 'REVISION' && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-orange-900 bg-orange-100 px-2 py-0.5 rounded-md border border-orange-300">
                         <AlertTriangle className="w-3 h-3" />
                         <span>REVISI</span>
                       </span>
                     )}
                     {doc.status === 'REJECTED' && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-rose-900 bg-rose-100 px-2 py-0.5 rounded-md border border-rose-300">
                         <XCircle className="w-3 h-3" />
                         <span>DITOLAK</span>
                       </span>
@@ -285,32 +341,32 @@ export function DocumentList({
                 </div>
 
                 {/* Judul Dokumen */}
-                <div className="font-semibold text-xs text-slate-900 line-clamp-2 leading-snug mb-1">
+                <div className="font-black text-xs text-slate-950 line-clamp-2 leading-snug mb-1">
                   {doc.judul}
                 </div>
 
                 {/* Notice jika Perlu Revisi */}
                 {doc.status === 'REVISION' && (
-                  <div className="my-1.5 p-1.5 bg-orange-50 border border-orange-200 rounded-lg text-[10px] text-orange-800 line-clamp-2">
-                    <span className="font-bold text-orange-700">Perbaikan: </span>
+                  <div className="my-1.5 p-2 bg-orange-50 border border-orange-300 rounded-lg text-[11px] text-orange-950 line-clamp-2 font-medium">
+                    <span className="font-bold text-orange-800">Perbaikan: </span>
                     {doc.versions[doc.versions.length - 1]?.reviewerNotes || doc.verification?.notes || 'Perlu perbaikan berkas'}
                   </div>
                 )}
 
                 {/* Notice jika Terverifikasi & Terkunci */}
                 {isDocLocked && doc.registrationSeal && (
-                  <div className="my-1 p-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] text-emerald-800 font-mono flex items-center justify-between">
+                  <div className="my-1 p-1.5 bg-emerald-50 border border-emerald-300 rounded-lg text-[11px] text-emerald-950 font-mono flex items-center justify-between font-bold">
                     <span className="truncate">{doc.registrationSeal.regNumber}</span>
-                    <span className="shrink-0 font-bold text-[9px] text-emerald-700">TERKUNCI</span>
+                    <span className="shrink-0 text-[10px] text-emerald-800">TERKUNCI</span>
                   </div>
                 )}
 
                 {/* Pemohon & Tanggal */}
-                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100 mt-2">
-                  <span className="truncate max-w-[140px] text-slate-600 font-medium">
+                <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 mt-2 font-medium">
+                  <span className="truncate max-w-[150px] text-slate-900 font-bold">
                     {doc.pemohon.nama}
                   </span>
-                  <span className="font-mono text-slate-400">
+                  <span className="font-mono text-slate-500">
                     {doc.tanggalMasuk.split(' ')[0]}
                   </span>
                 </div>

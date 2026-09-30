@@ -573,6 +573,8 @@ export default function App() {
                   activeOpd={activeOpd}
                   appRole={currentUser.role}
                   onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
+                  onSelectOpd={handleSelectOpd}
+                  onOpenUploadModal={() => setIsUploadOpen(true)}
                 />
               </div>
             )}
@@ -698,6 +700,8 @@ export default function App() {
                 activeOpd={activeOpd}
                 appRole={currentUser.role}
                 onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
+                onSelectOpd={handleSelectOpd}
+                onOpenUploadModal={() => setIsUploadOpen(true)}
               />
             </div>
 
