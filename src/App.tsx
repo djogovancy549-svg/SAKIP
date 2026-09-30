@@ -391,15 +391,15 @@ export default function App() {
   const currentOpdDocsCount = documents.filter((d) => d.opdId === activeOpd.id).length;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-800 flex flex-col font-sans selection:bg-blue-500/20 relative">
-      {/* Modern Digital Database & Cloud Server Pinterest-Style Background Layer */}
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans selection:bg-blue-500/20 relative">
+      {/* Modern Digital Database & Cloud Server Pinterest-Style Background Layer (Soft & Clean) */}
       <div
-        className="fixed inset-0 pointer-events-none z-0 opacity-85 bg-center bg-cover bg-no-repeat transition-opacity"
+        className="fixed inset-0 pointer-events-none z-0 opacity-20 bg-center bg-cover bg-no-repeat transition-opacity mix-blend-multiply"
         style={{ backgroundImage: `url(${databaseBg})` }}
         aria-hidden="true"
       />
-      {/* Subtle tint overlay for crystal clear contrast */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-sky-950/20 backdrop-brightness-105" aria-hidden="true" />
+      {/* Subtle ambient light gradient overlay */}
+      <div className="fixed inset-0 pointer-events-none z-0 bg-gradient-to-br from-sky-100/50 via-slate-50/70 to-blue-100/50" aria-hidden="true" />
 
       {/* Top Bar with User Info, Password Trigger, and Logout */}
       <Header

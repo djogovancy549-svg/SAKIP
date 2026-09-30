@@ -57,17 +57,17 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
   const demoVerifAccounts = userAccounts.filter((u) => u.role === 'VERIFIKATOR');
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
-      {/* Aesthetic Pinterest-Style Modern Database Background */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-sky-950 to-slate-900 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
+      {/* Aesthetic Pinterest-Style Modern Database Background (Soft Ambient) */}
       <div
-        className="fixed inset-0 pointer-events-none opacity-85 bg-center bg-cover bg-no-repeat transition-opacity"
+        className="fixed inset-0 pointer-events-none opacity-25 bg-center bg-cover bg-no-repeat transition-opacity mix-blend-screen"
         style={{
           backgroundImage: `url(${databaseBg})`,
         }}
         aria-hidden="true"
       />
-      {/* Subtle tint overlay */}
-      <div className="fixed inset-0 pointer-events-none bg-sky-950/20 backdrop-brightness-105" aria-hidden="true" />
+      {/* Subtle ambient overlay */}
+      <div className="fixed inset-0 pointer-events-none bg-sky-950/40 backdrop-brightness-105" aria-hidden="true" />
 
       <div className="w-full max-w-md relative z-10 space-y-5">
         {/* Brand & Emblem Header */}
@@ -78,13 +78,13 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
           <h1 className="text-xl md:text-2xl font-black tracking-tight text-white uppercase drop-shadow-md">
             SAKIP NAGEKEO
           </h1>
-          <p className="text-xs text-sky-100 max-w-sm mx-auto font-medium drop-shadow-sm">
+          <p className="text-xs text-sky-200 max-w-sm mx-auto font-medium drop-shadow-sm">
             Sistem Informasi Administrasi dan Pengawasan SAKIP Kabupaten Nagekeo
           </p>
         </div>
 
         {/* Security & Isolation Notice Banner */}
-        <div className="p-3.5 bg-white/55 backdrop-blur-xl border border-white/60 rounded-2xl text-xs text-slate-900 space-y-1.5 shadow-xl">
+        <div className="p-3.5 bg-white/90 backdrop-blur-xl border border-white/80 rounded-2xl text-xs text-slate-900 space-y-1.5 shadow-xl">
           <div className="flex items-center gap-2 font-bold text-blue-900 text-xs">
             <Lock className="w-4 h-4 text-blue-600" />
             <span>Isolasi Akses &amp; Keamanan Dokumen</span>
@@ -99,7 +99,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
         </div>
 
         {/* Login Box */}
-        <div className="bg-white/50 backdrop-blur-2xl border border-white/70 rounded-3xl p-6 shadow-2xl shadow-blue-950/20 space-y-5">
+        <div className="bg-white/95 backdrop-blur-2xl border border-white rounded-3xl p-6 shadow-2xl shadow-black/40 space-y-5">
           {/* Role Tab Selector */}
           <div className="grid grid-cols-2 p-1 bg-blue-50 rounded-2xl border border-blue-200/80 text-xs font-semibold">
             <button
