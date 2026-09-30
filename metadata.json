@@ -1,0 +1,6 @@
+{
+  "name": "SIMVERIF OPD - Sistem Verifikasi Dokumen Terpadu",
+  "description": "Aplikasi verifikasi dokumen resmi antar OPD/Dinas dengan pratinjau multi-format, watermark pengamanan dinamis, data berjalan real-time, dan integrasi webhook Google Sheets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
