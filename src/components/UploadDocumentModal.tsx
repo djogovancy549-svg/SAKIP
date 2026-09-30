@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -16,6 +16,7 @@ import {
   createGoogleDriveStorageInfo,
   DEFAULT_GOOGLE_DRIVE_MASTER_NAME,
 } from '../services/googleSheetsWebhook';
+import { initDriveAuth, googleSignIn } from '../services/googleDriveAuth';
 
 interface UploadDocumentModalProps {
   isOpen: boolean;
@@ -45,6 +46,32 @@ export function UploadDocumentModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const masterFolderId = getGoogleDriveFolderId();
+
+  const [googleDriveUser, setGoogleDriveUser] = useState<any>(null);
+  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = initDriveAuth((user) => {
+      setGoogleDriveUser(user);
+    });
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  const handleConnectGoogle = async () => {
+    setIsConnectingGoogle(true);
+    try {
+      const res = await googleSignIn();
+      if (res) {
+        setGoogleDriveUser(res.user);
+      }
+    } catch (e) {
+      console.error('Failed to sign in with Google Drive', e);
+    } finally {
+      setIsConnectingGoogle(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -476,6 +503,30 @@ Dokumen ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan secara fisik di
                 />
               </div>
             </div>
+          </div>
+
+          {/* Google Drive Status Banner */}
+          <div className="p-3 bg-slate-900 text-white rounded-xl flex items-center justify-between text-xs shadow-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <HardDrive className="w-4 h-4 text-sky-400 shrink-0" />
+              <div className="truncate text-[11px]">
+                {googleDriveUser ? (
+                  <span>Akses Direct Drive: <strong className="text-emerald-400 font-mono">{googleDriveUser.email}</strong></span>
+                ) : (
+                  <span className="text-slate-300">Hubungkan akun Google Drive untuk menyimpan file fisik langsung</span>
+                )}
+              </div>
+            </div>
+            {!googleDriveUser && (
+              <button
+                type="button"
+                onClick={handleConnectGoogle}
+                disabled={isConnectingGoogle}
+                className="px-3 py-1 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer shrink-0"
+              >
+                {isConnectingGoogle ? 'Menghubungkan...' : 'Hubungkan Drive'}
+              </button>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">

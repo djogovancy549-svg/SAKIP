@@ -55,6 +55,30 @@ export interface UserAccount {
   driveFolderUrl: string;
 }
 
+export type NotificationType =
+  | 'NEW_UPLOAD'
+  | 'REVISION_UPLOAD'
+  | 'VERIFICATION_APPROVED'
+  | 'VERIFICATION_REJECTED'
+  | 'VERIFICATION_REVISION_NEEDED'
+  | 'FOLDER_REGISTERED'
+  | 'SYSTEM';
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  type: NotificationType;
+  targetRole: AppRole | 'ALL';
+  targetOpdId?: string; // If OPD specific
+  docId?: string;
+  docNumber?: string;
+  senderName: string;
+  senderOpd: string;
+  isRead: boolean;
+}
+
 export interface VerificationChecklistItem {
   id: string;
   label: string;

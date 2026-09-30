@@ -16,6 +16,7 @@ import {
   Settings2,
   SlidersHorizontal,
   CheckCircle2,
+  Bell,
 } from 'lucide-react';
 import { OPD, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
@@ -25,6 +26,8 @@ interface HeaderProps {
   activeOpd: OPD;
   onSelectOpd: (opd: OPD) => void;
   currentUser: UserAccount;
+  unreadNotificationCount?: number;
+  onOpenNotificationModal: () => void;
   onOpenGoogleSheetModal: () => void;
   onOpenUploadModal: () => void;
   onOpenChangePasswordModal: () => void;
@@ -37,6 +40,8 @@ export function Header({
   activeOpd,
   onSelectOpd,
   currentUser,
+  unreadNotificationCount = 0,
+  onOpenNotificationModal,
   onOpenGoogleSheetModal,
   onOpenUploadModal,
   onOpenChangePasswordModal,
@@ -197,6 +202,20 @@ export function Header({
 
         {/* Zone 3: Clean Actions (Consolidated into 3 items: Upload, Server Integrasi, Profil) */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Notification Bell Button */}
+          <button
+            onClick={onOpenNotificationModal}
+            className="relative p-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl text-slate-800 transition-colors cursor-pointer shadow-xs"
+            title="Pusat Notifikasi Aktivitas SAKIP"
+          >
+            <Bell className="w-4 h-4 text-blue-700" />
+            {unreadNotificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+              </span>
+            )}
+          </button>
+
           {/* Google Drive Direct OAuth Connect Status */}
           {googleDriveUser ? (
             <div

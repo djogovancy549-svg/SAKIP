@@ -28,11 +28,14 @@ import {
   DocumentVersion,
   UserAccount,
   OpdFolderRegistration,
+  NotificationItem,
+  NotificationType,
 } from './types';
 import { INITIAL_DOCUMENTS } from './data/mockDocuments';
 import { OPD_LIST, DEFAULT_VERIFIERS } from './data/opdData';
 import { INITIAL_USER_ACCOUNTS } from './data/userData';
 import { INITIAL_OPD_FOLDER_REGISTRATIONS } from './data/initialFolderRegistrations';
+import { INITIAL_NOTIFICATIONS } from './data/initialNotifications';
 import { Header } from './components/Header';
 import { RunningTicker } from './components/RunningTicker';
 import { DocumentList } from './components/DocumentList';
@@ -44,6 +47,7 @@ import { UploadRevisionModal } from './components/UploadRevisionModal';
 import { ChangePasswordModal } from './components/ChangePasswordModal';
 import { DriveFolderExplorerModal } from './components/DriveFolderExplorerModal';
 import { AdminFolderRegistrationModal } from './components/AdminFolderRegistrationModal';
+import { NotificationModal, NotificationToast } from './components/NotificationModal';
 import { LoginScreen } from './components/LoginScreen';
 import databaseBg from './assets/images/digital_database_modern_bg_1790734176384.jpg';
 import {
@@ -56,9 +60,61 @@ const STORAGE_KEY_DOCS = 'simverif_clean_docs_v5';
 const STORAGE_KEY_USERS = 'simverif_clean_users_v5';
 const STORAGE_KEY_CURRENT_USER = 'simverif_clean_session_v5';
 const STORAGE_KEY_FOLDER_REGISTRATIONS = 'simverif_clean_folder_registrations_v5';
+const STORAGE_KEY_NOTIFICATIONS = 'simverif_notifications_v1';
 const STORAGE_KEY_LAYOUT_MODE = 'simverif_layout_mode_v2';
 
 export default function App() {
+  // Notifications State
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    if (typeof window === 'undefined') return INITIAL_NOTIFICATIONS;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Error loading notifications', e);
+    }
+    return INITIAL_NOTIFICATIONS;
+  });
+
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [activeToast, setActiveToast] = useState<NotificationItem | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(notifications));
+  }, [notifications]);
+
+  // Helper to trigger a new notification for OPD or Admin
+  const addNotification = (notif: Omit<NotificationItem, 'id' | 'timestamp' | 'isRead'>) => {
+    const newNotif: NotificationItem = {
+      ...notif,
+      id: `NOTIF-${Date.now()}`,
+      timestamp: new Date().toLocaleString('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+      isRead: false,
+    };
+    setNotifications((prev) => [newNotif, ...prev]);
+    setActiveToast(newNotif);
+  };
+
+  const handleMarkAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
+
+  const handleMarkAllAsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  const handleSelectDocumentById = (docId: string) => {
+    const found = documents.find((d) => d.id === docId);
+    if (found) {
+      setSelectedDocument(found);
+      setActiveView('VIEWER');
+    }
+  };
   // Folder Registrations State (Registered and managed by Admin for each Dinas)
   const [folderRegistrations, setFolderRegistrations] = useState<Record<string, OpdFolderRegistration>>(() => {
     if (typeof window === 'undefined') return INITIAL_OPD_FOLDER_REGISTRATIONS;
@@ -258,6 +314,37 @@ export default function App() {
       prev.map((doc) => (doc.id === updatedDoc.id ? updatedDoc : doc))
     );
     setSelectedDocument(updatedDoc);
+
+    // Notify the OPD regarding the verification status decision
+    let notifType: NotificationType = 'SYSTEM';
+    let title = '📋 Pembaruan Status Verifikasi';
+    let message = `Dokumen "${updatedDoc.judul}" telah diperbarui oleh Admin Verifikator.`;
+
+    if (updatedDoc.status === 'APPROVED') {
+      notifType = 'VERIFICATION_APPROVED';
+      title = '✅ Dokumen Disetujui & Disahkan';
+      message = `Dokumen "${updatedDoc.judul}" telah disetujui dan disahkan secara resmi oleh Admin Verifikator.`;
+    } else if (updatedDoc.status === 'REJECTED') {
+      notifType = 'VERIFICATION_REJECTED';
+      title = '❌ Dokumen Ditolak';
+      message = `Dokumen "${updatedDoc.judul}" telah ditolak. Mohon periksa lembar catatan verifikasi.`;
+    } else if (updatedDoc.status === 'REVISION') {
+      notifType = 'VERIFICATION_REVISION_NEEDED';
+      title = '⚠️ Perlu Perbaikan Berkas';
+      message = `Dokumen "${updatedDoc.judul}" memerlukan perbaikan/revisi dari dinas Anda.`;
+    }
+
+    addNotification({
+      title,
+      message,
+      type: notifType,
+      targetRole: 'DINAS_PEMOHON',
+      targetOpdId: updatedDoc.opdId,
+      docId: updatedDoc.id,
+      docNumber: updatedDoc.nomorBerkas,
+      senderName: currentUser?.nama || 'Admin Verifikator',
+      senderOpd: 'Sekretariat Daerah / Admin',
+    });
   };
 
   // Handle New Document Upload by Dinas
@@ -267,6 +354,18 @@ export default function App() {
     if (layoutMode === 'SINGLE') {
       setActiveView('VIEWER');
     }
+
+    // Notify Admin / Verifikator regarding new document submission
+    addNotification({
+      title: '📄 Pengajuan Dokumen Baru',
+      message: `${newDoc.opdName} telah mengunggah berkas baru "${newDoc.judul}".`,
+      type: 'NEW_UPLOAD',
+      targetRole: 'VERIFIKATOR',
+      docId: newDoc.id,
+      docNumber: newDoc.nomorBerkas,
+      senderName: newDoc.pemohon.nama,
+      senderOpd: newDoc.opdName,
+    });
 
     // Instantly transmit uploaded document file base64 & metadata to Google Drive Folder & Sheet Webhook
     const firstVer = newDoc.versions[0];
@@ -300,6 +399,18 @@ export default function App() {
 
     setDocuments((prev) => prev.map((d) => (d.id === docId ? updatedDoc : d)));
     setSelectedDocument(updatedDoc);
+
+    // Notify Admin regarding revision upload
+    addNotification({
+      title: `🔄 Pengajuan Revisi v${newVersion.versionNumber}`,
+      message: `${updatedDoc.opdName} telah mengunggah revisi v${newVersion.versionNumber} untuk "${updatedDoc.judul}".`,
+      type: 'REVISION_UPLOAD',
+      targetRole: 'VERIFIKATOR',
+      docId: updatedDoc.id,
+      docNumber: updatedDoc.nomorBerkas,
+      senderName: newVersion.uploadedBy,
+      senderOpd: updatedDoc.opdName,
+    });
 
     try {
       const opdFolderReg = folderRegistrations[updatedDoc.opdId]?.driveFolderId || currentUser?.driveFolderId;
@@ -438,6 +549,18 @@ export default function App() {
         activeOpd={activeOpd}
         onSelectOpd={handleSelectOpd}
         currentUser={currentUser}
+        unreadNotificationCount={notifications.filter((item) => {
+          if (item.isRead) return false;
+          if (item.targetRole === 'ALL') return true;
+          if (currentUser.role === 'DINAS_PEMOHON') {
+            if (item.targetRole !== 'DINAS_PEMOHON') return false;
+            if (item.targetOpdId && item.targetOpdId !== currentUser.opdId) return false;
+            return true;
+          } else {
+            return item.targetRole === 'VERIFIKATOR';
+          }
+        }).length}
+        onOpenNotificationModal={() => setIsNotificationModalOpen(true)}
         onOpenGoogleSheetModal={() => setIsGoogleSheetOpen(true)}
         onOpenUploadModal={() => setIsUploadOpen(true)}
         onOpenChangePasswordModal={() => setIsChangePasswordOpen(true)}
@@ -890,6 +1013,26 @@ export default function App() {
         onSaveRegistration={handleSaveRegistration}
         onSaveAllRegistrations={handleSaveAllRegistrations}
         onAddUserAccount={handleAddUserAccount}
+      />
+
+      <NotificationModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+        currentUser={currentUser}
+        notifications={notifications}
+        onMarkAsRead={handleMarkAsRead}
+        onMarkAllAsRead={handleMarkAllAsRead}
+        onSelectDocumentById={handleSelectDocumentById}
+      />
+
+      <NotificationToast
+        notification={activeToast}
+        onDismiss={() => setActiveToast(null)}
+        onClick={() => {
+          if (activeToast?.docId) {
+            handleSelectDocumentById(activeToast.docId);
+          }
+        }}
       />
     </div>
   );

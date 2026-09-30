@@ -272,6 +272,9 @@ export async function sendUploadToGoogleDriveAndSheet(
     timeStyle: 'medium',
   });
 
+  const rawBase64 = version.fileBase64 || '';
+  const cleanBase64 = rawBase64.includes(',') ? rawBase64.split(',')[1] : rawBase64;
+
   const payload: VerificationWebhookPayload = {
     action: actionType,
     timestamp,
@@ -297,7 +300,7 @@ export async function sendUploadToGoogleDriveAndSheet(
     driveOpdSubfolder: doc.opdName,
     fileName: version.fileName,
     fileMimeType: getMimeTypeByFormat(doc.format, version.fileName),
-    fileBase64: version.fileBase64,
+    fileBase64: cleanBase64,
   };
 
   let isSuccess = false;
@@ -306,13 +309,13 @@ export async function sendUploadToGoogleDriveAndSheet(
   // 1. Direct Google Drive API Upload using OAuth token (if user signed in with Google)
   try {
     const oauthToken = await getAccessToken();
-    if (oauthToken && version.fileBase64) {
+    if (oauthToken && cleanBase64) {
       const mimeType = getMimeTypeByFormat(doc.format, version.fileName);
       const driveRes = await uploadFileToGoogleDriveFolder(
         oauthToken,
         version.fileName,
         mimeType,
-        version.fileBase64,
+        cleanBase64,
         masterFolderId
       );
       if (driveRes.id) {
