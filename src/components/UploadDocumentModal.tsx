@@ -9,6 +9,8 @@ import {
   HardDrive,
   CheckCircle2,
   FolderTree,
+  Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { DocumentFormat, DocumentItem, OPD, GoogleDriveStorageInfo } from '../types';
 import {
@@ -42,6 +44,7 @@ export function UploadDocumentModal({
   const [fileBase64, setFileBase64] = useState<string | undefined>(undefined);
   const [fileBlobUrl, setFileBlobUrl] = useState<string | undefined>(undefined);
   const [hasCustomFile, setHasCustomFile] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const masterFolderId = getGoogleDriveFolderId();
@@ -74,21 +77,47 @@ export function UploadDocumentModal({
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Strip metadata prefix if data URL (e.g. data:application/pdf;base64,...)
       const base64Clean = result.includes(',') ? result.split(',')[1] : result;
       setFileBase64(base64Clean);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!judul.trim() || !nomorBerkas.trim() || !pemohonNama.trim()) return;
+
+    setIsSubmitting(true);
 
     const newId = `DOC-${activeOpd.id}-${Date.now().toString().slice(-4)}`;
     const effectiveFileName =
       fileName.trim() ||
-      `${judul.replace(/\s+/g, '_').slice(0, 24)}_v1.${format.toLowerCase()}`;
+      `${judul.replace(/\s+/g, '_').slice(0, 24)}_v1.${format === 'PDF' ? 'pdf' : format === 'DOCX' ? 'docx' : format === 'XLSX' ? 'xlsx' : 'txt'}`;
+
+    // Ensure base64 is populated so it always saves into Google Drive folder
+    let finalBase64 = fileBase64;
+    if (!finalBase64) {
+      const draftContent = `========================================================================
+PEMERINTAH KABUPATEN NAGEKEO - SAKIP NAGEKEO
+LEMBAR PENGAJUAN DOKUMEN SAKIP RESMI
+OPD / DINAS : ${activeOpd.name.toUpperCase()}
+========================================================================
+
+NOMOR BERKAS : ${nomorBerkas.trim()}
+JUDUL        : ${judul.trim()}
+PERIHAL      : ${perihal.trim() || judul.trim()}
+PEMOHON      : ${pemohonNama.trim()} (${pemohonInstansi.trim() || activeOpd.name})
+KONTAK       : ${pemohonKontak.trim() || '0812-0000-1111'}
+TANGGAL      : ${new Date().toLocaleString('id-ID')}
+
+URAIAN DOKUMEN:
+Dokumen ini diajukan secara resmi melalui Sistem Informasi Administrasi dan
+Pengawasan SAKIP Kabupaten Nagekeo ke Google Drive Server Induk.
+
+STATUS BERKAS: DALAM PEMERIKSAAN AWAL (PENDING)
+========================================================================`;
+      finalBase64 = btoa(unescape(encodeURIComponent(draftContent)));
+    }
 
     // Create Google Drive server storage metadata
     const googleDriveInfo: GoogleDriveStorageInfo = createGoogleDriveStorageInfo(
@@ -122,7 +151,7 @@ export function UploadDocumentModal({
       currentVersion: 1,
       isLocked: false,
       googleDrive: googleDriveInfo,
-      fileBase64,
+      fileBase64: finalBase64,
       fileBlobUrl,
       versions: [
         {
@@ -137,13 +166,13 @@ export function UploadDocumentModal({
           changeSummary: 'Pengajuan berkas awal untuk diperiksa dan diverifikasi.',
           status: 'PENDING',
           googleDrive: googleDriveInfo,
-          fileBase64,
+          fileBase64: finalBase64,
           fileBlobUrl,
         },
       ],
       content: {
         kopSurat: {
-          pemerintah: 'PEMERINTAH DAERAH PROVINSI',
+          pemerintah: 'PEMERINTAH KABUPATEN NAGEKEO',
           instansi: activeOpd.name.toUpperCase(),
           alamat: activeOpd.address,
           nomorNaskah: `SURAT RESMI NOMOR: ${nomorBerkas.trim()}`,
@@ -178,24 +207,24 @@ export function UploadDocumentModal({
             `Bersama ini kami sampaikan dokumen mengenai ${judul.trim()} untuk diteliti, diverifikasi, dan disahkan sesuai dengan mekanisme yang berlaku.`,
             'Seluruh berkas persyaratan telah dilampirkan sebagaimana mestinya.',
           ],
-          penutup: 'Demikian permohonan ini kami sampaikan, terima kasih.',
+          penutup: 'Demikian surat permohonan ini kami sampaikan, atas perhatian dan kerja samanya kami ucapkan terima kasih.',
           pejabatTtd: {
             nama: pemohonNama.trim(),
-            nip: '19890101 201501 1 001',
-            jabatan: pemohonInstansi.trim() || 'Pemohon Berkas',
+            nip: '19850712 201101 1 004',
+            jabatan: `Pengelola SAKIP ${activeOpd.name}`,
           },
         },
         xlsxData: {
-          sheetName: 'RAB_Pengajuan_2026',
-          subKegiatan: judul.trim(),
-          kodeRekening: '5.1.02.01.01.0001 - Belanja Barang dan Jasa',
-          tahunAnggaran: '2026',
+          sheetName: 'Rincian Realisasi SAKIP',
+          subKegiatan: `Program Kegiatan ${activeOpd.name}`,
+          kodeRekening: '5.1.02.01.01.0024',
+          tahunAnggaran: `${new Date().getFullYear()}`,
           totalAnggaran: 125000000,
           rows: [
             {
               no: 1,
-              kode: 'BELANJA-01',
-              uraian: 'Pengadaan Paket Utama Sesuai Spesifikasi Teknis',
+              kode: '5.1.02.01',
+              uraian: `Kegiatan Program ${judul.trim()}`,
               volume: 1,
               satuan: 'Paket',
               hargaSatuan: 100000000,
@@ -227,24 +256,25 @@ export function UploadDocumentModal({
     };
 
     onAddDocument(newDoc);
+    setIsSubmitting(false);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-blue-950/40 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="bg-white border border-blue-200/90 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 animate-in fade-in duration-150">
+      <div className="bg-white border-2 border-slate-300 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] text-slate-900">
         {/* Header */}
         <div className="px-5 py-4 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 border-b border-blue-500 text-white flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-white/10 border border-white/20 rounded-xl text-white">
+            <div className="p-2 bg-white/15 border border-white/25 rounded-xl text-white">
               <Upload className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-white drop-shadow-xs">
                 Upload Dokumen ke Google Drive Induk Server
               </h2>
-              <p className="text-[11px] text-blue-100 flex items-center gap-1">
-                <Building2 className="w-3 h-3 text-sky-200" />
+              <p className="text-[11px] text-blue-100 flex items-center gap-1 font-medium">
+                <Building2 className="w-3.5 h-3.5 text-sky-200" />
                 <span>OPD Pengunggah: {activeOpd.name}</span>
               </p>
             </div>
@@ -257,222 +287,187 @@ export function UploadDocumentModal({
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 flex-1 overflow-y-auto space-y-4 text-xs text-slate-700 bg-white">
-          {/* Google Drive Server Location Notice */}
-          <div className="p-3 bg-blue-50/80 border border-blue-200/90 rounded-xl space-y-1.5">
-            <div className="flex items-center gap-1.5 font-bold text-blue-900 text-xs">
-              <HardDrive className="w-4 h-4 text-blue-600" />
-              <span>Lokasi Server Penyimpanan: Google Drive Induk</span>
+        {/* Form Body - Solid White Background & Sharp Text */}
+        <form onSubmit={handleSubmit} className="p-5 flex-1 overflow-y-auto space-y-4 text-xs text-slate-900 bg-white">
+          {/* Target OPD Subfolder Indicator */}
+          <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 space-y-1">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-bold text-blue-900 flex items-center gap-1.5">
+                <HardDrive className="w-4 h-4 text-blue-600" />
+                <span>Subfolder Google Drive:</span>
+              </span>
+              <span className="font-mono font-bold text-blue-950 bg-white px-2 py-0.5 rounded border border-blue-200">
+                /{activeOpd.name}
+              </span>
             </div>
-            <div className="text-[11px] text-blue-950 flex items-center gap-1.5 font-mono">
-              <FolderTree className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-              <span>Drive Induk &gt; Folder [{activeOpd.name}]</span>
-            </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">
-              Berkas fisik yang Anda unggah secara otomatis disimpan ke folder Google Drive Induk server dan tautan resminya dicatat pada Google Spreadsheet.
+            <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
+              Berkas yang diunggah akan otomatis disimpan di subfolder <strong>{activeOpd.name}</strong> di Google Drive Server Induk Pemkab Nagekeo.
             </p>
           </div>
 
-          {/* Real File Input Area (Drag & Drop or File Picker) */}
+          {/* Real File Picker Area */}
           <div>
-            <label className="block font-bold text-slate-800 mb-1">
-              Pilih Berkas Dokumen Fisik (PDF / Word / Excel / Gambar) :
+            <label className="block text-xs font-bold text-slate-900 mb-1.5">
+              Pilih File Dokumen Fisik (PDF / DOCX / XLSX / Gambar) :
             </label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
-              className="hidden"
-            />
             <div
               onClick={() => fileInputRef.current?.click()}
-              className={`p-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors ${
+              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
                 hasCustomFile
-                  ? 'border-emerald-400 bg-emerald-50/60'
-                  : 'border-blue-200 bg-blue-50/40 hover:border-blue-400 hover:bg-blue-50/80'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-950'
+                  : 'border-slate-300 bg-slate-50 hover:bg-blue-50/60 hover:border-blue-500 text-slate-700'
               }`}
             >
-              {hasCustomFile ? (
-                <div className="text-center space-y-1">
-                  <CheckCircle2 className="w-7 h-7 text-emerald-600 mx-auto" />
-                  <div className="font-semibold text-slate-900 text-xs font-mono">{fileName}</div>
-                  <div className="text-[11px] text-slate-500">Ukuran: {fileSize} · Format: {format}</div>
-                  <div className="text-[10px] text-emerald-700 font-semibold underline">Klik untuk ganti file lain</div>
-                </div>
-              ) : (
-                <div className="text-center space-y-1">
-                  <Upload className="w-7 h-7 text-blue-500 mx-auto" />
-                  <div className="font-semibold text-slate-800 text-xs">
-                    Klik untuk memilih file dari komputer / HP
-                  </div>
-                  <p className="text-[11px] text-slate-500">
-                    Mendukung format PDF, DOCX, XLSX, dan Scan Gambar (Maks. 25 MB)
-                  </p>
-                </div>
-              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <div className="flex flex-col items-center justify-center gap-1.5">
+                {hasCustomFile ? (
+                  <>
+                    <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                    <span className="font-bold text-xs text-emerald-950 truncate max-w-sm">
+                      {fileName}
+                    </span>
+                    <span className="text-[10px] font-mono text-emerald-800 bg-white px-2 py-0.5 rounded-full border border-emerald-300 font-bold">
+                      Ukuran: {fileSize} · Format: {format}
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-medium">
+                      (Klik untuk mengganti file)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-7 h-7 text-blue-600" />
+                    <span className="font-bold text-xs text-slate-900">
+                      Klik di sini untuk memilih file dari komputer / HP Anda
+                    </span>
+                    <span className="text-[10px] text-slate-600 font-medium">
+                      Mendukung PDF, Word (.docx), Excel (.xlsx), atau Foto Scan (Maks. 25 MB)
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Format Selection Buttons */}
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">
-              Kategori Format Berkas :
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              <button
-                type="button"
-                onClick={() => setFormat('PDF')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-colors cursor-pointer ${
-                  format === 'PDF'
-                    ? 'bg-rose-50 border-rose-400 text-rose-700 font-bold shadow-xs'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-blue-300'
-                }`}
-              >
-                <FileText className="w-4 h-4 mb-1 text-rose-600" />
-                <span>PDF</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormat('DOCX')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-colors cursor-pointer ${
-                  format === 'DOCX'
-                    ? 'bg-blue-50 border-blue-400 text-blue-700 font-bold shadow-xs'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-blue-300'
-                }`}
-              >
-                <FileText className="w-4 h-4 mb-1 text-blue-600" />
-                <span>DOCX</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormat('XLSX')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-colors cursor-pointer ${
-                  format === 'XLSX'
-                    ? 'bg-emerald-50 border-emerald-400 text-emerald-700 font-bold shadow-xs'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-blue-300'
-                }`}
-              >
-                <FileSpreadsheet className="w-4 h-4 mb-1 text-emerald-600" />
-                <span>XLSX</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormat('IMAGE')}
-                className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-colors cursor-pointer ${
-                  format === 'IMAGE'
-                    ? 'bg-amber-50 border-amber-400 text-amber-700 font-bold shadow-xs'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-blue-300'
-                }`}
-              >
-                <ImageIcon className="w-4 h-4 mb-1 text-amber-600" />
-                <span>SCAN</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Nomor Berkas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Metadata Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Nomor Berkas / Register *
+              <label className="block text-xs font-bold text-slate-900 mb-1">
+                Nomor Berkas / Surat Resmi <span className="text-rose-600">*</span> :
               </label>
               <input
                 type="text"
                 required
                 value={nomorBerkas}
                 onChange={(e) => setNomorBerkas(e.target.value)}
-                placeholder="Contoh: 042/SPM/PUPR/IX/2026"
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-blue-500 focus:bg-white"
+                placeholder="Contoh: 056/sakip/2026"
+                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-blue-600 shadow-2xs"
               />
             </div>
+
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Nama File di Google Drive
+              <label className="block text-xs font-bold text-slate-900 mb-1">
+                Format Naskah :
               </label>
-              <input
-                type="text"
-                value={fileName}
-                onChange={(e) => setFileName(e.target.value)}
-                placeholder={`berkas_${activeOpd.id.toLowerCase()}.${format.toLowerCase()}`}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-blue-500 focus:bg-white"
-              />
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value as DocumentFormat)}
+                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-600 shadow-2xs"
+              >
+                <option value="PDF">PDF (Dokumen Resmi &amp; Pengesahan)</option>
+                <option value="DOCX">DOCX (Naskah Dinas Word)</option>
+                <option value="XLSX">XLSX (Lembar Kerja / Anggaran)</option>
+                <option value="IMAGE">IMAGE (Hasil Pindai Berkas)</option>
+              </select>
             </div>
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
-              Judul Dokumen Lengkap *
+            <label className="block text-xs font-bold text-slate-900 mb-1">
+              Judul Dokumen SAKIP <span className="text-rose-600">*</span> :
             </label>
             <input
               type="text"
               required
               value={judul}
               onChange={(e) => setJudul(e.target.value)}
-              placeholder="Contoh: Permohonan Verifikasi Berkas SP2D Belanja Pemeliharaan Gedung"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+              placeholder="Contoh: DATA SURVEY KEPUASAN MASYARAKAT RSUD AERAMO"
+              className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 font-bold focus:outline-none focus:border-blue-600 shadow-2xs"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">
-              Perihal / Ringkasan Isi
+            <label className="block text-xs font-bold text-slate-900 mb-1">
+              Perihal / Ringkasan Isi :
             </label>
             <textarea
               rows={2}
               value={perihal}
               onChange={(e) => setPerihal(e.target.value)}
-              placeholder="Jelaskan secara ringkas maksud dan substansi berkas yang diajukan..."
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+              placeholder="Ketik ringkasan singkat isi berkas atau maksud permohonan..."
+              className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 shadow-2xs"
             />
           </div>
 
-          {/* Data Pemohon */}
-          <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 space-y-2.5">
-            <div className="font-bold text-slate-800 text-xs">Data Pemohon Berkas :</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label className="text-[11px] text-slate-600 font-medium">Nama Pejabat / Pemohon *</label>
-                <input
-                  type="text"
-                  required
-                  value={pemohonNama}
-                  onChange={(e) => setPemohonNama(e.target.value)}
-                  placeholder="Contoh: Ahmad Fauzi, S.T."
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-600 font-medium">Instansi / Unit Kerja</label>
-                <input
-                  type="text"
-                  value={pemohonInstansi}
-                  onChange={(e) => setPemohonInstansi(e.target.value)}
-                  placeholder={`Bidang Teknis ${activeOpd.shortName}`}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
-                />
-              </div>
+          {/* Pemohon Info */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200">
+            <div>
+              <label className="block text-xs font-bold text-slate-900 mb-1">
+                Nama Pengelola / Pemohon <span className="text-rose-600">*</span> :
+              </label>
+              <input
+                type="text"
+                required
+                value={pemohonNama}
+                onChange={(e) => setPemohonNama(e.target.value)}
+                placeholder="Contoh: Admin RSUD Aeramo"
+                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none focus:border-blue-600 shadow-2xs"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-900 mb-1">
+                Nomor Kontak / WhatsApp :
+              </label>
+              <input
+                type="text"
+                value={pemohonKontak}
+                onChange={(e) => setPemohonKontak(e.target.value)}
+                placeholder="0812-3456-7890"
+                className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none focus:border-blue-600 shadow-2xs"
+              />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+              className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 rounded-xl text-xs font-bold border border-slate-300 cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all disabled:opacity-50"
             >
-              <HardDrive className="w-4 h-4" />
-              <span>Upload ke Google Drive & Simpan</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Menyimpan ke Google Drive...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>Simpan &amp; Unggah ke Google Drive</span>
+                </>
+              )}
             </button>
           </div>
         </form>

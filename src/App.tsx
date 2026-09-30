@@ -423,55 +423,55 @@ export default function App() {
       />
 
       {/* Role Notice & Security Banner */}
-      <div className="bg-white/50 backdrop-blur-xl border-b border-white/40 px-4 py-1.5 text-xs text-slate-800 shadow-xs relative z-10">
+      <div className="bg-white border-b border-slate-300 px-4 py-1.5 text-xs text-slate-900 shadow-xs relative z-10 font-bold">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">Pengguna Aktif:</span>
-            <span className="font-bold text-blue-950">{currentUser.nama}</span>
-            <span className="font-mono text-blue-700 font-semibold">(@{currentUser.username})</span>
-            <span className="text-slate-400">·</span>
-            <span className="text-slate-900 font-semibold">{currentUser.opdName}</span>
+            <span className="text-slate-600 font-semibold">Pengguna Aktif:</span>
+            <span className="font-black text-blue-950">{currentUser.nama}</span>
+            <span className="font-mono text-blue-700 font-bold">(@{currentUser.username})</span>
+            <span className="text-slate-300">·</span>
+            <span className="text-slate-950 font-bold">{currentUser.opdName}</span>
           </div>
 
           <div className="flex items-center gap-3 text-[11px] font-mono">
             {currentUser.role === 'DINAS_PEMOHON' ? (
-              <span className="text-blue-900 bg-white/70 backdrop-blur-sm border border-blue-200/80 px-2 py-0.5 rounded flex items-center gap-1 font-semibold">
-                <Lock className="w-3 h-3 text-blue-600" />
+              <span className="text-blue-950 bg-blue-50 border border-blue-300 px-2.5 py-0.5 rounded flex items-center gap-1 font-bold">
+                <Lock className="w-3 h-3 text-blue-700" />
                 Akses Terisolasi: Dokumen {currentUser.opdName}
               </span>
             ) : (
-              <span className="text-emerald-900 bg-emerald-50/80 backdrop-blur-sm border border-emerald-200/80 px-2 py-0.5 rounded flex items-center gap-1 font-semibold">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                Akses Verifikator: Seluruh Antrean Berkas OPD
+              <span className="text-emerald-950 bg-emerald-50 border border-emerald-300 px-2.5 py-0.5 rounded flex items-center gap-1 font-bold">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                Akses Admin Verifikator: Seluruh Antrean Berkas OPD
               </span>
             )}
-            <span className="text-slate-400">|</span>
-            <span className="text-slate-700 font-medium">
-              Penyimpanan: {currentUser.driveFolderName}
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-800 font-bold">
+              Folder Drive: {currentUser.driveFolderName}
             </span>
           </div>
         </div>
       </div>
 
       {/* Top View Navigation & Layout Mode Switcher Bar */}
-      <div className="bg-white/55 backdrop-blur-xl border-b border-white/40 sticky top-16 z-30 px-3 sm:px-6 py-2 shadow-xs">
+      <div className="bg-white border-b-2 border-slate-300 sticky top-16 z-30 px-3 sm:px-6 py-2 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           {/* Main 3 Navigation Tabs */}
           <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
             {/* Tab 1: Daftar Berkas */}
             <button
               onClick={() => setActiveView('LIST')}
-              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                 activeView === 'LIST'
-                  ? 'bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-md ring-2 ring-blue-400/40'
-                  : 'text-slate-700 hover:text-blue-950 bg-white/50 hover:bg-white/70 border border-white/60 shadow-xs'
+                  ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-500/40'
+                  : 'text-slate-900 hover:bg-slate-100 bg-slate-50 border border-slate-300 shadow-2xs'
               }`}
             >
               <Layers className="w-4 h-4 shrink-0" />
               <span>1. Daftar Berkas OPD</span>
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-semibold ${
-                  activeView === 'LIST' ? 'bg-white text-blue-700' : 'bg-blue-100/90 text-blue-900'
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                  activeView === 'LIST' ? 'bg-white text-blue-800' : 'bg-blue-100 text-blue-900 border border-blue-200'
                 }`}
               >
                 {currentOpdDocsCount}
@@ -481,18 +481,18 @@ export default function App() {
             {/* Tab 2: Pratinjau Dokumen (Penampil Besar) */}
             <button
               onClick={() => setActiveView('VIEWER')}
-              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                 activeView === 'VIEWER'
-                  ? 'bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-md ring-2 ring-blue-400/40'
-                  : 'text-slate-700 hover:text-blue-950 bg-white/50 hover:bg-white/70 border border-white/60 shadow-xs'
+                  ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-500/40'
+                  : 'text-slate-900 hover:bg-slate-100 bg-slate-50 border border-slate-300 shadow-2xs'
               }`}
             >
               <FileText className="w-4 h-4 shrink-0" />
               <span>2. Penampil Dokumen (Lebar &amp; Jelas)</span>
               {selectedDocument && (
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded font-mono truncate max-w-[100px] hidden md:inline font-semibold ${
-                    activeView === 'VIEWER' ? 'bg-blue-800 text-white' : 'bg-white/80 text-slate-800'
+                  className={`text-[10px] px-1.5 py-0.2 rounded font-mono truncate max-w-[100px] hidden md:inline font-bold ${
+                    activeView === 'VIEWER' ? 'bg-blue-900 text-white' : 'bg-slate-200 text-slate-900'
                   }`}
                 >
                   v{selectedDocument.currentVersion}
@@ -503,21 +503,25 @@ export default function App() {
             {/* Tab 3: Formulir & Lembar Verifikasi */}
             <button
               onClick={() => setActiveView('FORM')}
-              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                 activeView === 'FORM'
-                  ? 'bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-md ring-2 ring-blue-400/40'
-                  : 'text-slate-700 hover:text-blue-950 bg-white/50 hover:bg-white/70 border border-white/60 shadow-xs'
+                  ? 'bg-blue-700 text-white shadow-md ring-2 ring-blue-500/40'
+                  : 'text-slate-900 hover:bg-slate-100 bg-slate-50 border border-slate-300 shadow-2xs'
               }`}
             >
               <FileCheck className="w-4 h-4 shrink-0" />
-              <span>3. Formulir &amp; Lembar Verifikasi</span>
+              <span>
+                {currentUser.role === 'VERIFIKATOR'
+                  ? '3. Lembar Verifikasi & Pengesahan (Admin)'
+                  : '3. Informasi Status & Catatan Verifikasi'}
+              </span>
               {selectedDocument && (
                 <span
                   className={`text-[9px] px-1.5 py-0.5 rounded-full uppercase font-mono font-bold ${
                     selectedDocument.status === 'APPROVED'
-                      ? 'bg-emerald-500 text-white'
+                      ? 'bg-emerald-600 text-white'
                       : selectedDocument.status === 'REVISION'
-                      ? 'bg-amber-500 text-white'
+                      ? 'bg-amber-600 text-white'
                       : 'bg-blue-500 text-white'
                   }`}
                 >

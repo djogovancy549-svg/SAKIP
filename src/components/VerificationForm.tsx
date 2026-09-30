@@ -103,6 +103,7 @@ export function VerificationForm({
   const [syncFeedback, setSyncFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedReg, setCopiedReg] = useState<boolean>(false);
 
+  const isVerifier = appRole === 'VERIFIKATOR';
   const isApproved = document.status === 'APPROVED';
   const isRevision = document.status === 'REVISION';
   const isPending = document.status === 'PENDING';
@@ -110,7 +111,7 @@ export function VerificationForm({
   const isLocked = document.isLocked || isApproved;
 
   const handleToggleChecklist = (id: string) => {
-    if (isLocked) return;
+    if (isLocked || !isVerifier) return;
     setChecklist((prev) => ({
       ...prev,
       [id]: !prev[id],
@@ -118,7 +119,7 @@ export function VerificationForm({
   };
 
   const handleSelectAll = (check: boolean) => {
-    if (isLocked) return;
+    if (isLocked || !isVerifier) return;
     const updated: Record<string, boolean> = {};
     DEFAULT_CHECKLIST.forEach((item) => {
       updated[item.id] = check;
@@ -127,12 +128,12 @@ export function VerificationForm({
   };
 
   const handleInsertTemplateNote = (text: string) => {
-    if (isLocked) return;
+    if (isLocked || !isVerifier) return;
     setNotes((prev) => (prev ? `${prev}\n${text}` : text));
   };
 
   const handleProcessDecision = async (newStatus: VerificationStatus) => {
-    if (isLocked) return;
+    if (isLocked || !isVerifier) return;
 
     setIsSubmitting(true);
     setSyncFeedback(null);
@@ -326,17 +327,30 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
       </div>
 
       {/* Scrollable Form Body - Clean High Contrast Background */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs text-slate-700 bg-slate-50/50">
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs text-slate-900 bg-white">
+        {/* OPD ROLE NOTICE BANNER */}
+        {!isVerifier && (
+          <div className="p-3.5 bg-blue-50 border-2 border-blue-400 rounded-xl flex items-center gap-3 text-blue-950 font-bold text-xs shadow-xs">
+            <Lock className="w-5 h-5 text-blue-700 shrink-0" />
+            <div>
+              <span className="block font-black text-blue-900 uppercase">AKSES KHUSUS DINAS PEMOHON (BACA SAJA)</span>
+              <span className="font-medium text-slate-800 text-[11px]">
+                Sebagai akun OPD ({document.opdName}), Anda dapat membaca status, catatan revisi, dan mengunggah berkas perbaikan. Hak pengesahan dan verifikasi dokumen khusus dipegang oleh Admin / Petugas Verifikator SAKIP.
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* SECTION 1: Status & Workflow Indicator */}
         <div
-          className={`p-4 rounded-2xl border flex items-start gap-3 shadow-xs ${
+          className={`p-4 rounded-2xl border-2 flex items-start gap-3 shadow-xs ${
             isApproved
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+              ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
               : isRevision
-              ? 'bg-amber-50 border-amber-300 text-amber-950'
+              ? 'bg-amber-50 border-amber-400 text-amber-950'
               : isRejected
-              ? 'bg-rose-50 border-rose-300 text-rose-950'
-              : 'bg-blue-50 border-blue-300 text-blue-950'
+              ? 'bg-rose-50 border-rose-400 text-rose-950'
+              : 'bg-blue-50 border-blue-400 text-blue-950'
           }`}
         >
           {isApproved ? (
@@ -350,7 +364,7 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
           )}
 
           <div className="space-y-1 flex-1">
-            <div className="font-bold text-xs flex items-center justify-between">
+            <div className="font-black text-xs flex items-center justify-between">
               <span>
                 {isApproved && 'Tahap Selesai: Dokumen Terverifikasi & Terkunci'}
                 {isRevision && 'Tahap Pemeriksaan: Dokumen Butuh Revisi Dinas'}
@@ -358,12 +372,12 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
                 {isRejected && 'Dokumen Ditolak (Tidak Memenuhi Syarat)'}
               </span>
               {isLocked && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-300 font-bold">
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 font-black">
                   <Lock className="w-3 h-3" /> TERKUNCI PERMANEN
                 </span>
               )}
             </div>
-            <p className="text-[11px] leading-relaxed opacity-90">
+            <p className="text-[11px] leading-relaxed font-bold text-slate-800">
               {isApproved && 'Dokumen telah diperiksa dan diverifikasi secara sah. Berkas terkunci permanen tidak dapat diubah lagi, dan tanda registrasi resmi telah diterbitkan.'}
               {isRevision && 'Bagian verifikasi telah memberikan catatan perbaikan. Dinas dapat mengunggah kembali dokumen hasil revisi melalui tombol di bawah.'}
               {isPending && 'Verifikator memeriksa lembar dokumen. Jika ada kekurangan, berikan catatan perbaikan. Jika telah lengkap, sahkan dokumen.'}
@@ -530,12 +544,12 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Instrumen Checklist Pemeriksaan</span>
             </div>
-            {!isLocked && (
+            {!isLocked && isVerifier && (
               <div className="flex items-center gap-2 text-[11px]">
                 <button
                   type="button"
                   onClick={() => handleSelectAll(true)}
-                  className="text-blue-600 hover:underline font-semibold cursor-pointer"
+                  className="text-blue-600 hover:underline font-bold cursor-pointer"
                 >
                   Pilih Semua
                 </button>
@@ -543,7 +557,7 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
                 <button
                   type="button"
                   onClick={() => handleSelectAll(false)}
-                  className="text-slate-500 hover:underline cursor-pointer"
+                  className="text-slate-500 hover:underline font-bold cursor-pointer"
                 >
                   Kosongkan
                 </button>
@@ -557,27 +571,27 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
               return (
                 <label
                   key={item.id}
-                  className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
-                    isLocked ? 'cursor-default opacity-85' : 'cursor-pointer hover:border-blue-300'
+                  className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all ${
+                    isLocked || !isVerifier ? 'cursor-default' : 'cursor-pointer hover:border-blue-400'
                   } ${
                     isChecked
-                      ? 'bg-blue-50/60 border-blue-300 text-slate-900 shadow-2xs'
-                      : 'bg-white border-slate-200 text-slate-600'
+                      ? 'bg-blue-50 border-blue-400 text-slate-950 font-bold shadow-2xs'
+                      : 'bg-white border-slate-300 text-slate-800'
                   }`}
                 >
                   <input
                     type="checkbox"
-                    disabled={isLocked}
+                    disabled={isLocked || !isVerifier}
                     checked={isChecked}
                     onChange={() => handleToggleChecklist(item.id)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-blue-500/20 accent-blue-600 disabled:opacity-70 cursor-pointer"
+                    className="mt-0.5 h-4 w-4 rounded border-slate-400 bg-white text-blue-600 focus:ring-blue-500/20 accent-blue-600 disabled:opacity-70 cursor-pointer"
                   />
                   <div className="flex-1 text-xs">
-                    <span className="font-semibold text-slate-800">{item.label}</span>
-                    <div className="mt-0.5 flex items-center gap-2 text-[10px] text-slate-500 font-mono">
+                    <span className="font-bold text-slate-950">{item.label}</span>
+                    <div className="mt-0.5 flex items-center gap-2 text-[10px] text-slate-700 font-mono font-bold">
                       <span>Kategori: {item.category}</span>
                       <span>·</span>
-                      <span className={item.required ? 'text-amber-700 font-bold' : 'text-slate-500'}>
+                      <span className={item.required ? 'text-amber-800 font-black' : 'text-slate-600'}>
                         {item.required ? 'Syarat Wajib' : 'Tambahan'}
                       </span>
                     </div>
@@ -591,16 +605,16 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
         {/* SECTION 6: CATATAN PEMERIKSAAN YANG HENDAK DIUBAH */}
         <div className="space-y-2 border-t border-slate-200 pt-3">
           <div className="flex items-center justify-between">
-            <label htmlFor={notesId} className="font-bold text-slate-900 flex items-center gap-1.5">
+            <label htmlFor={notesId} className="font-black text-slate-950 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-blue-600" />
               <span>Catatan Pemeriksaan &amp; Butir yang Hendak Diubah</span>
             </label>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[10px] text-slate-600 font-mono font-bold">
               *Tercatat di Google Sheet &amp; Riwayat
             </span>
           </div>
 
-          {!isLocked && (
+          {!isLocked && isVerifier && (
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
@@ -609,7 +623,7 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
                     'Perbaikan Dokumen: Harap melampirkan lembar pengesahan BAST dan bukti evaluasi SAKIP sebelum verifikasi disahkan.'
                   )
                 }
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-[10px] rounded-lg text-slate-700 transition-colors font-medium cursor-pointer shadow-2xs"
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-[10px] rounded-lg text-slate-900 transition-colors font-bold cursor-pointer shadow-2xs"
               >
                 + Butuh Lampiran SAKIP/BAST
               </button>
@@ -620,7 +634,7 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
                     'Perbaikan Format: Nomor register naskah dinas dan format tanda tangan belum sesuai Permendagri No. 1 Tahun 2023.'
                   )
                 }
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-[10px] rounded-lg text-slate-700 transition-colors font-medium cursor-pointer shadow-2xs"
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-[10px] rounded-lg text-slate-900 transition-colors font-bold cursor-pointer shadow-2xs"
               >
                 + Koreksi Format Naskah
               </button>
@@ -631,7 +645,7 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
                     'Hasil Pemeriksaan: Seluruh berkas telah lengkap, valid, dan memenuhi syarat untuk diverifikasi dan disahkan.'
                   )
                 }
-                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-[10px] rounded-lg text-slate-700 transition-colors font-medium cursor-pointer shadow-2xs"
+                className="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 text-[10px] rounded-lg text-slate-900 transition-colors font-bold cursor-pointer shadow-2xs"
               >
                 + Berkas Lengkap &amp; Siap Sah
               </button>
@@ -641,62 +655,78 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
           <textarea
             id={notesId}
             rows={3}
-            disabled={isLocked}
+            disabled={isLocked || !isVerifier}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ketik catatan telaah, hasil pemeriksaan berkas, atau rincian butir yang harus diubah/direvisi oleh dinas..."
-            className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 disabled:opacity-60 shadow-xs"
+            placeholder={
+              isVerifier
+                ? 'Ketik catatan telaah, hasil pemeriksaan berkas, atau rincian butir yang harus diubah/direvisi oleh dinas...'
+                : 'Catatan dari Petugas Verifikator...'
+            }
+            className="w-full bg-white border-2 border-slate-300 rounded-xl p-3 text-xs text-slate-950 font-bold placeholder:text-slate-500 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-500/20 disabled:bg-slate-50 disabled:text-slate-900 shadow-xs"
           />
         </div>
 
         {/* SECTION 7: KEPUTUSAN VERIFIKASI & PENGESAHAN */}
         {!isLocked ? (
-          <div className="space-y-2 pt-3 border-t border-slate-200">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-              Tindakan Pemeriksa &amp; Verifikator :
+          isVerifier ? (
+            <div className="space-y-2 pt-3 border-t border-slate-200">
+              <div className="text-[11px] font-black uppercase tracking-wider text-slate-900">
+                Tindakan Pemeriksa &amp; Verifikator :
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {/* TOMBOL 1: SETUJUI & SAHKAN */}
+                <button
+                  type="button"
+                  onClick={() => handleProcessDecision('APPROVED')}
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center gap-1.5 py-3 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer text-xs active:scale-95"
+                  title="Sahkan dokumen dan terbitkan tanda registrasi resmi (dokumen terkunci permanen)"
+                >
+                  <ShieldCheck className="w-4 h-4 shrink-0" />
+                  <span>SETUJUI &amp; SAHKAN</span>
+                </button>
+
+                {/* TOMBOL 2: KEMBALIKAN UNTUK REVISI */}
+                <button
+                  type="button"
+                  onClick={() => handleProcessDecision('REVISION')}
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center gap-1.5 py-3 px-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer text-xs active:scale-95"
+                  title="Kembalikan berkas ke dinas dengan catatan perbaikan untuk diunggah ulang"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>KEMBALIKAN REVISI</span>
+                </button>
+
+                {/* TOMBOL 3: TOLAK BERKAS */}
+                <button
+                  type="button"
+                  onClick={() => handleProcessDecision('REJECTED')}
+                  disabled={isSubmitting}
+                  className="flex items-center justify-center gap-1.5 py-3 px-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer text-xs active:scale-95"
+                  title="Tolak berkas secara resmi"
+                >
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>TOLAK DOKUMEN</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-700 font-bold italic">
+                *Catatan: Mengklik "SETUJUI &amp; SAHKAN" akan mengunci dokumen secara permanen dan menerbitkan Tanda Registrasi Resmi SAKIP Nagekeo.
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {/* TOMBOL 1: SETUJUI & SAHKAN */}
-              <button
-                type="button"
-                onClick={() => handleProcessDecision('APPROVED')}
-                disabled={isSubmitting}
-                className="flex items-center justify-center gap-1.5 py-3 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer text-xs active:scale-95"
-                title="Sahkan dokumen dan terbitkan tanda registrasi resmi (dokumen terkunci permanen)"
-              >
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                <span>SETUJUI &amp; SAHKAN</span>
-              </button>
-
-              {/* TOMBOL 2: KEMBALIKAN UNTUK REVISI */}
-              <button
-                type="button"
-                onClick={() => handleProcessDecision('REVISION')}
-                disabled={isSubmitting}
-                className="flex items-center justify-center gap-1.5 py-3 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer text-xs active:scale-95"
-                title="Kembalikan berkas ke dinas dengan catatan perbaikan untuk diunggah ulang"
-              >
-                <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>KEMBALIKAN REVISI</span>
-              </button>
-
-              {/* TOMBOL 3: TOLAK BERKAS */}
-              <button
-                type="button"
-                onClick={() => handleProcessDecision('REJECTED')}
-                disabled={isSubmitting}
-                className="flex items-center justify-center gap-1.5 py-3 px-3 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-bold rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer text-xs active:scale-95"
-                title="Tolak berkas secara resmi"
-              >
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                <span>TOLAK DOKUMEN</span>
-              </button>
+          ) : (
+            <div className="p-4 bg-slate-100 border-2 border-slate-300 rounded-2xl text-center space-y-2 shadow-xs">
+              <ShieldCheck className="w-6 h-6 text-blue-700 mx-auto" />
+              <div className="font-black text-slate-950 text-xs uppercase tracking-wide">
+                Pengesahan &amp; Keputusan Khusus Admin / Petugas Verifikator
+              </div>
+              <p className="text-[11px] text-slate-800 font-bold max-w-md mx-auto leading-relaxed">
+                Akun OPD ({document.opdName}) hanya dapat membaca lembar verifikasi ini. Keputusan pengesahan, revisi, atau penolakan dokumen secara resmi dilakukan oleh Admin Verifikator SAKIP Nagekeo.
+              </p>
             </div>
-            <p className="text-[10px] text-slate-500 italic">
-              *Catatan: Mengklik "SETUJUI &amp; SAHKAN" akan mengunci dokumen secara permanen dan menerbitkan Tanda Registrasi Resmi SAKIP Nagekeo.
-            </p>
-          </div>
+          )
         ) : (
           <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-xs text-emerald-900">
             <span className="flex items-center gap-2 font-medium">

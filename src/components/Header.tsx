@@ -70,7 +70,7 @@ export function Header({
   }, []);
 
   return (
-    <header className="bg-white/55 backdrop-blur-xl border-b border-white/40 shadow-sm sticky top-0 z-40 select-none">
+    <header className="bg-white border-b border-slate-300 shadow-sm sticky top-0 z-40 select-none text-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
         {/* Zone 1: Logo & Brand */}
         <div className="flex items-center gap-3 shrink-0">
@@ -91,7 +91,7 @@ export function Header({
         <div className="flex items-center gap-2">
           {isDinas ? (
             // Dinas Mode: Clean locked badge
-            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white/60 backdrop-blur-md border border-white/60 rounded-xl text-xs shadow-xs">
+            <div className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs shadow-xs">
               <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
               <div className="text-left">
                 <span className="text-[9px] text-slate-600 block uppercase font-mono font-bold">Instansi OPD:</span>
@@ -109,7 +109,7 @@ export function Header({
                   setIsServerMenuOpen(false);
                   setIsProfileOpen(false);
                 }}
-                className="flex items-center gap-2.5 px-3.5 py-1.5 bg-white/60 hover:bg-white/80 backdrop-blur-md border border-white/60 rounded-xl text-xs transition-colors cursor-pointer shadow-xs"
+                className="flex items-center gap-2.5 px-3.5 py-1.5 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl text-xs transition-colors cursor-pointer shadow-xs font-bold"
                 title="Pilih Antrean Dinas / OPD"
               >
                 <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
@@ -123,14 +123,14 @@ export function Header({
               </button>
 
               {isOpdDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white/90 backdrop-blur-xl border border-white/80 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="p-3 bg-blue-50/70 border-b border-blue-100 text-xs">
+                <div className="absolute left-0 mt-2 w-72 sm:w-80 bg-white border-2 border-slate-300 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="p-3 bg-blue-50 border-b border-blue-200 text-xs">
                     <div className="font-bold text-blue-950">Pilih Antrean Dinas / OPD</div>
-                    <div className="text-[11px] text-slate-500">
+                    <div className="text-[11px] text-slate-600 font-medium">
                       Pilih instansi untuk memeriksa antrean berkas
                     </div>
                   </div>
-                  <div className="max-h-72 overflow-y-auto divide-y divide-blue-50 p-1">
+                  <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 p-1">
                     {OPD_LIST.map((opd) => {
                       const isCurrent = opd.id === activeOpd.id;
                       return (
@@ -142,18 +142,18 @@ export function Header({
                           }}
                           className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between text-xs transition-colors cursor-pointer ${
                             isCurrent
-                              ? 'bg-blue-50 text-blue-900 font-bold'
-                              : 'text-slate-700 hover:bg-slate-50'
+                              ? 'bg-blue-50 text-blue-900 font-bold border border-blue-200'
+                              : 'text-slate-800 hover:bg-slate-50'
                           }`}
                         >
                           <div className="truncate mr-2">
-                            <div className="font-semibold text-xs text-slate-900">{opd.name}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">
+                            <div className="font-bold text-xs text-slate-900">{opd.name}</div>
+                            <div className="text-[10px] text-slate-500 font-mono font-medium">
                               {opd.category} · {opd.code}
                             </div>
                           </div>
                           {isCurrent && (
-                            <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-mono shrink-0 font-bold">
+                            <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-mono shrink-0 font-bold">
                               Aktif
                             </span>
                           )}
@@ -187,10 +187,10 @@ export function Header({
                 setIsOpdDropdownOpen(false);
                 setIsProfileOpen(false);
               }}
-              className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-xs ${
+              className={`flex items-center gap-1.5 px-3 py-2 border rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs ${
                 isServerMenuOpen
-                  ? 'bg-blue-100/90 text-blue-900 border-blue-300'
-                  : 'bg-white/60 hover:bg-white/80 backdrop-blur-md text-slate-800 border-white/60'
+                  ? 'bg-blue-100 text-blue-900 border-blue-400'
+                  : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
               }`}
               title="Menu Server, Google Drive, dan Integrasi Spreadsheet"
             >
@@ -201,10 +201,10 @@ export function Header({
 
             {/* Server Menu Dropdown Content */}
             {isServerMenuOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white/90 backdrop-blur-xl border border-white/80 rounded-2xl shadow-xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3 py-2 border-b border-blue-50 mb-1">
+              <div className="absolute right-0 mt-2 w-72 bg-white border-2 border-slate-300 rounded-2xl shadow-xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-2 border-b border-slate-100 mb-1">
                   <div className="font-bold text-blue-950 text-xs">Pusat Server &amp; Integrasi</div>
-                  <div className="text-[10px] text-slate-500">Akses penyimpanan Google Drive &amp; Webhook</div>
+                  <div className="text-[10px] text-slate-600 font-medium">Akses penyimpanan Google Drive &amp; Webhook</div>
                 </div>
 
                 <div className="space-y-1">
@@ -215,12 +215,12 @@ export function Header({
                       setIsServerMenuOpen(false);
                       onOpenDriveExplorer();
                     }}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-blue-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
                   >
                     <FolderTree className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
                     <div>
                       <div className="font-bold text-slate-900">Penjelajah Google Drive</div>
-                      <div className="text-[10px] text-slate-500">Lihat arsip berkas di server Google Drive</div>
+                      <div className="text-[10px] text-slate-600 font-medium">Lihat arsip berkas di server Google Drive</div>
                     </div>
                   </button>
 
@@ -232,12 +232,12 @@ export function Header({
                         setIsServerMenuOpen(false);
                         onOpenAdminFolderRegistration();
                       }}
-                      className="w-full text-left p-2.5 rounded-xl hover:bg-blue-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
                     >
-                      <FolderPlus className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                      <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                       <div>
                         <div className="font-bold text-slate-900">Pendaftaran Akun &amp; Folder Dinas</div>
-                        <div className="text-[10px] text-slate-500">Daftarkan akun login &amp; mapping folder OPD</div>
+                        <div className="text-[10px] text-slate-600 font-medium">Daftarkan akun login &amp; mapping folder OPD</div>
                       </div>
                     </button>
                   )}
@@ -249,12 +249,12 @@ export function Header({
                       setIsServerMenuOpen(false);
                       onOpenGoogleSheetModal();
                     }}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-blue-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
                   >
                     <Database className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
                     <div>
                       <div className="font-bold text-slate-900">Google Spreadsheet &amp; Webhook</div>
-                      <div className="text-[10px] text-slate-500">Konfigurasi endpoint webhook &amp; script sync</div>
+                      <div className="text-[10px] text-slate-600 font-medium">Konfigurasi endpoint webhook &amp; script sync</div>
                     </div>
                   </button>
                 </div>
