@@ -264,8 +264,9 @@ export function VerificationForm({
 
     const reg = document.registrationSeal;
     const verifiedContent = `========================================================================
-PEMERINTAH DAERAH - SISTEM INFORMASI VERIFIKASI DOKUMEN (SIMVERIF OPD)
-LEMBAR TANDA REGISTRASI PEMERIKSAAN & PENGESAHAN DOKUMEN RESMI
+PEMERINTAH KABUPATEN NAGEKEO - SAKIP NAGEKEO
+SISTEM INFORMASI ADMINISTRASI DAN PENGAWASAN SAKIP
+LEMBAR TANDA REGISTRASI PEMERIKSAAN & PENGESAHAN DOKUMEN SAKIP RESMI
 ========================================================================
 
 KODE REGISTRASI RESMI : ${reg?.regNumber || 'REG-TERVERIFIKASI-2026'}

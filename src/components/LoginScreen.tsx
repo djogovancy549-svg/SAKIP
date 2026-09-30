@@ -76,10 +76,10 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
             <ShieldCheck className="w-8 h-8" />
           </div>
           <h1 className="text-xl md:text-2xl font-black tracking-tight text-white uppercase drop-shadow-md">
-            SIMVERIF OPD PEMDA
+            SAKIP NAGEKEO
           </h1>
           <p className="text-xs text-sky-100 max-w-sm mx-auto font-medium drop-shadow-sm">
-            Sistem Autentikasi Mandiri Pemeriksaan &amp; Verifikasi Dokumen Terpadu
+            Sistem Informasi Administrasi dan Pengawasan SAKIP Kabupaten Nagekeo
           </p>
         </div>
 

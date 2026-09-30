@@ -79,10 +79,10 @@ export function Header({
           </div>
           <div className="leading-tight">
             <span className="text-base font-black tracking-tight text-blue-950 block">
-              SIMVERIF OPD
+              SAKIP NAGEKEO
             </span>
             <span className="text-[10px] font-mono text-blue-700 tracking-wider uppercase font-bold">
-              Verifikasi Dokumen Pemda
+              Administrasi &amp; Pengawasan SAKIP
             </span>
           </div>
         </div>
