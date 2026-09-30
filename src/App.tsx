@@ -363,9 +363,47 @@ export default function App() {
     };
   }, []);
 
-  // Automatic Firestore data seeder on first install
+  // Automatic Firestore data seeder & migration on first install
   useEffect(() => {
-    const seedIfEmpty = async () => {
+    const seedAndMigrate = async () => {
+      // 1. Migrate local localStorage data to shared Cloud Firestore
+      try {
+        const localDocs = localStorage.getItem(STORAGE_KEY_DOCS);
+        if (localDocs) {
+          const parsedDocs: DocumentItem[] = JSON.parse(localDocs);
+          if (parsedDocs && parsedDocs.length > 0) {
+            console.log('⚡ Migrating local documents to shared Cloud Firestore...');
+            for (const docItem of parsedDocs) {
+              await saveDocumentToFirestore(docItem);
+            }
+          }
+        }
+
+        const localFolders = localStorage.getItem(STORAGE_KEY_FOLDER_REGISTRATIONS);
+        if (localFolders) {
+          const parsedFolders: Record<string, OpdFolderRegistration> = JSON.parse(localFolders);
+          if (parsedFolders) {
+            console.log('⚡ Migrating local folders to shared Cloud Firestore...');
+            for (const key of Object.keys(parsedFolders)) {
+              await saveFolderToFirestore(parsedFolders[key]);
+            }
+          }
+        }
+
+        const savedWebhook = localStorage.getItem('simverif_google_sheets_webhook_url');
+        const savedDriveId = localStorage.getItem('simverif_google_drive_folder_id');
+        if (savedWebhook || savedDriveId) {
+          console.log('⚡ Migrating Google settings to shared Cloud Firestore...');
+          await saveGoogleSettingsToFirestore({
+            webhookUrl: savedWebhook ? savedWebhook.trim() : 'https://script.google.com/macros/s/AKfycbx_94SKv35eQGy1srb7xCC8uGiSTRnvFnHmBMW5PiRRaN0ImN05QsXVe4-rQpRAKWEl7w/exec',
+            driveFolderId: savedDriveId ? savedDriveId.trim() : '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
+          });
+        }
+      } catch (e) {
+        console.warn('Migration to cloud error:', e);
+      }
+
+      // 2. Fallback Seeder if Firestore is empty
       const unsub = listenToDocuments(async (liveDocs) => {
         if (liveDocs.length === 0) {
           console.log('🌱 Seeding initial documents to Firestore...');
@@ -376,7 +414,7 @@ export default function App() {
         unsub();
       });
     };
-    seedIfEmpty();
+    seedAndMigrate();
   }, []);
 
   const syncWithGoogleSheet = async () => {

@@ -28,7 +28,13 @@ interface LoginScreenProps {
 const findMatchingOpd = (userStr: string): { opdId: string; opdName: string } => {
   const clean = userStr.trim().toLowerCase();
   
-  if (clean.includes('setda') || clean.includes('admin') || clean.includes('djogovancy')) {
+  if (
+    clean.includes('setda') ||
+    clean.includes('admin') ||
+    clean.includes('djogovancy') ||
+    clean.includes('babilasowa') ||
+    clean.includes('babilosawa')
+  ) {
     return {
       opdId: 'SETDA',
       opdName: 'SEKRETARIAT DAERAH',
