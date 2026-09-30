@@ -1,5 +1,10 @@
 import { OpdFolderRegistration } from '../types';
 
+/**
+ * Registrasi Folder Google Drive Awal
+ * Hanya memuat 1 folder yang sudah didaftarkan admin.
+ * OPD lainnya berstatus kosong (belum didaftarkan) sampai didaftarkan oleh admin.
+ */
 export const INITIAL_OPD_FOLDER_REGISTRATIONS: Record<string, OpdFolderRegistration> = {
   SETDA: {
     opdId: 'SETDA',
@@ -7,18 +12,8 @@ export const INITIAL_OPD_FOLDER_REGISTRATIONS: Record<string, OpdFolderRegistrat
     driveFolderUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
     driveFolderId: '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
     driveFolderName: 'Google Drive Induk / 01_SETDA',
-    registeredByAdmin: 'Admin Verifikator Pusat (Drs. Lukas Mbulu, M.Si.)',
-    registeredAt: '2026-09-01 08:30',
-    notes: 'Folder resmi pemberkasan Sekretariat Daerah Kabupaten Nagekeo',
-  },
-  DISKOMINFO: {
-    opdId: 'DISKOMINFO',
-    opdName: 'DINAS KOMUNIKASI DAN INFORMATIKA',
-    driveFolderUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-    driveFolderId: '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-    driveFolderName: 'Google Drive Induk / 17_DISKOMINFO',
-    registeredByAdmin: 'Admin Verifikator Pusat (Drs. Lukas Mbulu, M.Si.)',
-    registeredAt: '2026-09-01 08:35',
-    notes: 'Folder resmi pemberkasan Kominfo, naskah TIK, dan SPBE',
+    registeredByAdmin: 'Administrator SAKIP Nagekeo',
+    registeredAt: '2026-09-29 19:30',
+    notes: 'Folder resmi Google Drive SAKIP Kabupaten Nagekeo',
   },
 };
