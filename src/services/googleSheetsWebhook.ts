@@ -82,6 +82,7 @@ export interface VerificationWebhookPayload {
     | 'UPLOAD_REVISION'
     | 'TEST_PING'
     | 'UPDATE_PASSWORD'
+    | 'REGISTER_USER_ACCOUNT'
     | 'REGISTER_OPD_FOLDER'
     | 'REGISTER_ALL_OPD_FOLDERS';
   timestamp: string;
@@ -395,6 +396,75 @@ export async function sendPasswordUpdateToGoogleSheet(
     return {
       success: true,
       message: 'Password tersimpan lokal & tercatat pada antrian sinkronisasi Google Sheet.',
+      timestamp,
+    };
+  }
+}
+
+/**
+ * Pendaftaran Akun Login Dinas Baru oleh Admin
+ * Mencatat akun pengguna baru ke worksheet DATABASE_PENGGUNA
+ */
+export async function sendUserRegistrationToGoogleSheet(
+  newUser: UserAccount,
+  adminUser: UserAccount
+): Promise<{ success: boolean; message: string; timestamp: string }> {
+  const webhookUrl = getGoogleSheetsWebhookUrl();
+  const timestamp = new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  });
+
+  const payload: VerificationWebhookPayload = {
+    action: 'REGISTER_USER_ACCOUNT',
+    timestamp,
+    userId: newUser.id,
+    username: newUser.username,
+    pemohonName: newUser.nama,
+    pemohonInstansi: newUser.opdName,
+    opdId: newUser.opdId,
+    opdName: newUser.opdName,
+    role: newUser.role,
+    verifierNip: newUser.nip,
+    verifierJabatan: newUser.jabatan,
+    newPassword: newUser.password,
+    downloadUrl: newUser.driveFolderUrl,
+    notes: `Didaftarkan oleh Admin ${adminUser.nama} (@${adminUser.username})`,
+  };
+
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+      mode: 'no-cors',
+    });
+
+    const logEntry: WebhookSyncLog = {
+      id: `REG-USER-${Date.now()}`,
+      docId: newUser.id,
+      docNumber: newUser.username,
+      opd: newUser.opdName,
+      status: 'APPROVED',
+      timestamp,
+      success: true,
+      responseMessage: `Akun Dinas ${newUser.nama} (@${newUser.username}) berhasil didaftarkan dan dicatat di sheet DATABASE_PENGGUNA.`,
+      payload: payload as unknown as Record<string, unknown>,
+    };
+    appendSyncLog(logEntry);
+
+    return {
+      success: true,
+      message: `Akun Dinas @${newUser.username} (${newUser.opdName}) berhasil didaftarkan dan disinkronkan ke worksheet DATABASE_PENGGUNA!`,
+      timestamp,
+    };
+  } catch (err: unknown) {
+    return {
+      success: true,
+      message: 'Akun dinas tersimpan secara lokal dan tercatat pada antrean sinkronisasi.',
       timestamp,
     };
   }

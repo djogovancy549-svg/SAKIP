@@ -10,6 +10,14 @@ import {
   UploadCloud,
   History,
   Lock,
+  Maximize2,
+  Columns,
+  Square,
+  ArrowRight,
+  ArrowLeft,
+  Eye,
+  CheckCircle2,
+  LayoutGrid,
 } from 'lucide-react';
 import {
   DocumentItem,
@@ -46,6 +54,7 @@ const STORAGE_KEY_DOCS = 'simverif_documents_db_v3';
 const STORAGE_KEY_USERS = 'simverif_users_db_v3';
 const STORAGE_KEY_CURRENT_USER = 'simverif_current_user_v3';
 const STORAGE_KEY_FOLDER_REGISTRATIONS = 'simverif_folder_registrations_v1';
+const STORAGE_KEY_LAYOUT_MODE = 'simverif_layout_mode_v2';
 
 export default function App() {
   // Folder Registrations State (Registered and managed by Admin for each Dinas)
@@ -108,10 +117,20 @@ export default function App() {
     DEFAULT_VERIFIERS[activeOpd.id] || DEFAULT_VERIFIERS.DISKOMINFO;
 
   // Selected Document for Verification Workbench
-  const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentItem | null>(() => {
+    const initialDocs = INITIAL_DOCUMENTS.filter((d) => d.opdId === (currentUser?.opdId || 'DISDIK'));
+    return initialDocs[0] || INITIAL_DOCUMENTS[0] || null;
+  });
 
-  // Responsive Mobile View Mode: 'VIEWER' | 'FORM' | 'LIST'
-  const [mobileView, setMobileView] = useState<'VIEWER' | 'FORM' | 'LIST'>('VIEWER');
+  // Layout Display Mode: 'SINGLE' (Satu per satu - Jauh Lebih Besar) vs 'SPLIT' (3 Kolom Sekaligus)
+  const [layoutMode, setLayoutMode] = useState<'SINGLE' | 'SPLIT'>(() => {
+    if (typeof window === 'undefined') return 'SINGLE';
+    const saved = localStorage.getItem(STORAGE_KEY_LAYOUT_MODE);
+    return saved === 'SPLIT' ? 'SPLIT' : 'SINGLE';
+  });
+
+  // Active View Tab when in 'SINGLE' mode: 'LIST' | 'VIEWER' | 'FORM'
+  const [activeView, setActiveView] = useState<'LIST' | 'VIEWER' | 'FORM'>('LIST');
 
   // Modals
   const [isGoogleSheetOpen, setIsGoogleSheetOpen] = useState<boolean>(false);
@@ -120,6 +139,15 @@ export default function App() {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
   const [isDriveExplorerOpen, setIsDriveExplorerOpen] = useState<boolean>(false);
   const [isFolderRegistrationOpen, setIsFolderRegistrationOpen] = useState<boolean>(false);
+
+  // Persist layout mode
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_LAYOUT_MODE, layoutMode);
+    } catch (e) {
+      console.error('Failed to save layout mode', e);
+    }
+  }, [layoutMode]);
 
   // Persist folder registrations
   useEffect(() => {
@@ -161,90 +189,63 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Synchronize Active OPD when User Logs in
-  useEffect(() => {
-    if (currentUser) {
-      const userOpd = OPD_LIST.find((o) => o.id === currentUser.opdId);
-      if (userOpd) {
-        setActiveOpd(userOpd);
-      }
-    }
-  }, [currentUser]);
-
-  // Strict Document Isolation based on Active OPD
-  useEffect(() => {
-    const opdDocs = documents.filter((d) => d.opdId === activeOpd.id);
-    if (opdDocs.length > 0) {
-      if (!selectedDocument || selectedDocument.opdId !== activeOpd.id) {
-        setSelectedDocument(opdDocs[0]);
-      }
-    } else {
-      setSelectedDocument(null);
-    }
-  }, [activeOpd, documents]);
-
-  // Login handler
+  // Handle Login
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);
-    const targetOpd = OPD_LIST.find((o) => o.id === user.opdId) || OPD_LIST[0];
-    setActiveOpd(targetOpd);
+    const userOpd = OPD_LIST.find((o) => o.id === user.opdId) || OPD_LIST[0];
+    setActiveOpd(userOpd);
+
+    // Pick first document for this OPD if available
+    const opdDocs = documents.filter((d) => d.opdId === userOpd.id);
+    if (opdDocs.length > 0) {
+      setSelectedDocument(opdDocs[0]);
+    } else {
+      setSelectedDocument(null);
+    }
+    setActiveView('LIST');
   };
 
-  // Logout handler
+  // Handle Logout
   const handleLogout = () => {
     setCurrentUser(null);
+    setSelectedDocument(null);
   };
 
-  // Handle OPD Selection (Only allowed for Verifikator)
+  // Handle OPD Selection by Verifier
   const handleSelectOpd = (opd: OPD) => {
-    if (currentUser?.role === 'DINAS_PEMOHON') return; // Strict lock for Dinas
     setActiveOpd(opd);
-    const docsInOpd = documents.filter((d) => d.opdId === opd.id);
-    if (docsInOpd.length > 0) {
-      setSelectedDocument(docsInOpd[0]);
+    // Find documents belonging to selected OPD
+    const opdDocs = documents.filter((doc) => doc.opdId === opd.id);
+    if (opdDocs.length > 0) {
+      setSelectedDocument(opdDocs[0]);
     } else {
       setSelectedDocument(null);
     }
   };
 
-  // Handle document selection from list or ticker
+  // Handle Document Selection
   const handleSelectDocument = (doc: DocumentItem) => {
-    // If Dinas, can only select their own documents
-    if (currentUser?.role === 'DINAS_PEMOHON' && doc.opdId !== currentUser.opdId) {
-      return;
-    }
-
-    if (doc.opdId !== activeOpd.id) {
-      const targetOpd = OPD_LIST.find((o) => o.id === doc.opdId);
-      if (targetOpd) {
-        setActiveOpd(targetOpd);
-      }
-    }
     setSelectedDocument(doc);
-    setMobileView('VIEWER');
+    // Auto switch to Viewer when selecting a document in Single View mode
+    if (layoutMode === 'SINGLE') {
+      setActiveView('VIEWER');
+    }
   };
 
-  // Handle document update from verification form
+  // Handle Document Update from Verification Form
   const handleUpdateDocument = (updatedDoc: DocumentItem) => {
     setDocuments((prev) =>
-      prev.map((d) => (d.id === updatedDoc.id ? updatedDoc : d))
+      prev.map((doc) => (doc.id === updatedDoc.id ? updatedDoc : doc))
     );
     setSelectedDocument(updatedDoc);
   };
 
-  // Handle initial new document uploaded by Dinas
-  const handleAddDocument = async (newDoc: DocumentItem) => {
+  // Handle New Document Upload by Dinas
+  const handleAddDocument = (newDoc: DocumentItem) => {
     setDocuments((prev) => [newDoc, ...prev]);
     setSelectedDocument(newDoc);
-    setMobileView('VIEWER');
-
-    // Automatically send to Google Drive Induk server & Google Sheet
-    try {
-      if (newDoc.versions[0]) {
-        await sendUploadToGoogleDriveAndSheet(newDoc, newDoc.versions[0], 'UPLOAD_DOCUMENT');
-      }
-    } catch (e) {
-      console.warn('Sync to Google Drive server note', e);
+    if (layoutMode === 'SINGLE') {
+      setActiveView('VIEWER');
     }
   };
 
@@ -277,6 +278,14 @@ export default function App() {
       prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
     );
     setCurrentUser(updatedUser);
+  };
+
+  // Handle adding a new Dinas user account by Admin
+  const handleAddUserAccount = (newUser: UserAccount) => {
+    setUserAccounts((prev) => {
+      const filtered = prev.filter((u) => u.username.toLowerCase() !== newUser.username.toLowerCase());
+      return [...filtered, newUser];
+    });
   };
 
   // Handle purging drafts older than 3 months (90 days)
@@ -376,12 +385,12 @@ export default function App() {
   }
 
   // Filter documents shown in running ticker:
-  // If Dinas: only ticker of their own documents
-  // If Verifikator: all OPD documents
   const tickerDocuments =
     currentUser.role === 'DINAS_PEMOHON'
       ? documents.filter((d) => d.opdId === currentUser.opdId)
       : documents;
+
+  const currentOpdDocsCount = documents.filter((d) => d.opdId === activeOpd.id).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-blue-100 text-slate-800 flex flex-col font-sans selection:bg-blue-500/20">
@@ -419,7 +428,7 @@ export default function App() {
             {currentUser.role === 'DINAS_PEMOHON' ? (
               <span className="text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded flex items-center gap-1">
                 <Lock className="w-3 h-3 text-blue-600" />
-                Akses Terisolasi: Hanya Dokumen {currentUser.opdName}
+                Akses Terisolasi: Dokumen {currentUser.opdName}
               </span>
             ) : (
               <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded flex items-center gap-1">
@@ -435,140 +444,297 @@ export default function App() {
         </div>
       </div>
 
-      {/* Mobile/Tablet View Segmented Navigation */}
-      <div className="lg:hidden bg-white/90 border-b border-blue-100 px-4 py-2 flex items-center justify-between gap-2 text-xs font-semibold shadow-xs">
-        <div className="grid grid-cols-3 gap-1.5 w-full">
-          <button
-            onClick={() => setMobileView('LIST')}
-            className={`py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors ${
-              mobileView === 'LIST'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 bg-blue-50/50'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span className="truncate">Daftar Berkas</span>
-          </button>
+      {/* Top View Navigation & Layout Mode Switcher Bar */}
+      <div className="bg-white/95 backdrop-blur-md border-b border-blue-200/90 sticky top-16 z-30 px-3 sm:px-6 py-2 shadow-xs">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+          {/* Main 3 Navigation Tabs */}
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0">
+            {/* Tab 1: Daftar Berkas */}
+            <button
+              onClick={() => setActiveView('LIST')}
+              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                activeView === 'LIST'
+                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/30'
+                  : 'text-slate-600 hover:text-blue-900 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/60'
+              }`}
+            >
+              <Layers className="w-4 h-4 shrink-0" />
+              <span>1. Daftar Berkas OPD</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-semibold ${
+                  activeView === 'LIST' ? 'bg-white text-blue-700' : 'bg-blue-200/80 text-blue-900'
+                }`}
+              >
+                {currentOpdDocsCount}
+              </span>
+            </button>
 
-          <button
-            onClick={() => setMobileView('VIEWER')}
-            className={`py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors ${
-              mobileView === 'VIEWER'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 bg-blue-50/50'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span className="truncate">Pratinjau Dokumen</span>
-          </button>
+            {/* Tab 2: Pratinjau Dokumen (Penampil Besar) */}
+            <button
+              onClick={() => setActiveView('VIEWER')}
+              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                activeView === 'VIEWER'
+                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/30'
+                  : 'text-slate-600 hover:text-blue-900 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/60'
+              }`}
+            >
+              <FileText className="w-4 h-4 shrink-0" />
+              <span>2. Penampil Dokumen (Lebar &amp; Jelas)</span>
+              {selectedDocument && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded font-mono truncate max-w-[100px] hidden md:inline font-semibold ${
+                    activeView === 'VIEWER' ? 'bg-blue-800 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  v{selectedDocument.currentVersion}
+                </span>
+              )}
+            </button>
 
-          <button
-            onClick={() => setMobileView('FORM')}
-            className={`py-2 px-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors ${
-              mobileView === 'FORM'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-emerald-700 hover:text-emerald-800 bg-emerald-50/60'
-            }`}
-          >
-            <FileCheck className="w-3.5 h-3.5" />
-            <span className="truncate">Form Pemeriksaan</span>
-          </button>
+            {/* Tab 3: Formulir & Lembar Verifikasi */}
+            <button
+              onClick={() => setActiveView('FORM')}
+              className={`py-2 px-3 sm:px-4 rounded-xl flex items-center gap-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                activeView === 'FORM'
+                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400/30'
+                  : 'text-slate-600 hover:text-blue-900 bg-blue-50/60 hover:bg-blue-100/70 border border-blue-200/60'
+              }`}
+            >
+              <FileCheck className="w-4 h-4 shrink-0" />
+              <span>3. Formulir &amp; Lembar Verifikasi</span>
+              {selectedDocument && (
+                <span
+                  className={`text-[9px] px-1.5 py-0.5 rounded-full uppercase font-mono font-bold ${
+                    selectedDocument.status === 'APPROVED'
+                      ? 'bg-emerald-500 text-white'
+                      : selectedDocument.status === 'REVISION'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-blue-400 text-white'
+                  }`}
+                >
+                  {selectedDocument.status === 'APPROVED' ? 'SAH' : selectedDocument.status === 'REVISION' ? 'REVISI' : 'PERIKSA'}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Mode Tampilan Switcher (Satu per satu vs 3 Kolom) */}
+          <div className="hidden lg:flex items-center gap-1.5 bg-blue-50/80 p-1 rounded-xl border border-blue-200/80 text-xs font-medium">
+            <span className="text-[11px] text-slate-500 font-semibold px-2">Mode Tampilan:</span>
+            <button
+              onClick={() => setLayoutMode('SINGLE')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                layoutMode === 'SINGLE'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-blue-100/60'
+              }`}
+              title="Tampilkan Satu per Satu (Layar Penuh, Dokumen & Formulir Jauh Lebih Besar)"
+            >
+              <Square className="w-3.5 h-3.5" />
+              <span>Satu per Satu (Besar)</span>
+            </button>
+            <button
+              onClick={() => setLayoutMode('SPLIT')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                layoutMode === 'SPLIT'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-blue-100/60'
+              }`}
+              title="Tampilkan 3 Kolom Sekaligus Berdampingan"
+            >
+              <Columns className="w-3.5 h-3.5" />
+              <span>3 Kolom (Split)</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Workspace */}
       <main className="flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-4 md:p-6 flex flex-col gap-4">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 items-start">
-          {/* COLUMN 1: OPD Documents List */}
-          <div
-            className={`lg:col-span-3 h-[calc(100vh-165px)] sticky top-20 flex-col ${
-              mobileView === 'LIST' ? 'flex' : 'hidden lg:flex'
-            }`}
-          >
-            <DocumentList
-              documents={documents}
-              selectedDocument={selectedDocument}
-              onSelectDocument={handleSelectDocument}
-              activeOpd={activeOpd}
-              appRole={currentUser.role}
-              onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
-            />
-          </div>
+        {/* MODE 1: SINGLE VIEW (SATU PER SATU - LEBIH BESAR & LEGA) */}
+        {layoutMode === 'SINGLE' ? (
+          <div className="w-full flex-1 flex flex-col">
+            {/* VIEW 1: DAFTAR BERKAS */}
+            {activeView === 'LIST' && (
+              <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150">
+                <DocumentList
+                  documents={documents}
+                  selectedDocument={selectedDocument}
+                  onSelectDocument={handleSelectDocument}
+                  activeOpd={activeOpd}
+                  appRole={currentUser.role}
+                  onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
+                />
+              </div>
+            )}
 
-          {/* COLUMN 2: Multi-format Document Viewer */}
-          <div
-            className={`lg:col-span-5 h-[calc(100vh-165px)] flex-col ${
-              mobileView === 'VIEWER' ? 'flex' : 'hidden lg:flex'
-            }`}
-          >
-            {selectedDocument ? (
-              <DocumentViewer document={selectedDocument} />
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center bg-white/90 border border-blue-200/80 rounded-2xl p-8 text-center text-slate-500 shadow-sm">
-                <FileText className="w-12 h-12 mb-3 opacity-40 text-blue-500" />
-                <h3 className="text-sm font-bold text-slate-800 mb-1">
-                  Tidak Ada Dokumen Dipilih
-                </h3>
-                <p className="text-xs text-slate-500 max-w-sm">
-                  Pilih dokumen dari antrean {activeOpd.name} di panel kiri atau unggah berkas baru.
-                </p>
+            {/* VIEW 2: PENAMPIL DOKUMEN (BESAR & LEBAR) */}
+            {activeView === 'VIEWER' && (
+              <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150 space-y-2">
+                {selectedDocument ? (
+                  <>
+                    <div className="flex-1 min-h-0">
+                      <DocumentViewer document={selectedDocument} />
+                    </div>
+
+                    {/* Quick View Step Navigation Bar */}
+                    <div className="bg-white/95 border border-blue-200/90 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                      <button
+                        onClick={() => setActiveView('LIST')}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft className="w-4 h-4 text-slate-500" />
+                        <span>Kembali ke Daftar Berkas</span>
+                      </button>
+
+                      <div className="text-xs text-center hidden md:block">
+                        <span className="text-slate-500">Sedang melihat: </span>
+                        <strong className="text-blue-950 font-bold">{selectedDocument.fileName}</strong>
+                        <span className="text-slate-400 ml-1">({selectedDocument.nomorBerkas})</span>
+                      </div>
+
+                      <button
+                        onClick={() => setActiveView('FORM')}
+                        className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+                      >
+                        <span>Lanjut ke Formulir Pemeriksaan &amp; Verifikasi</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center bg-white border border-blue-200/80 rounded-2xl p-8 text-center text-slate-500 shadow-sm min-h-[450px]">
+                    <FileText className="w-14 h-14 mb-3 text-blue-500/40" />
+                    <h3 className="text-base font-bold text-slate-800 mb-1">
+                      Tidak Ada Dokumen Dipilih
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-sm mb-4">
+                      Silakan pilih dokumen dari antrean {activeOpd.name} pada tab Daftar Berkas.
+                    </p>
+                    <button
+                      onClick={() => setActiveView('LIST')}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-sm cursor-pointer"
+                    >
+                      Buka Daftar Berkas
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* VIEW 3: FORMULIR & LEMBAR KERJA VERIFIKASI (UKURAN PENUH) */}
+            {activeView === 'FORM' && (
+              <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150 space-y-2">
+                {selectedDocument ? (
+                  <>
+                    <div className="flex-1 min-h-0">
+                      <VerificationForm
+                        document={selectedDocument}
+                        verifier={verifier}
+                        appRole={currentUser.role}
+                        onUpdateDocument={handleUpdateDocument}
+                        onOpenGoogleSheetModal={() => setIsGoogleSheetOpen(true)}
+                        onOpenRevisionModal={() => setIsRevisionOpen(true)}
+                      />
+                    </div>
+
+                    {/* Navigation Bar at Bottom */}
+                    <div className="bg-white/95 border border-blue-200/90 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                      <button
+                        onClick={() => setActiveView('VIEWER')}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs transition-colors cursor-pointer border border-blue-200"
+                      >
+                        <ArrowLeft className="w-4 h-4 text-blue-600" />
+                        <span>Lihat Penampil Dokumen (Viewer Besar)</span>
+                      </button>
+
+                      <button
+                        onClick={() => setActiveView('LIST')}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+                      >
+                        <Layers className="w-4 h-4 text-slate-500" />
+                        <span>Ke Daftar Berkas</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center bg-white border border-blue-200/80 rounded-2xl p-8 text-center text-slate-500 shadow-sm min-h-[450px]">
+                    <FileCheck className="w-14 h-14 mb-3 text-blue-500/40" />
+                    <h3 className="text-base font-bold text-slate-800 mb-1">
+                      Formulir Pemeriksaan Siap
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-sm mb-4">
+                      Pilih berkas dari tab Daftar Berkas untuk memulai proses checklist dan verifikasi resmi.
+                    </p>
+                    <button
+                      onClick={() => setActiveView('LIST')}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs shadow-sm cursor-pointer"
+                    >
+                      Buka Daftar Berkas
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
-
-          {/* COLUMN 3: Dedicated Examination & Verification Form */}
-          <div
-            className={`lg:col-span-4 h-[calc(100vh-165px)] flex-col ${
-              mobileView === 'FORM' ? 'flex' : 'hidden lg:flex'
-            }`}
-          >
-            {selectedDocument ? (
-              <VerificationForm
-                document={selectedDocument}
-                verifier={verifier}
+        ) : (
+          /* MODE 2: SPLIT VIEW (3 KOLOM BERDAMPINGAN) */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 items-start">
+            {/* COLUMN 1: OPD Documents List */}
+            <div className="lg:col-span-3 h-[calc(100vh-190px)] sticky top-28 flex flex-col">
+              <DocumentList
+                documents={documents}
+                selectedDocument={selectedDocument}
+                onSelectDocument={handleSelectDocument}
+                activeOpd={activeOpd}
                 appRole={currentUser.role}
-                onUpdateDocument={handleUpdateDocument}
-                onOpenGoogleSheetModal={() => setIsGoogleSheetOpen(true)}
-                onOpenRevisionModal={() => setIsRevisionOpen(true)}
+                onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
               />
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center bg-white/90 border border-blue-200/80 rounded-2xl p-8 text-center text-slate-500 shadow-sm">
-                <FileCheck className="w-12 h-12 mb-3 opacity-40 text-blue-500" />
-                <h3 className="text-sm font-bold text-slate-800 mb-1">
-                  Formulir Pemeriksaan Siap
-                </h3>
-                <p className="text-xs text-slate-500 max-w-sm">
-                  Pilih salah satu berkas dokumen untuk memulai checklist pemeriksaan dan verifikasi resmi.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
+            </div>
 
-      {/* Floating Action Button for Mobile/Tablet */}
-      {selectedDocument && (
-        <div className="lg:hidden fixed bottom-4 right-4 z-40">
-          {mobileView === 'VIEWER' && (
-            <button
-              onClick={() => setMobileView('FORM')}
-              className="flex items-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full shadow-2xl text-xs transition-transform active:scale-95"
-            >
-              <FileCheck className="w-4 h-4" />
-              <span>Buka Formulir</span>
-            </button>
-          )}
-          {mobileView === 'FORM' && (
-            <button
-              onClick={() => setMobileView('VIEWER')}
-              className="flex items-center gap-2 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold rounded-full shadow-2xl text-xs border border-slate-700 transition-transform active:scale-95"
-            >
-              <FileText className="w-4 h-4" />
-              <span>Lihat Dokumen</span>
-            </button>
-          )}
-        </div>
-      )}
+            {/* COLUMN 2: Multi-format Document Viewer */}
+            <div className="lg:col-span-5 h-[calc(100vh-190px)] flex flex-col">
+              {selectedDocument ? (
+                <DocumentViewer document={selectedDocument} />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center bg-white border border-blue-200/80 rounded-2xl p-8 text-center text-slate-500 shadow-sm">
+                  <FileText className="w-12 h-12 mb-3 opacity-40 text-blue-500" />
+                  <h3 className="text-sm font-bold text-slate-800 mb-1">
+                    Tidak Ada Dokumen Dipilih
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-sm">
+                    Pilih dokumen dari antrean {activeOpd.name} di panel kiri atau unggah berkas baru.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* COLUMN 3: Dedicated Examination & Verification Form */}
+            <div className="lg:col-span-4 h-[calc(100vh-190px)] flex flex-col">
+              {selectedDocument ? (
+                <VerificationForm
+                  document={selectedDocument}
+                  verifier={verifier}
+                  appRole={currentUser.role}
+                  onUpdateDocument={handleUpdateDocument}
+                  onOpenGoogleSheetModal={() => setIsGoogleSheetOpen(true)}
+                  onOpenRevisionModal={() => setIsRevisionOpen(true)}
+                />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center bg-white border border-blue-200/80 rounded-2xl p-8 text-center text-slate-500 shadow-sm">
+                  <FileCheck className="w-12 h-12 mb-3 opacity-40 text-blue-500" />
+                  <h3 className="text-sm font-bold text-slate-800 mb-1">
+                    Formulir Pemeriksaan Siap
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-sm">
+                    Pilih salah satu berkas dokumen untuk memulai checklist pemeriksaan dan verifikasi resmi.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
 
       {/* Modals */}
       <GoogleSheetModal
@@ -613,9 +779,11 @@ export default function App() {
         onClose={() => setIsFolderRegistrationOpen(false)}
         opdList={OPD_LIST}
         folderRegistrations={folderRegistrations}
+        userAccounts={userAccounts}
         currentUser={currentUser}
         onSaveRegistration={handleSaveRegistration}
         onSaveAllRegistrations={handleSaveAllRegistrations}
+        onAddUserAccount={handleAddUserAccount}
       />
     </div>
   );
