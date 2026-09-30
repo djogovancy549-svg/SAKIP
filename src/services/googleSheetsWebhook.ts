@@ -316,7 +316,7 @@ export async function sendUploadToGoogleDriveAndSheet(
     digitalSealHash: `DRIVE-UPLOAD-${doc.id}-V${version.versionNumber}`,
     downloadUrl: version.googleDrive?.downloadUrl || `https://drive.google.com/drive/folders/${masterFolderId}`,
     driveMasterFolderId: masterFolderId,
-    driveOpdSubfolder: doc.opdName,
+    driveOpdSubfolder: '',
     fileName: version.fileName,
     fileMimeType: getMimeTypeByFormat(doc.format, version.fileName),
     fileBase64: cleanBase64,
@@ -917,24 +917,23 @@ function doPost(e) {
 
     try {
       var targetFolderId = data.driveMasterFolderId || MASTER_FOLDER_ID;
-      var masterFolder = DriveApp.getFolderById(targetFolderId);
-      var opdFolderName = data.driveOpdSubfolder || data.opdName || "Umum";
-      var opdFolder = getOrCreateSubfolder(masterFolder, opdFolderName);
+      var targetFolder = DriveApp.getFolderById(targetFolderId);
 
       if (data.fileBase64 && data.fileBase64.length > 50) {
         var contentType = data.fileMimeType || "application/pdf";
         var decodedBytes = Utilities.base64Decode(data.fileBase64);
         var blob = Utilities.newBlob(decodedBytes, contentType, data.fileName || "dokumen_verifikasi");
         
-        var driveFile = opdFolder.createFile(blob);
+        // Simpan LANGSUNG ke folder target tanpa membuat subfolder baru
+        var driveFile = targetFolder.createFile(blob);
         driveFile.setDescription("Dokumen SIMVERIF OPD: " + data.docNumber + " - Versi " + (data.versionNumber || 1));
         driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         
         driveFileUrl = driveFile.getUrl();
         driveFileId = driveFile.getId();
       } else {
-        driveFileUrl = opdFolder.getUrl();
-        driveFileId = opdFolder.getId();
+        driveFileUrl = targetFolder.getUrl();
+        driveFileId = targetFolder.getId();
       }
     } catch (driveErr) {
       driveFileUrl = data.downloadUrl || "https://drive.google.com/drive";
