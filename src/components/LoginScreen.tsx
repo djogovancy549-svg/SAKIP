@@ -17,12 +17,45 @@ import {
 } from 'lucide-react';
 import { UserAccount, AppRole } from '../types';
 import { googleSignIn } from '../services/googleDriveAuth';
+import { OPD_LIST } from '../data/opdData';
 import databaseBg from '../assets/images/digital_database_modern_bg_1790734176384.jpg';
 
 interface LoginScreenProps {
   userAccounts: UserAccount[];
   onLoginSuccess: (user: UserAccount) => void;
 }
+
+const findMatchingOpd = (userStr: string): { opdId: string; opdName: string } => {
+  const clean = userStr.trim().toLowerCase();
+  
+  if (clean.includes('setda') || clean.includes('admin') || clean.includes('djogovancy')) {
+    return {
+      opdId: 'SETDA',
+      opdName: 'SEKRETARIAT DAERAH',
+    };
+  }
+  
+  for (const opd of OPD_LIST) {
+    const opdIdLower = opd.id.toLowerCase();
+    const opdNameLower = opd.name.toLowerCase();
+    const opdShortLower = opd.shortName.toLowerCase();
+    
+    if (clean.includes(opdIdLower) || opdIdLower.includes(clean)) {
+      return { opdId: opd.id, opdName: opd.name };
+    }
+    if (clean.includes(opdShortLower) || opdShortLower.includes(clean)) {
+      return { opdId: opd.id, opdName: opd.name };
+    }
+    if (clean.includes(opdNameLower) || opdNameLower.includes(clean)) {
+      return { opdId: opd.id, opdName: opd.name };
+    }
+  }
+
+  return {
+    opdId: 'SETDA',
+    opdName: 'SEKRETARIAT DAERAH',
+  };
+};
 
 export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) {
   const [username, setUsername] = useState<string>('admin');
@@ -54,6 +87,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
     }
 
     // Dynamic login for any custom email/username on any device
+    const matched = findMatchingOpd(username);
     const dynamicUser: UserAccount = {
       id: `USR-DYN-${Date.now()}`,
       username: username.trim(),
@@ -61,8 +95,8 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
       nama: username.trim().includes('@') ? username.split('@')[0] : username.trim(),
       nip: '19890101 202001 1 001',
       jabatan: roleFilter === 'VERIFIKATOR' ? 'Verifikator SAKIP Pemkab' : 'Pemohon Berkas OPD',
-      opdId: 'DISKOMINFO',
-      opdName: 'DINAS KOMUNIKASI DAN INFORMATIKA',
+      opdId: matched.opdId,
+      opdName: matched.opdName,
       role: roleFilter,
       email: username.includes('@') ? username.trim() : `${username.trim()}@nagekeokab.go.id`,
     };
@@ -85,6 +119,8 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
             (u.email && u.email.toLowerCase() === userEmail.toLowerCase())
         );
 
+        const matchedGoogle = findMatchingOpd(userEmail);
+
         if (existing) {
           onLoginSuccess(existing);
         } else {
@@ -95,8 +131,8 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
             nama: userName,
             nip: '19890101 202001 1 001',
             jabatan: 'Verifikator Utama SAKIP Nagekeo',
-            opdId: 'DISKOMINFO',
-            opdName: 'DINAS KOMUNIKASI DAN INFORMATIKA',
+            opdId: matchedGoogle.opdId,
+            opdName: matchedGoogle.opdName,
             role: 'VERIFIKATOR',
             email: userEmail,
           };
@@ -111,6 +147,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
     }
 
     // Direct fallback if popup was blocked by browser iframe policy
+    const matchedFallback = findMatchingOpd('djogovancy549@gmail.com');
     const fallbackUser: UserAccount = {
       id: 'USR-MASTER-GOOGLE',
       username: 'djogovancy549@gmail.com',
@@ -118,8 +155,8 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
       nama: 'Master Admin (djogovancy549@gmail.com)',
       nip: '19890101 201501 1 001',
       jabatan: 'Verifikator Utama SAKIP Pemkab Nagekeo',
-      opdId: 'DISKOMINFO',
-      opdName: 'DINAS KOMUNIKASI DAN INFORMATIKA',
+      opdId: matchedFallback.opdId,
+      opdName: matchedFallback.opdName,
       role: 'VERIFIKATOR',
       email: 'djogovancy549@gmail.com',
     };
