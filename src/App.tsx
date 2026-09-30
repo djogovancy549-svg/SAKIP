@@ -61,6 +61,9 @@ import {
   getGoogleSheetsWebhookUrl,
   saveGoogleSheetsWebhookUrl,
   getGoogleDriveFolderId,
+  sendFolderRegistrationToGoogleSheet,
+  sendAllFolderRegistrationsToGoogleSheet,
+  sendUserRegistrationToGoogleSheet,
 } from './services/googleSheetsWebhook';
 import {
   listenToDocuments,
@@ -724,11 +727,22 @@ export default function App() {
   };
 
   // Handle adding a new Dinas user account by Admin
-  const handleAddUserAccount = (newUser: UserAccount) => {
+  const handleAddUserAccount = async (newUser: UserAccount) => {
+    if (!currentUser) return;
     setUserAccounts((prev) => {
       const filtered = prev.filter((u) => u.username.toLowerCase() !== newUser.username.toLowerCase());
       return [...filtered, newUser];
     });
+
+    // 1. Save new user account to shared Firestore
+    await saveUserToFirestore(newUser);
+
+    // 2. Transmit to Google Sheet (DATABASE_PENGGUNA)
+    try {
+      await sendUserRegistrationToGoogleSheet(newUser, currentUser);
+    } catch (e) {
+      console.warn('Google Sheet user registration sync note:', e);
+    }
   };
 
   // Handle purging drafts older than 3 months (90 days)
@@ -747,11 +761,22 @@ export default function App() {
   };
 
   // Handle saving registered folder link for an OPD by Admin
-  const handleSaveRegistration = (reg: OpdFolderRegistration) => {
+  const handleSaveRegistration = async (reg: OpdFolderRegistration) => {
+    if (!currentUser) return;
     setFolderRegistrations((prev) => ({
       ...prev,
       [reg.opdId]: reg,
     }));
+
+    // 1. Persist folder mapping to Cloud Firestore
+    await saveFolderToFirestore(reg);
+
+    // 2. Transmit to Google Sheet Webhook (MAPPING_FOLDER_OPD)
+    try {
+      await sendFolderRegistrationToGoogleSheet(reg, currentUser);
+    } catch (e) {
+      console.warn('Google Sheet folder registration sync note:', e);
+    }
 
     // Update user accounts belonging to this OPD with the registered folder info
     setUserAccounts((prevUsers) =>
@@ -784,8 +809,20 @@ export default function App() {
   };
 
   // Handle saving all folder registrations at once by Admin
-  const handleSaveAllRegistrations = (allRegs: Record<string, OpdFolderRegistration>) => {
+  const handleSaveAllRegistrations = async (allRegs: Record<string, OpdFolderRegistration>) => {
+    if (!currentUser) return;
     setFolderRegistrations(allRegs);
+
+    // 1. Persist all folder mappings to Firestore & Google Sheet Webhook
+    try {
+      const regArray = Object.values(allRegs);
+      for (const r of regArray) {
+        await saveFolderToFirestore(r);
+      }
+      await sendAllFolderRegistrationsToGoogleSheet(regArray, currentUser);
+    } catch (e) {
+      console.warn('Google Sheet batch folder registration sync note:', e);
+    }
 
     setUserAccounts((prevUsers) =>
       prevUsers.map((u) => {
