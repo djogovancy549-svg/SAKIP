@@ -471,7 +471,18 @@ export default function App() {
         }
       }
     } catch (err) {
-      console.error('Failed to sync database with Google Sheet', err);
+      console.warn('Failed to sync database with Google Sheet', err);
+      // Fallback gracefully without locking the UI, notifying the user with a helpful instruction
+      alert(
+        '⚠️ Sinkronisasi Langsung ke Google Sheet Terhambat!\n\n' +
+        'Sistem tetap berjalan normal menggunakan database awan Firestore.\n\n' +
+        'Agar sinkronisasi tombol "Sinkron Sheet" instan tanpa loading lama:\n' +
+        '1. Buka Google Apps Script Anda.\n' +
+        '2. Klik "Terapkan" (Deploy) -> "Kelola Penerapan" (Manage Deployments).\n' +
+        '3. Klik ikon Pensil (Edit) pada baris Web App.\n' +
+        '4. Ganti kolom "Yang memiliki akses" (Who has access) menjadi "Siapa saja" (Anyone) - jangan pilih "Hanya saya".\n' +
+        '5. Klik "Terapkan" (Deploy) kembali.'
+      );
     } finally {
       setIsSyncing(false);
     }

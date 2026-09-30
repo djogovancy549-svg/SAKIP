@@ -86,12 +86,12 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
 } | null> {
   const webhookUrl = getGoogleSheetsWebhookUrl();
   
-  // Abort controller with an 8-second network timeout to prevent infinite spinner loading
+  // Abort controller with an 3-second network timeout to prevent infinite spinner loading
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
-    console.warn('⚠️ Google Sheets GET fetch timed out after 8 seconds.');
-  }, 8000);
+    console.warn('⚠️ Google Sheets GET fetch timed out after 3 seconds.');
+  }, 3000);
 
   try {
     const res = await fetch(`${webhookUrl}?action=get_all_data`, {
