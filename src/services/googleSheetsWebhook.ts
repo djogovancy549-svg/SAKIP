@@ -10,12 +10,12 @@ import {
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
-  'https://script.google.com/macros/s/AKfycbwR_OPD_VERIFIKASI_DOKUMEN_PROV_2026/exec';
+  'https://script.google.com/macros/s/AKfycbyqCJR7QSgqPRltQJr2Q7et9SpOaShKixGDB_ugXPgcPePMFqCUnH7QjhB8WYK44y_B3A/exec';
 
 // Embedded Google Drive Induk Server Folder ID & URL
-export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1B_SIMVERIF_INDUK_PEMDA_DRIVE_SERVER_2026';
+export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
 export const DEFAULT_GOOGLE_DRIVE_MASTER_NAME = 'GOOGLE_DRIVE_INDUK_SIMVERIF_OPD_SERVER';
-export const DEFAULT_GOOGLE_DRIVE_FOLDER_URL = `https://drive.google.com/drive/folders/${DEFAULT_GOOGLE_DRIVE_FOLDER_ID}`;
+export const DEFAULT_GOOGLE_DRIVE_FOLDER_URL = `https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7?usp=sharing${DEFAULT_GOOGLE_DRIVE_FOLDER_ID}`;
 
 const STORAGE_KEY_WEBHOOK_URL = 'simverif_google_sheets_webhook_url';
 const STORAGE_KEY_DRIVE_FOLDER_ID = 'simverif_google_drive_folder_id';
