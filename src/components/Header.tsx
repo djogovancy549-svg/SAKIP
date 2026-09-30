@@ -226,37 +226,39 @@ export function Header({
 
                   {/* Option 2: Admin Folder & Account Registration (Admin only) */}
                   {!isDinas && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsServerMenuOpen(false);
-                        onOpenAdminFolderRegistration();
-                      }}
-                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="font-bold text-slate-900">Pendaftaran Akun &amp; Folder Dinas</div>
-                        <div className="text-[10px] text-slate-600 font-medium">Daftarkan akun login &amp; mapping folder OPD</div>
-                      </div>
-                    </button>
-                  )}
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsServerMenuOpen(false);
+                          onOpenAdminFolderRegistration();
+                        }}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-bold text-slate-900">Pendaftaran Akun &amp; Folder Dinas</div>
+                          <div className="text-[10px] text-slate-600 font-medium">Daftarkan akun login &amp; mapping folder OPD</div>
+                        </div>
+                      </button>
 
-                  {/* Option 3: Google Sheets & Webhook */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsServerMenuOpen(false);
-                      onOpenGoogleSheetModal();
-                    }}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <Database className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                    <div>
-                      <div className="font-bold text-slate-900">Google Spreadsheet &amp; Webhook</div>
-                      <div className="text-[10px] text-slate-600 font-medium">Konfigurasi endpoint webhook &amp; script sync</div>
-                    </div>
-                  </button>
+                      {/* Option 3: Google Sheets & Webhook (Admin only) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsServerMenuOpen(false);
+                          onOpenGoogleSheetModal();
+                        }}
+                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
+                      >
+                        <Database className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        <div>
+                          <div className="font-bold text-slate-900">Google Spreadsheet &amp; Webhook</div>
+                          <div className="text-[10px] text-slate-600 font-medium">Konfigurasi endpoint webhook &amp; script sync</div>
+                        </div>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             )}

@@ -739,28 +739,30 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
           </div>
         )}
 
-        {/* SECTION 8: GOOGLE SHEETS WEBHOOK SYNC BAR */}
-        <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-[11px] shadow-2xs">
-          <div className="flex items-center gap-2">
-            <Database className="w-3.5 h-3.5 text-blue-600" />
-            <span className="text-slate-500 font-medium">Google Sheet:</span>
-            {syncFeedback ? (
-              <span className={syncFeedback.success ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-semibold'}>
-                {syncFeedback.message}
-              </span>
-            ) : (
-              <span className="text-slate-600">Pencatatan webhook aktif otomatis</span>
-            )}
+        {/* SECTION 8: GOOGLE SHEETS WEBHOOK SYNC BAR (ADMIN ONLY) */}
+        {isVerifier && (
+          <div className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-[11px] shadow-2xs">
+            <div className="flex items-center gap-2">
+              <Database className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-slate-500 font-medium">Google Sheet:</span>
+              {syncFeedback ? (
+                <span className={syncFeedback.success ? 'text-emerald-700 font-semibold' : 'text-rose-600 font-semibold'}>
+                  {syncFeedback.message}
+                </span>
+              ) : (
+                <span className="text-slate-600">Pencatatan webhook aktif otomatis</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={onOpenGoogleSheetModal}
+              className="text-blue-600 hover:underline flex items-center gap-1 shrink-0 font-bold cursor-pointer"
+            >
+              <span>Buka Webhook</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onOpenGoogleSheetModal}
-            className="text-blue-600 hover:underline flex items-center gap-1 shrink-0 font-bold cursor-pointer"
-          >
-            <span>Buka Webhook</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
-        </div>
+        )}
 
         {/* SECTION 9: PENGUNDUHAN DOKUMEN & TANDA REGISTRASI */}
         <div className="pt-3 border-t-2 border-dashed border-slate-200 space-y-3">
