@@ -198,14 +198,12 @@ export default function App() {
     return INITIAL_USER_ACCOUNTS;
   });
 
-  // Current Logged In User Session (Defaults to null so app always starts at Login Screen)
+  // Current Logged In User Session (Always starts at Login Screen)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Error loading session', e);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+      } catch (e) {}
     }
     return null;
   });
