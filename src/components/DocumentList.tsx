@@ -353,19 +353,42 @@ export function DocumentList({
                   {doc.judul}
                 </div>
 
-                {/* Notice jika Perlu Revisi */}
+                {/* Highlighted Verifier / Revision Notes Box */}
                 {doc.status === 'REVISION' && (
-                  <div className="my-1.5 p-2 bg-orange-50 border border-orange-300 rounded-lg text-[11px] text-orange-950 line-clamp-2 font-medium">
-                    <span className="font-bold text-orange-800">Perbaikan: </span>
-                    {doc.versions[doc.versions.length - 1]?.reviewerNotes || doc.verification?.notes || 'Perlu perbaikan berkas'}
+                  <div className="my-2 p-2.5 bg-amber-50 border-2 border-amber-300 rounded-xl text-xs text-amber-950 font-sans shadow-2xs space-y-0.5">
+                    <div className="flex items-center gap-1 font-black text-[11px] text-amber-800 uppercase tracking-wide">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Catatan Revisi / Instruksi Perbaikan:</span>
+                    </div>
+                    <p className="font-bold leading-relaxed line-clamp-3 italic bg-white/90 p-1.5 rounded-md border border-amber-200">
+                      "{doc.verification?.notes || doc.versions[doc.versions.length - 1]?.reviewerNotes || doc.perihal || 'Harap lakukan perbaikan sesuai arahan verifikator.'}"
+                    </p>
                   </div>
                 )}
 
-                {/* Notice jika Terverifikasi & Terkunci */}
-                {isDocLocked && doc.registrationSeal && (
-                  <div className="my-1 p-1.5 bg-emerald-50 border border-emerald-300 rounded-lg text-[11px] text-emerald-950 font-mono flex items-center justify-between font-bold">
-                    <span className="truncate">{doc.registrationSeal.regNumber}</span>
-                    <span className="shrink-0 text-[10px] text-emerald-800">TERKUNCI</span>
+                {doc.status === 'REJECTED' && (
+                  <div className="my-2 p-2.5 bg-rose-50 border-2 border-rose-300 rounded-xl text-xs text-rose-950 font-sans shadow-2xs space-y-0.5">
+                    <div className="flex items-center gap-1 font-black text-[11px] text-rose-800 uppercase tracking-wide">
+                      <XCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>Alasan Penolakan Verifikator:</span>
+                    </div>
+                    <p className="font-bold leading-relaxed line-clamp-3 italic bg-white/90 p-1.5 rounded-md border border-rose-200">
+                      "{doc.verification?.notes || doc.versions[doc.versions.length - 1]?.reviewerNotes || 'Dokumen tidak memenuhi persyaratan.'}"
+                    </p>
+                  </div>
+                )}
+
+                {doc.status === 'APPROVED' && (
+                  <div className="my-2 p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-950 font-sans shadow-2xs space-y-1">
+                    <div className="flex items-center justify-between font-mono font-bold text-[10px]">
+                      <span className="text-emerald-800">BAV / SEGEL SAH:</span>
+                      <span className="bg-emerald-200/80 text-emerald-900 px-1.5 py-0.2 rounded">{doc.verification?.bavNumber || doc.registrationSeal?.bavNumber || 'TERKUNCI'}</span>
+                    </div>
+                    {doc.verification?.notes && doc.verification.notes.trim() !== '-' && (
+                      <p className="text-[11px] font-medium leading-tight text-emerald-900 italic line-clamp-2">
+                        "{doc.verification.notes}"
+                      </p>
+                    )}
                   </div>
                 )}
 

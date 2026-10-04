@@ -223,7 +223,39 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
       </div>
 
       {/* Main Viewport */}
-      <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex justify-center items-start relative select-text shadow-inner">
+      <div className="flex-1 overflow-auto p-4 md:p-6 bg-slate-100 flex flex-col items-center justify-start relative select-text shadow-inner space-y-4">
+        {/* Prominent Verifier Notes & Revision Callout Banner */}
+        {((document.verification?.notes && document.verification.notes.trim() !== '-') || document.status === 'REVISION' || document.status === 'REJECTED' || document.status === 'APPROVED') && (
+          <div className="w-full max-w-5xl">
+            <div
+              className={`p-4 rounded-2xl border-2 shadow-md space-y-2 text-xs font-sans ${
+                document.status === 'REVISION'
+                  ? 'bg-amber-50 border-amber-400 text-amber-950'
+                  : document.status === 'REJECTED'
+                  ? 'bg-rose-50 border-rose-400 text-rose-950'
+                  : document.status === 'APPROVED'
+                  ? 'bg-emerald-50 border-emerald-400 text-emerald-950'
+                  : 'bg-blue-50 border-blue-300 text-blue-950'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 border-b pb-2 border-slate-300/50">
+                <div className="flex items-center gap-2 font-black uppercase text-xs tracking-wide">
+                  {document.status === 'REVISION' && <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />}
+                  {document.status === 'REJECTED' && <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
+                  {document.status === 'APPROVED' && <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0" />}
+                  {document.status === 'PENDING' && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                  <span>Catatan &amp; Petunjuk Perbaikan / Evaluasi Verifikator:</span>
+                </div>
+                <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border font-bold">
+                  {document.verification?.verifiedBy || 'Admin Verifikator SAKIP'}
+                </span>
+              </div>
+              <p className="text-xs md:text-sm font-bold leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-200 shadow-2xs italic">
+                "{document.verification?.notes || document.versions[document.versions.length - 1]?.reviewerNotes || document.perihal || 'Dokumen memerlukan pemeriksaan dan perbaikan.'}"
+              </p>
+            </div>
+          </div>
+        )}
         {/* TAB 1: PRATINJAU BERKAS ASLI (PDF / EMBED / GAMBAR) */}
         {activeTab === 'ORIGINAL_FILE' && (
           <div className="w-full max-w-5xl space-y-4">
