@@ -534,13 +534,52 @@ function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip,
 
 /**
  * 6. Fungsi Server Pendaftaran Folder Google Drive di Sheet 'MAPPING_FOLDER_OPD'
+ * Menjamin folder OPD yang didaftarkan berada di dalam Master Folder
  */
 function adminRegisterFolderServer(opdId, opdName, driveUrl, folderId, subfolderName, registrar, nip, notes) {
   var ss = getActiveSpreadsheetSafely();
   if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan" };
   var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
 
-  var effectiveFolderId = folderId || extractFolderIdFromUrl(driveUrl) || MASTER_FOLDER_ID;
+  var master = getMasterFolder();
+  var effectiveOpdName = opdName || opdId || "OPD";
+  var targetSubfolderName = subfolderName || ("SAKIP - " + effectiveOpdName);
+
+  // Cari atau pastikan subfolder berada di dalam Master Folder
+  var targetFolder = null;
+  var cleanId = folderId || extractFolderIdFromUrl(driveUrl) || "";
+  
+  if (cleanId && cleanId.length > 15 && cleanId !== MASTER_FOLDER_ID && cleanId.indexOf("DRV-") === -1) {
+    try {
+      targetFolder = DriveApp.getFolderById(cleanId);
+    } catch(e) {}
+  }
+
+  // Jika folder belum ada atau belum valid, cari di master atau buatkan otomatis di dalam Master Folder
+  if (!targetFolder) {
+    var existing = master.getFoldersByName(targetSubfolderName);
+    if (existing.hasNext()) {
+      targetFolder = existing.next();
+    } else {
+      var alt = master.getFoldersByName(effectiveOpdName);
+      if (alt.hasNext()) {
+        targetFolder = alt.next();
+      } else {
+        try {
+          targetFolder = master.createFolder(targetSubfolderName);
+          try {
+            targetFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          } catch (se) {}
+        } catch (err) {
+          targetFolder = master;
+        }
+      }
+    }
+  }
+
+  var effectiveFolderId = targetFolder.getId();
+  var validUrl = targetFolder.getUrl();
+  var finalSubfolderName = targetFolder.getName();
   var now = new Date().toLocaleString("id-ID");
 
   var foundFolderRow = -1;
@@ -552,16 +591,14 @@ function adminRegisterFolderServer(opdId, opdName, driveUrl, folderId, subfolder
     }
   }
 
-  var validUrl = driveUrl || ("https://drive.google.com/drive/folders/" + effectiveFolderId);
-
   if (foundFolderRow > 0) {
     folderSheet.getRange(foundFolderRow, 1).setValue(now);
     folderSheet.getRange(foundFolderRow, 4).setValue(validUrl);
     folderSheet.getRange(foundFolderRow, 5).setValue(effectiveFolderId);
-    folderSheet.getRange(foundFolderRow, 6).setValue(subfolderName || opdName);
+    folderSheet.getRange(foundFolderRow, 6).setValue(finalSubfolderName);
     folderSheet.getRange(foundFolderRow, 7).setValue(registrar || "Admin SAKIP");
     folderSheet.getRange(foundFolderRow, 8).setValue(nip || "-");
-    folderSheet.getRange(foundFolderRow, 9).setValue(notes || "Pembaruan Folder OPD");
+    folderSheet.getRange(foundFolderRow, 9).setValue(notes || "Pembaruan Folder OPD di Master Folder");
   } else {
     folderSheet.appendRow([
       now,
@@ -569,10 +606,10 @@ function adminRegisterFolderServer(opdId, opdName, driveUrl, folderId, subfolder
       opdName,
       validUrl,
       effectiveFolderId,
-      subfolderName || opdName,
+      finalSubfolderName,
       registrar || "Admin SAKIP",
       nip || "-",
-      notes || "Pendaftaran Folder OPD"
+      notes || "Pendaftaran Folder OPD di Master Folder"
     ]);
   }
 

@@ -366,9 +366,25 @@ export default function App() {
     }
   };
 
-  // Run on mount
+  // Run initial sync on mount and set up periodic auto-sync
   useEffect(() => {
     syncWithGoogleSheet();
+
+    // Periodic auto-sync every 20 seconds so user and admin dashboards stay connected
+    const interval = setInterval(() => {
+      syncWithGoogleSheet();
+    }, 20000);
+
+    // Sync immediately when user refocuses or switches back to the tab
+    const handleFocus = () => {
+      syncWithGoogleSheet();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Handle Login
