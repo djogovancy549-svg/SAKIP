@@ -7,23 +7,6 @@ import { UserAccount } from '../types';
  */
 export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
   {
-    id: 'USR-DENIN-01',
-    username: 'deni',
-    email: 'deni@nagekeokab.go.id',
-    nama: 'Denin',
-    role: 'DINAS_PEMOHON',
-    opdId: 'DISDIKBUD',
-    opdName: 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
-    nip: '19890514 201201 1 003',
-    jabatan: 'Operator SAKIP Dinas Pendidikan',
-    pangkat: 'Penata (III/c)',
-    password: 'deni',
-    lastPasswordChangedAt: '2026-09-29 08:00',
-    driveFolderId: '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-    driveFolderName: 'Folder Drive Dinas Pendidikan & Kebudayaan',
-    driveFolderUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-  },
-  {
     id: 'USR-DIKBUD-01',
     username: 'dinas.dikbud',
     email: 'dikbud@nagekeokab.go.id',

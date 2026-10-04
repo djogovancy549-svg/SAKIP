@@ -187,7 +187,11 @@ export default function App() {
     if (typeof window === 'undefined') return INITIAL_USER_ACCOUNTS;
     try {
       const saved = localStorage.getItem(STORAGE_KEY_USERS);
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const filtered = parsed.filter((u: UserAccount) => u.username.toLowerCase() !== 'deni');
+        return filtered;
+      }
     } catch (e) {
       console.error('Error loading users', e);
     }
