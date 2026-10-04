@@ -383,19 +383,11 @@ export default function App() {
             return data.documents[0];
           });
         }
-        if (data.users && data.users.length > 0) {
-          setUserAccounts((prev) => {
-            const merged = [...prev];
-            data.users.forEach((nu) => {
-              const idx = merged.findIndex((u) => u.username === nu.username);
-              if (idx >= 0) {
-                merged[idx] = { ...merged[idx], ...nu };
-              } else {
-                merged.push(nu);
-              }
-            });
-            return merged;
-          });
+        if (Array.isArray(data.users)) {
+          setUserAccounts(data.users);
+          try {
+            localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(data.users));
+          } catch (e) {}
         }
         if (data.folders && data.folders.length > 0) {
           const record: Record<string, OpdFolderRegistration> = {};

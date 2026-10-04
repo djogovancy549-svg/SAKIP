@@ -82,8 +82,8 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
       return;
     }
 
-    // 1. Search in existing registered user accounts
-    let found = userAccounts.find((u) => {
+    // 1. Search in existing registered user accounts from Google Sheet / Local Database
+    const found = userAccounts.find((u) => {
       const uName = (u.username || '').toLowerCase();
       const uEmail = (u.email || '').toLowerCase();
       const uOpdId = (u.opdId || '').toLowerCase();
@@ -92,86 +92,22 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
 
       return (
         uName === inputClean ||
-        uName.includes(inputClean) ||
-        inputClean.includes(uName) ||
-        uName === `dinas.${inputClean}` ||
-        `dinas.${uName}` === inputClean ||
         uEmail === inputClean ||
         uEmail === `${inputClean}@nagekeokab.go.id` ||
-        uEmail.startsWith(`${inputClean}@`) ||
-        uEmail.includes(inputClean) ||
         uOpdId === inputClean ||
-        uOpdId.includes(inputClean) ||
-        inputClean.includes(uOpdId) ||
-        uOpdName.includes(inputClean) ||
-        uFullName.includes(inputClean)
+        uName === `dinas.${inputClean}` ||
+        `dinas.${uName}` === inputClean ||
+        uOpdName.toLowerCase() === inputClean ||
+        uFullName.toLowerCase() === inputClean
       );
     });
 
-    // 2. If not found in userAccounts, match against official OPD_LIST dynamically
+    // 2. Strict Check: If account is deleted or not found in Google Sheet (DATABASE_PENGGUNA), REJECT LOGIN!
     if (!found) {
-      const matchedOpd = OPD_LIST.find((o) => {
-        const idLower = o.id.toLowerCase();
-        const shortLower = o.shortName.toLowerCase();
-        const nameLower = o.name.toLowerCase();
-        const codeLower = o.code.toLowerCase();
-
-        return (
-          idLower === inputClean ||
-          shortLower.includes(inputClean) ||
-          inputClean.includes(idLower) ||
-          nameLower.includes(inputClean) ||
-          codeLower.includes(inputClean)
-        );
-      });
-
-      if (matchedOpd) {
-        found = {
-          id: `USR-${matchedOpd.id}-${Date.now().toString().slice(-4)}`,
-          username: inputClean,
-          email: inputClean.includes('@') ? inputClean : `${inputClean.replace(/[^a-z0-9]/g, '')}@nagekeokab.go.id`,
-          nama: `Pengelola SAKIP ${matchedOpd.name}`,
-          role: 'DINAS_PEMOHON',
-          opdId: matchedOpd.id,
-          opdName: matchedOpd.name,
-          nip: '19850101 201001 1 002',
-          jabatan: `Operator SAKIP ${matchedOpd.shortName}`,
-          pangkat: 'Penata Muda / III-a',
-          password: password || '123456',
-          lastPasswordChangedAt: new Date().toLocaleString('id-ID'),
-          driveFolderId: '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-          driveFolderName: `Folder Google Drive ${matchedOpd.name}`,
-          driveFolderUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-        };
-      }
-    }
-
-    // 3. Fallback Auto-Creation: Guarantee 100% successful login for any custom username/email/OPD entered!
-    if (!found) {
-      const opdMatch = findMatchingOpd(inputClean);
-      const isVerif =
-        inputClean.includes('admin') ||
-        inputClean.includes('verifikator') ||
-        inputClean.includes('setda') ||
-        inputClean.includes('babilasowa');
-
-      found = {
-        id: `usr-${inputClean.replace(/[^a-z0-9]/g, '-')}-${Date.now().toString().slice(-4)}`,
-        username: inputClean,
-        email: inputClean.includes('@') ? inputClean : `${inputClean.replace(/[^a-z0-9]/g, '')}@nagekeokab.go.id`,
-        nama: `Pengelola SAKIP (${inputClean.toUpperCase()})`,
-        role: isVerif ? 'VERIFIKATOR' : 'DINAS_PEMOHON',
-        opdId: opdMatch.opdId,
-        opdName: opdMatch.opdName,
-        nip: '19880101 201501 1 001',
-        jabatan: `Operator SAKIP ${opdMatch.opdName}`,
-        pangkat: 'Penata Muda / III-a',
-        password: password || '123456',
-        lastPasswordChangedAt: new Date().toLocaleString('id-ID'),
-        driveFolderId: '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-        driveFolderName: `Folder Google Drive ${opdMatch.opdName}`,
-        driveFolderUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-      };
+      setErrorMessage(
+        `Akun "@${inputClean}" tidak terdaftar atau telah dihapus dari Google Sheet (DATABASE_PENGGUNA). Silakan daftarkan akun baru di Pusat Registrasi Admin.`
+      );
+      return;
     }
 
     // 3. Strict Password Verification against registered Google Sheet account password
