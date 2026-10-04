@@ -25,6 +25,8 @@ import {
   Layers,
   Trash2,
   Plus,
+  Mail,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { OPD, OpdFolderRegistration, UserAccount } from '../types';
 import { extractDriveFolderId, buildDriveFolderUrl, isValidDriveLink } from '../utils/driveFolderUtils';
@@ -35,6 +37,7 @@ import {
   getGoogleSheetsWebhookUrl,
   getGoogleDriveFolderId,
   getGoogleDriveFolderUrl,
+  getGoogleSpreadsheetUrl,
   DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL,
 } from '../services/googleSheetsWebhook';
 
@@ -77,6 +80,7 @@ export function AdminFolderRegistrationModal({
 
   // New Account Form State
   const [newUsername, setNewUsername] = useState<string>('');
+  const [newEmail, setNewEmail] = useState<string>('setda@nagekeokab.go.id');
   const [newPassword, setNewPassword] = useState<string>('Dinas@2026!');
   const [newFullName, setNewFullName] = useState<string>('');
   const [newSelectedOpdId, setNewSelectedOpdId] = useState<string>(opdList[0]?.id || 'SETDA');
@@ -174,10 +178,12 @@ export function AdminFolderRegistrationModal({
       getGoogleDriveFolderUrl();
 
     const effectiveFolderId = extractDriveFolderId(effectiveFolderUrl);
+    const effectiveEmail = newEmail.trim() || `${newUsername.trim().toLowerCase()}@nagekeokab.go.id`;
 
     const newUser: UserAccount = {
       id: `usr-${newUsername.trim().toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
       username: newUsername.trim().toLowerCase(),
+      email: effectiveEmail,
       password: newPassword,
       nama: newFullName.trim(),
       role: 'DINAS_PEMOHON',
@@ -196,7 +202,7 @@ export function AdminFolderRegistrationModal({
 
     try {
       await sendUserRegistrationToGoogleSheet(newUser, currentUser);
-      setSuccessToast(`Akun dinas @${newUser.username} (${newUser.opdName}) berhasil didaftarkan dan disinkronkan ke worksheet DATABASE_PENGGUNA!`);
+      setSuccessToast(`Akun dinas @${newUser.username} (${effectiveEmail}) berhasil didaftarkan dan dicatat ke sheet DATABASE_PENGGUNA!`);
     } catch {
       setSuccessToast(`Akun dinas @${newUser.username} berhasil disimpan secara lokal!`);
     } finally {
@@ -352,6 +358,18 @@ export function AdminFolderRegistrationModal({
                     <span>Daftar 38 OPD Nagekeo</span>
                   </button>
                 </div>
+
+                <a
+                  href={getGoogleSpreadsheetUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold transition-all cursor-pointer text-xs flex items-center gap-1.5 shrink-0 shadow-2xs"
+                  title="Buka Google Sheet untuk melihat sheet MAPPING_FOLDER_OPD"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Periksa Sheet MAPPING_FOLDER_OPD</span>
+                  <ExternalLink className="w-3 h-3 text-emerald-600" />
+                </a>
               </div>
 
               {/* VIEW MODE 1: HANYA YANG SUDAH TERDAFTAR */}
@@ -645,9 +663,19 @@ export function AdminFolderRegistrationModal({
                     <UserPlus className="w-4 h-4 text-blue-600" />
                     <span>Formulir Pendaftaran Akun Dinas Baru</span>
                   </div>
-                  <span className="text-[11px] text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full font-medium border border-blue-200">
-                    Tersinkron ke Google Sheet: <strong className="font-mono">DATABASE_PENGGUNA</strong>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={getGoogleSpreadsheetUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[11px] text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-xl font-bold border border-emerald-300 transition-colors shadow-2xs"
+                      title="Buka Google Sheet untuk memeriksa baris akun di DATABASE_PENGGUNA"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Periksa Sheet DATABASE_PENGGUNA</span>
+                      <ExternalLink className="w-3 h-3 text-emerald-600" />
+                    </a>
+                  </div>
                 </div>
 
                 <form onSubmit={handleCreateAccount} className="space-y-3.5">
@@ -662,7 +690,9 @@ export function AdminFolderRegistrationModal({
                           setNewSelectedOpdId(e.target.value);
                           const o = opdList.find((x) => x.id === e.target.value);
                           if (o) {
-                            setNewUsername(`dinas.${o.shortName.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
+                            const shortCode = o.shortName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            setNewUsername(`dinas.${shortCode}`);
+                            setNewEmail(`${shortCode}@nagekeokab.go.id`);
                             setNewFullName(`Operator ${o.name}`);
                           }
                         }}
@@ -674,6 +704,23 @@ export function AdminFolderRegistrationModal({
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Email Kedinasan Resmi *
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          required
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value)}
+                          placeholder="contoh: dikbud@nagekeokab.go.id"
+                          className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
                     </div>
 
                     <div>
@@ -756,7 +803,7 @@ export function AdminFolderRegistrationModal({
                       ) : (
                         <UserPlus className="w-3.5 h-3.5" />
                       )}
-                      <span>Daftarkan Akun &amp; Sinkronkan ke Google Sheet</span>
+                      <span>Daftarkan Akun Dinas</span>
                     </button>
                   </div>
                 </form>
@@ -773,6 +820,15 @@ export function AdminFolderRegistrationModal({
 
                 <div className="max-h-60 overflow-y-auto">
                   <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-700 text-[11px] font-bold border-b border-slate-200">
+                        <th className="p-3">Pengguna &amp; OPD</th>
+                        <th className="p-3">Username</th>
+                        <th className="p-3">Email Kedinasan</th>
+                        <th className="p-3">Password</th>
+                        <th className="p-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
                     <tbody className="divide-y divide-slate-100">
                       {userAccounts.map((acc) => (
                         <tr key={acc.id} className="hover:bg-slate-50/60 transition-colors">
@@ -785,6 +841,12 @@ export function AdminFolderRegistrationModal({
                               @{acc.username}
                             </span>
                           </td>
+                          <td className="p-3">
+                            <span className="font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold inline-flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-emerald-600" />
+                              {acc.email || `${acc.username}@nagekeokab.go.id`}
+                            </span>
+                          </td>
                           <td className="p-3 font-mono text-slate-700">
                             <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-semibold">
                               {acc.password}
@@ -792,7 +854,7 @@ export function AdminFolderRegistrationModal({
                           </td>
                           <td className="p-3 text-right">
                             <button
-                              onClick={() => handleCopyLink(`Username: ${acc.username}\nPassword: ${acc.password}\nInstansi: ${acc.opdName}`, acc.id)}
+                              onClick={() => handleCopyLink(`Username: ${acc.username}\nEmail: ${acc.email || `${acc.username}@nagekeokab.go.id`}\nPassword: ${acc.password}\nInstansi: ${acc.opdName}`, acc.id)}
                               className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 transition-colors cursor-pointer inline-flex items-center gap-1 text-[11px] font-medium"
                               title="Salin Kredensial Login"
                             >

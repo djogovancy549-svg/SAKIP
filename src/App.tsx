@@ -20,6 +20,10 @@ import {
   CheckCircle2,
   LayoutGrid,
   Database,
+  ExternalLink,
+  HardDrive,
+  X,
+  Activity,
 } from 'lucide-react';
 import {
   DocumentItem,
@@ -61,21 +65,12 @@ import {
   getGoogleSheetsWebhookUrl,
   saveGoogleSheetsWebhookUrl,
   getGoogleDriveFolderId,
+  getGoogleDriveFolderUrl,
+  getGoogleSpreadsheetUrl,
   sendFolderRegistrationToGoogleSheet,
   sendAllFolderRegistrationsToGoogleSheet,
   sendUserRegistrationToGoogleSheet,
 } from './services/googleSheetsWebhook';
-import {
-  listenToDocuments,
-  listenToSettings,
-  listenToFolders,
-  listenToUsers,
-  saveDocumentToFirestore,
-  deleteDocumentFromFirestore,
-  saveUserToFirestore,
-  saveFolderToFirestore,
-  saveGoogleSettingsToFirestore,
-} from './services/firestoreSync';
 import { calculateRetention, formatArchiveSubfolder } from './utils/retentionUtils';
 
 const STORAGE_KEY_DOCS = 'simverif_clean_docs_v5';
@@ -231,6 +226,14 @@ export default function App() {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
   const [isDriveExplorerOpen, setIsDriveExplorerOpen] = useState<boolean>(false);
   const [isFolderRegistrationOpen, setIsFolderRegistrationOpen] = useState<boolean>(false);
+  const [uploadFeedback, setUploadFeedback] = useState<{
+    docNumber: string;
+    title: string;
+    opdName: string;
+    timestamp: string;
+    sheetUrl: string;
+    driveFolderUrl: string;
+  } | null>(null);
 
   // Persist layout mode
   useEffect(() => {
@@ -316,114 +319,7 @@ export default function App() {
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  // Subscribe to real-time shared Firestore state
-  useEffect(() => {
-    // 1. Listen to global documents
-    const unsubDocs = listenToDocuments((docsList) => {
-      if (docsList && docsList.length > 0) {
-        setDocuments(docsList);
-      }
-    });
-
-    // 2. Listen to custom Google Drive/Sheets webhook settings
-    const unsubSettings = listenToSettings((settings) => {
-      if (settings) {
-        setGlobalWebhookUrl(settings.webhookUrl);
-        setGlobalDriveFolderId(settings.driveFolderId);
-      }
-    });
-
-    // 3. Listen to OPD folder registrations
-    const unsubFolders = listenToFolders((foldersList) => {
-      if (foldersList && foldersList.length > 0) {
-        const record: Record<string, OpdFolderRegistration> = {};
-        foldersList.forEach((reg) => {
-          if (reg.opdId) record[reg.opdId] = reg;
-        });
-        setFolderRegistrations(record);
-      }
-    });
-
-    // 4. Listen to user accounts
-    const unsubUsers = listenToUsers((usersList) => {
-      if (usersList && usersList.length > 0) {
-        setUserAccounts((prev) => {
-          const merged = [...prev];
-          usersList.forEach((nu) => {
-            const idx = merged.findIndex((u) => u.username === nu.username);
-            if (idx >= 0) {
-              merged[idx] = { ...merged[idx], ...nu };
-            } else {
-              merged.push(nu);
-            }
-          });
-          return merged;
-        });
-      }
-    });
-
-    return () => {
-      unsubDocs();
-      unsubSettings();
-      unsubFolders();
-      unsubUsers();
-    };
-  }, []);
-
-  // Automatic Firestore data seeder & migration on first install
-  useEffect(() => {
-    const seedAndMigrate = async () => {
-      // 1. Migrate local localStorage data to shared Cloud Firestore
-      try {
-        const localDocs = localStorage.getItem(STORAGE_KEY_DOCS);
-        if (localDocs) {
-          const parsedDocs: DocumentItem[] = JSON.parse(localDocs);
-          if (parsedDocs && parsedDocs.length > 0) {
-            console.log('⚡ Migrating local documents to shared Cloud Firestore...');
-            for (const docItem of parsedDocs) {
-              await saveDocumentToFirestore(docItem);
-            }
-          }
-        }
-
-        const localFolders = localStorage.getItem(STORAGE_KEY_FOLDER_REGISTRATIONS);
-        if (localFolders) {
-          const parsedFolders: Record<string, OpdFolderRegistration> = JSON.parse(localFolders);
-          if (parsedFolders) {
-            console.log('⚡ Migrating local folders to shared Cloud Firestore...');
-            for (const key of Object.keys(parsedFolders)) {
-              await saveFolderToFirestore(parsedFolders[key]);
-            }
-          }
-        }
-
-        const savedWebhook = localStorage.getItem('simverif_google_sheets_webhook_url');
-        const savedDriveId = localStorage.getItem('simverif_google_drive_folder_id');
-        if (savedWebhook || savedDriveId) {
-          console.log('⚡ Migrating Google settings to shared Cloud Firestore...');
-          await saveGoogleSettingsToFirestore({
-            webhookUrl: savedWebhook ? savedWebhook.trim() : 'https://script.google.com/macros/s/AKfycbx_94SKv35eQGy1srb7xCC8uGiSTRnvFnHmBMW5PiRRaN0ImN05QsXVe4-rQpRAKWEl7w/exec',
-            driveFolderId: savedDriveId ? savedDriveId.trim() : '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7',
-          });
-        }
-      } catch (e) {
-        console.warn('Migration to cloud error:', e);
-      }
-
-      // 2. Fallback Seeder if Firestore is empty
-      const unsub = listenToDocuments(async (liveDocs) => {
-        if (liveDocs.length === 0) {
-          console.log('🌱 Seeding initial documents to Firestore...');
-          for (const docItem of INITIAL_DOCUMENTS) {
-            await saveDocumentToFirestore(docItem);
-          }
-        }
-        unsub();
-      });
-    };
-    seedAndMigrate();
-  }, []);
-
+  // Directly synchronize with Google Sheet & Google Drive Database
   const syncWithGoogleSheet = async () => {
     setIsSyncing(true);
     try {
@@ -431,10 +327,6 @@ export default function App() {
       if (data) {
         if (data.documents && data.documents.length > 0) {
           setDocuments(data.documents);
-          // Persist all retrieved documents to Firestore so all other devices see them
-          for (const d of data.documents) {
-            await saveDocumentToFirestore(d);
-          }
           setSelectedDocument((prev) => {
             if (prev) {
               const updated = data.documents.find((docItem) => docItem.id === prev.id);
@@ -456,9 +348,6 @@ export default function App() {
             });
             return merged;
           });
-          for (const u of data.users) {
-            await saveUserToFirestore(u);
-          }
         }
         if (data.folders && data.folders.length > 0) {
           const record: Record<string, OpdFolderRegistration> = {};
@@ -468,13 +357,10 @@ export default function App() {
             }
           });
           setFolderRegistrations(record);
-          for (const f of data.folders) {
-            await saveFolderToFirestore(f);
-          }
         }
       }
     } catch (err) {
-      console.warn('Failed to sync database with Google Sheet in background. Fallback to Firestore cache.', err);
+      console.warn('Gagal memuat sinkronisasi database dari Google Sheet:', err);
     } finally {
       setIsSyncing(false);
     }
@@ -542,7 +428,6 @@ export default function App() {
       prev.map((doc) => (doc.id === updatedDoc.id ? updatedDoc : doc))
     );
     setSelectedDocument(updatedDoc);
-    saveDocumentToFirestore(updatedDoc);
 
     // Notify the OPD regarding the verification status decision
     let notifType: NotificationType = 'SYSTEM';
@@ -580,7 +465,6 @@ export default function App() {
   const handleAddDocument = async (newDoc: DocumentItem) => {
     setDocuments((prev) => [newDoc, ...prev]);
     setSelectedDocument(newDoc);
-    await saveDocumentToFirestore(newDoc);
     if (layoutMode === 'SINGLE') {
       setActiveView('VIEWER');
     }
@@ -612,6 +496,15 @@ export default function App() {
         console.warn('Google Drive transmission log note:', e);
       }
     }
+
+    setUploadFeedback({
+      docNumber: newDoc.nomorBerkas,
+      title: newDoc.judul,
+      opdName: newDoc.opdName,
+      timestamp: new Date().toLocaleTimeString('id-ID'),
+      sheetUrl: getGoogleSpreadsheetUrl(),
+      driveFolderUrl: getGoogleDriveFolderUrl(),
+    });
   };
 
   // Handle Dinas re-uploading revised document
@@ -629,7 +522,6 @@ export default function App() {
 
     setDocuments((prev) => prev.map((d) => (d.id === docId ? updatedDoc : d)));
     setSelectedDocument(updatedDoc);
-    await saveDocumentToFirestore(updatedDoc);
 
     // Notify Admin regarding revision upload
     addNotification({
@@ -654,6 +546,15 @@ export default function App() {
     } catch (e) {
       console.warn('Webhook logging note for revision upload', e);
     }
+
+    setUploadFeedback({
+      docNumber: updatedDoc.nomorBerkas,
+      title: `Revisi v${newVersion.versionNumber} - ${updatedDoc.judul}`,
+      opdName: updatedDoc.opdName,
+      timestamp: new Date().toLocaleTimeString('id-ID'),
+      sheetUrl: getGoogleSpreadsheetUrl(),
+      driveFolderUrl: getGoogleDriveFolderUrl(),
+    });
   };
 
   // Handle Edit Document Open
@@ -670,7 +571,6 @@ export default function App() {
     if (selectedDocument?.id === updatedDoc.id) {
       setSelectedDocument(updatedDoc);
     }
-    await saveDocumentToFirestore(updatedDoc);
     addNotification({
       title: '✏️ Berkas Diperbarui',
       message: `Data berkas "${updatedDoc.nomorBerkas} - ${updatedDoc.judul}" berhasil diperbarui.`,
@@ -692,7 +592,6 @@ export default function App() {
       const remaining = documents.filter((d) => d.id !== docId);
       setSelectedDocument(remaining.length > 0 ? remaining[0] : null);
     }
-    await deleteDocumentFromFirestore(docId);
     if (target) {
       addNotification({
         title: '🗑️ Berkas Dihapus',
@@ -723,10 +622,7 @@ export default function App() {
       return [...filtered, newUser];
     });
 
-    // 1. Save new user account to shared Firestore
-    await saveUserToFirestore(newUser);
-
-    // 2. Transmit to Google Sheet (DATABASE_PENGGUNA)
+    // Directly Transmit to Google Sheet (DATABASE_PENGGUNA)
     try {
       await sendUserRegistrationToGoogleSheet(newUser, currentUser);
     } catch (e) {
@@ -757,10 +653,7 @@ export default function App() {
       [reg.opdId]: reg,
     }));
 
-    // 1. Persist folder mapping to Cloud Firestore
-    await saveFolderToFirestore(reg);
-
-    // 2. Transmit to Google Sheet Webhook (MAPPING_FOLDER_OPD)
+    // Directly Transmit to Google Sheet Webhook (MAPPING_FOLDER_OPD)
     try {
       await sendFolderRegistrationToGoogleSheet(reg, currentUser);
     } catch (e) {
@@ -802,12 +695,9 @@ export default function App() {
     if (!currentUser) return;
     setFolderRegistrations(allRegs);
 
-    // 1. Persist all folder mappings to Firestore & Google Sheet Webhook
+    // Directly Transmit to Google Sheet Webhook (MAPPING_FOLDER_OPD)
     try {
       const regArray = Object.values(allRegs);
-      for (const r of regArray) {
-        await saveFolderToFirestore(r);
-      }
       await sendAllFolderRegistrationsToGoogleSheet(regArray, currentUser);
     } catch (e) {
       console.warn('Google Sheet batch folder registration sync note:', e);
@@ -1096,6 +986,69 @@ export default function App() {
 
       {/* Main Workspace */}
       <main className="flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-4 md:p-6 flex flex-col gap-4">
+        {/* Instant Upload Feedback Banner with Direct Verification Links */}
+        {uploadFeedback && (
+          <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 border-2 border-emerald-300 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs shadow-md animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 bg-emerald-600 text-white rounded-xl shrink-0 shadow-xs">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-emerald-950 text-xs flex flex-wrap items-center gap-1.5">
+                  <span className="truncate">Berkas "{uploadFeedback.docNumber} - {uploadFeedback.title}" Berhasil Dikirim!</span>
+                  <span className="text-[10px] bg-white px-2 py-0.5 rounded-full text-emerald-700 font-mono border border-emerald-200 font-bold shrink-0">
+                    Tersinkronisasi Otomatis
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-800 truncate mt-0.5">
+                  Tersimpan di Google Drive Induk Server &amp; dicatat di Google Sheet <strong>DATA_VERIFIKASI_DOKUMEN</strong> ({uploadFeedback.opdName})
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <a
+                href={uploadFeedback.sheetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs text-xs"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Periksa di Sheet</span>
+              </a>
+
+              <a
+                href={uploadFeedback.driveFolderUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs text-xs"
+              >
+                <HardDrive className="w-3.5 h-3.5" />
+                <span>Buka Drive</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setIsGoogleSheetOpen(true)}
+                className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer text-xs"
+                title="Buka Pusat Pemeriksaan & Diagnostik Mandiri"
+              >
+                <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Uji Mandiri</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setUploadFeedback(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-white/60 cursor-pointer transition-colors"
+                title="Tutup Pemberitahuan"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* MODE 1: SINGLE VIEW (SATU PER SATU - LEBIH BESAR & LEGA) */}
         {layoutMode === 'SINGLE' ? (
           <div className="w-full flex-1 flex flex-col">
@@ -1299,6 +1252,7 @@ export default function App() {
         isOpen={isUploadOpen}
         onClose={() => setIsUploadOpen(false)}
         activeOpd={activeOpd}
+        currentUser={currentUser}
         onAddDocument={handleAddDocument}
       />
 

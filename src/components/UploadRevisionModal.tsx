@@ -1,21 +1,21 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import {
   X,
   UploadCloud,
   FileText,
   AlertTriangle,
-  CheckCircle2,
   Building2,
   ArrowRight,
   HardDrive,
   FolderTree,
+  Mail,
+  CheckCircle2,
 } from 'lucide-react';
 import { DocumentItem, DocumentVersion, GoogleDriveStorageInfo } from '../types';
 import {
   getGoogleDriveFolderId,
   createGoogleDriveStorageInfo,
 } from '../services/googleSheetsWebhook';
-import { initDriveAuth, googleSignIn } from '../services/googleDriveAuth';
 
 interface UploadRevisionModalProps {
   isOpen: boolean;
@@ -42,32 +42,6 @@ export function UploadRevisionModal({
   const [hasCustomFile, setHasCustomFile] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [googleDriveUser, setGoogleDriveUser] = useState<any>(null);
-  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = initDriveAuth((user) => {
-      setGoogleDriveUser(user);
-    });
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  const handleConnectGoogle = async () => {
-    setIsConnectingGoogle(true);
-    try {
-      const res = await googleSignIn();
-      if (res) {
-        setGoogleDriveUser(res.user);
-      }
-    } catch (e) {
-      console.error('Failed to sign in with Google Drive', e);
-    } finally {
-      setIsConnectingGoogle(false);
-    }
-  };
 
   if (!isOpen || !document) return null;
 
@@ -284,28 +258,17 @@ Dokumen revisi ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan di Folde
             />
           </div>
 
-          {/* Google Drive Status Banner */}
-          <div className="p-3 bg-slate-900 text-white rounded-xl flex items-center justify-between text-xs shadow-xs">
+          {/* Dinas Google Drive Auto-Sync Banner */}
+          <div className="p-3 bg-blue-50/90 border border-blue-200 rounded-xl flex items-center justify-between text-xs shadow-xs text-blue-950">
             <div className="flex items-center gap-2 min-w-0">
-              <HardDrive className="w-4 h-4 text-sky-400 shrink-0" />
+              <Mail className="w-4 h-4 text-blue-600 shrink-0" />
               <div className="truncate text-[11px]">
-                {googleDriveUser ? (
-                  <span>Akses Direct Drive: <strong className="text-emerald-400 font-mono">{googleDriveUser.email}</strong></span>
-                ) : (
-                  <span className="text-slate-300">Hubungkan akun Google Drive untuk menyimpan file fisik langsung</span>
-                )}
+                <span>Tersimpan ke Folder Google Drive: <strong className="font-mono text-blue-900">{document.opdName}</strong></span>
               </div>
             </div>
-            {!googleDriveUser && (
-              <button
-                type="button"
-                onClick={handleConnectGoogle}
-                disabled={isConnectingGoogle}
-                className="px-3 py-1 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer shrink-0"
-              >
-                {isConnectingGoogle ? 'Menghubungkan...' : 'Hubungkan Drive'}
-              </button>
-            )}
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full font-mono shrink-0">
+              Sinkron Otomatis
+            </span>
           </div>
 
           {/* Action Buttons */}

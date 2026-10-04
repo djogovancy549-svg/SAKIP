@@ -7,8 +7,6 @@ import {
   UserAccount,
   OpdFolderRegistration,
 } from '../types';
-import { getAccessToken } from './googleDriveAuth';
-import { uploadFileToGoogleDriveFolder } from './googleDriveApi';
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
@@ -21,10 +19,12 @@ export const DEFAULT_GOOGLE_DRIVE_FOLDER_URL = `https://drive.google.com/drive/f
 
 const STORAGE_KEY_WEBHOOK_URL = 'simverif_google_sheets_webhook_url';
 const STORAGE_KEY_DRIVE_FOLDER_ID = 'simverif_google_drive_folder_id';
+const STORAGE_KEY_SHEET_URL = 'simverif_google_sheet_url';
 const STORAGE_KEY_SYNC_LOGS = 'simverif_webhook_sync_logs';
 
 let cachedWebhookUrl: string = '';
 let cachedDriveFolderId: string = '';
+let cachedSheetUrl: string = '';
 
 export function setGlobalWebhookUrl(url: string) {
   cachedWebhookUrl = url ? url.trim() : '';
@@ -34,28 +34,58 @@ export function setGlobalDriveFolderId(id: string) {
   cachedDriveFolderId = id ? id.trim() : '';
 }
 
+export function setGlobalSheetUrl(url: string) {
+  cachedSheetUrl = url ? url.trim() : '';
+}
+
+export function getGoogleSpreadsheetUrl(): string {
+  if (cachedSheetUrl && cachedSheetUrl.trim()) return cachedSheetUrl.trim();
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(STORAGE_KEY_SHEET_URL);
+    if (saved && saved.trim()) return saved.trim();
+  }
+  return 'https://docs.google.com/spreadsheets/';
+}
+
+export function saveGoogleSpreadsheetUrl(url: string): void {
+  if (typeof window === 'undefined') return;
+  cachedSheetUrl = url.trim();
+  localStorage.setItem(STORAGE_KEY_SHEET_URL, url.trim());
+}
+
 export function getGoogleSheetsWebhookUrl(): string {
-  // Always and unconditionally return the production Google Sheet Webhook URL
-  return 'https://script.google.com/macros/s/AKfycbwwRmP6_EkQe5kZ_uXNTK2hqCtfkksAgFo9xo-SlMR1NcXTIRuieoQLF6GYErAdYBy-qw/exec';
+  if (cachedWebhookUrl && cachedWebhookUrl.trim()) return cachedWebhookUrl.trim();
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(STORAGE_KEY_WEBHOOK_URL);
+    if (saved && saved.trim()) return saved.trim();
+  }
+  return DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL;
 }
 
 export function saveGoogleSheetsWebhookUrl(url: string): void {
   if (typeof window === 'undefined') return;
+  cachedWebhookUrl = url.trim();
   localStorage.setItem(STORAGE_KEY_WEBHOOK_URL, url.trim());
 }
 
 export function resetGoogleSheetsWebhookUrl(): void {
   if (typeof window === 'undefined') return;
+  cachedWebhookUrl = '';
   localStorage.removeItem(STORAGE_KEY_WEBHOOK_URL);
 }
 
 export function getGoogleDriveFolderId(): string {
-  // Always and unconditionally return the production Google Drive Folder ID
-  return '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
+  if (cachedDriveFolderId && cachedDriveFolderId.trim()) return cachedDriveFolderId.trim();
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem(STORAGE_KEY_DRIVE_FOLDER_ID);
+    if (saved && saved.trim()) return saved.trim();
+  }
+  return DEFAULT_GOOGLE_DRIVE_FOLDER_ID;
 }
 
 export function saveGoogleDriveFolderId(id: string): void {
   if (typeof window === 'undefined') return;
+  cachedDriveFolderId = id.trim();
   localStorage.setItem(STORAGE_KEY_DRIVE_FOLDER_ID, id.trim());
 }
 
@@ -203,6 +233,8 @@ export interface VerificationWebhookPayload {
   versionNumber?: number;
   pemohonName?: string;
   pemohonInstansi?: string;
+  pemohonEmail?: string;
+  email?: string;
   status?: VerificationStatus;
   verifierName?: string;
   verifierNip?: string;
@@ -212,6 +244,7 @@ export interface VerificationWebhookPayload {
   bavNumber?: string;
   digitalSealHash?: string;
   downloadUrl?: string;
+  driveFolderUrl?: string;
   // Google Drive Induk Server Payload
   driveMasterFolderId?: string;
   driveOpdSubfolder?: string;
@@ -379,7 +412,14 @@ export async function sendUploadToGoogleDriveAndSheet(
   customTargetFolderId?: string
 ): Promise<{ success: boolean; message: string; timestamp: string }> {
   const webhookUrl = getGoogleSheetsWebhookUrl();
-  const masterFolderId = customTargetFolderId || getGoogleDriveFolderId();
+  let masterFolderId = (customTargetFolderId || getGoogleDriveFolderId()).trim();
+  if (masterFolderId.includes('drive.google.com')) {
+    const match = masterFolderId.match(/folders\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      masterFolderId = match[1];
+    }
+  }
+
   const timestamp = new Date().toLocaleString('id-ID', {
     timeZone: 'Asia/Jakarta',
     dateStyle: 'medium',
@@ -401,6 +441,8 @@ export async function sendUploadToGoogleDriveAndSheet(
     versionNumber: version.versionNumber,
     pemohonName: doc.pemohon.nama,
     pemohonInstansi: doc.pemohon.instansi,
+    pemohonEmail: doc.pemohon.email || '',
+    email: doc.pemohon.email || '',
     status: version.status,
     verifierName: 'Menunggu Pemeriksaan',
     verifierNip: '-',
@@ -411,6 +453,7 @@ export async function sendUploadToGoogleDriveAndSheet(
     digitalSealHash: `DRIVE-UPLOAD-${doc.id}-V${version.versionNumber}`,
     downloadUrl: version.googleDrive?.downloadUrl || `https://drive.google.com/drive/folders/${masterFolderId}`,
     driveMasterFolderId: masterFolderId,
+    driveFolderUrl: `https://drive.google.com/drive/folders/${masterFolderId}`,
     driveOpdSubfolder: '',
     fileName: version.fileName,
     fileMimeType: getMimeTypeByFormat(doc.format, version.fileName),
@@ -419,27 +462,6 @@ export async function sendUploadToGoogleDriveAndSheet(
 
   let isSuccess = false;
   let responseText = '';
-
-  // 1. Direct Google Drive API Upload using OAuth token (if user signed in with Google)
-  try {
-    const oauthToken = await getAccessToken();
-    if (oauthToken && cleanBase64) {
-      const mimeType = getMimeTypeByFormat(doc.format, version.fileName);
-      const driveRes = await uploadFileToGoogleDriveFolder(
-        oauthToken,
-        version.fileName,
-        mimeType,
-        cleanBase64,
-        masterFolderId
-      );
-      if (driveRes.id) {
-        payload.downloadUrl = driveRes.webViewLink || `https://drive.google.com/file/d/${driveRes.id}/view`;
-        console.log('✅ File uploaded directly to Google Drive folder:', driveRes.id);
-      }
-    }
-  } catch (driveErr) {
-    console.warn('Direct OAuth Drive API upload note:', driveErr);
-  }
 
   try {
     await fetch(webhookUrl, {
@@ -562,6 +584,8 @@ export async function sendUserRegistrationToGoogleSheet(
     timestamp,
     userId: newUser.id,
     username: newUser.username,
+    email: newUser.email || `${newUser.username}@nagekeokab.go.id`,
+    pemohonEmail: newUser.email || `${newUser.username}@nagekeokab.go.id`,
     pemohonName: newUser.nama,
     pemohonInstansi: newUser.opdName,
     opdId: newUser.opdId,
@@ -571,6 +595,7 @@ export async function sendUserRegistrationToGoogleSheet(
     verifierJabatan: newUser.jabatan,
     newPassword: newUser.password,
     downloadUrl: newUser.driveFolderUrl,
+    driveFolderUrl: newUser.driveFolderUrl,
     notes: `Didaftarkan oleh Admin ${adminUser.nama} (@${adminUser.username})`,
   };
 
@@ -792,24 +817,131 @@ export async function sendTestPingToWebhook(
   }
 }
 
+/**
+ * Mengirim 1 baris data berkas sampel ke sheet DATA_VERIFIKASI_DOKUMEN
+ * Memudahkan pengguna untuk memeriksa sendiri apakah data benar-benar masuk ke Google Sheet dan Google Drive
+ */
+export async function sendSampleTestDocument(
+  senderEmail?: string,
+  opdName?: string
+): Promise<{ success: boolean; message: string; timestamp: string; docNumber: string }> {
+  const targetUrl = getGoogleSheetsWebhookUrl();
+  const masterFolderId = getGoogleDriveFolderId();
+  const timestamp = new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  });
+  const docNumber = `UJI/SIMVERIF/${Date.now().toString().slice(-6)}`;
+  const effectiveEmail = senderEmail || 'inspektorat@nagekeokab.go.id';
+  const effectiveOpd = opdName || 'Inspektorat Daerah Kabupaten Nagekeo';
+
+  const payload: VerificationWebhookPayload = {
+    action: 'UPLOAD_DOCUMENT',
+    timestamp,
+    docId: `DOC-TEST-${Date.now()}`,
+    docNumber,
+    title: 'Pengujian Mandiri Integrasi Google Sheets & Drive (Sampel Verifikasi)',
+    opdName: effectiveOpd,
+    format: 'PDF',
+    status: 'PENDING',
+    verifierName: 'Sistem Pengujian Mandiri',
+    verifierNip: '19850101 201001 1 002',
+    notes: 'Pemeriksaan mandiri: Data berhasil dikirim dan diverifikasi masuk ke baris sheet DATA_VERIFIKASI_DOKUMEN.',
+    downloadUrl: getGoogleDriveFolderUrl(),
+    driveFolderUrl: getGoogleDriveFolderUrl(),
+    driveMasterFolderId: masterFolderId,
+    bavNumber: `BAV-TEST-${Date.now().toString().slice(-4)}`,
+    digitalSealHash: `SEAL-TEST-${Date.now().toString(16).toUpperCase()}`,
+    pemohonName: 'Pemeriksa Mandiri (Uji Coba)',
+    pemohonEmail: effectiveEmail,
+    email: effectiveEmail,
+    pemohonInstansi: effectiveOpd,
+    versionNumber: 1,
+    fileName: 'dokumen_uji_mandiri_simverif.pdf',
+    fileMimeType: 'application/pdf',
+  };
+
+  try {
+    await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+      mode: 'no-cors',
+    });
+
+    const logEntry: WebhookSyncLog = {
+      id: `TEST-DOC-${Date.now()}`,
+      docId: payload.docId || 'DOC-TEST',
+      docNumber,
+      opd: effectiveOpd,
+      status: 'PENDING',
+      timestamp,
+      success: true,
+      responseMessage: `Data uji "${docNumber}" dikirim ke sheet DATA_VERIFIKASI_DOKUMEN dengan email pemohon ${effectiveEmail}.`,
+      payload: payload as unknown as Record<string, unknown>,
+    };
+    appendSyncLog(logEntry);
+
+    return {
+      success: true,
+      message: `Data uji dokumen "${docNumber}" berhasil dikirim! Silakan buka Google Sheet untuk memeriksa baris baru di sheet DATA_VERIFIKASI_DOKUMEN.`,
+      timestamp,
+      docNumber,
+    };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      message: `Gagal mengirim data uji: ${err instanceof Error ? err.message : 'Koneksi bermasalah'}`,
+      timestamp,
+      docNumber,
+    };
+  }
+}
+
 export const GOOGLE_APPS_SCRIPT_TEMPLATE = `/**
  * GOOGLE APPS SCRIPT - SIMVERIF OPD (MULTI-WORKSHEET & GOOGLE DRIVE SERVER)
  * 
- * PEMISAHAN WORKSHEET (AGAR DATA TIDAK TUMPANG TINDIH):
+ * PEMISAHAN WORKSHEET:
  * 1. Sheet 'DATABASE_PENGGUNA':
- *    Khusus menyimpan data login, akun verifikator & dinas, password, dan waktu pembaruan password.
+ *    Khusus menyimpan data login, akun dinas, email kedinasan, password, dan status.
  * 2. Sheet 'DATA_VERIFIKASI_DOKUMEN':
- *    Khusus menyimpan transaksi dokumen, status verifikasi, catatan telaah, nomor BAV, dan tautan file Google Drive.
- * 
- * PENYIMPANAN GOOGLE DRIVE:
- * Berkas fisik disimpan ke dalam Folder Google Drive Induk dengan subfolder terpisah per OPD.
+ *    Khusus menyimpan transaksi dokumen, status verifikasi, email pemohon, dan tautan Google Drive.
+ * 3. Sheet 'MAPPING_FOLDER_OPD':
+ *    Khusus menyimpan pemetaan folder Google Drive per masing-masing dinas.
  */
 
 var MASTER_FOLDER_ID = "1B_SIMVERIF_INDUK_PEMDA_DRIVE_SERVER_2026";
 
-function doPost(e) {
+function getActiveSpreadsheetSafely() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) return ss;
+  } catch (e) {}
+
+  try {
+    var files = DriveApp.getFilesByName("DATABASE_SIMVERIF_SAKIP_NAGEKEO");
+    if (files.hasNext()) {
+      return SpreadsheetApp.open(files.next());
+    }
+    return SpreadsheetApp.create("DATABASE_SIMVERIF_SAKIP_NAGEKEO");
+  } catch (err) {
+    return null;
+  }
+}
+
+function doPost(e) {
+  try {
+    var ss = getActiveSpreadsheetSafely();
+    if (!ss) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Spreadsheet tidak dapat diakses."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     var data = JSON.parse(e.postData.contents);
     
     // 1. WORKSHEET DOKUMEN: DATA_VERIFIKASI_DOKUMEN
@@ -817,29 +949,29 @@ function doPost(e) {
     if (docSheet.getLastRow() === 0) {
       docSheet.appendRow([
         "Waktu Transaksi", "ID Dokumen", "Nomor Berkas", "Judul Dokumen", "OPD / Dinas",
-        "Versi", "Format", "Nama Pemohon", "Instansi Pemohon", "Status Verifikasi",
+        "Versi", "Format", "Nama Pemohon", "Email Pemohon", "Instansi Pemohon", "Status Verifikasi",
         "Nama Verifikator", "NIP Verifikator", "Nomor Registrasi/BAV", "Tautan Berkas Google Drive",
         "ID File Google Drive", "Catatan Verifikator/Pemeriksa", "Kode Hash Keamanan"
       ]);
-      docSheet.getRange(1, 1, 1, 17).setFontWeight("bold").setBackground("#0f172a").setFontColor("#ffffff");
+      docSheet.getRange(1, 1, 1, 18).setFontWeight("bold").setBackground("#0f172a").setFontColor("#ffffff");
     }
 
-    // 2. WORKSHEET AKUN & PASSWORD: DATABASE_PENGGUNA (TERPISAH!)
+    // 2. WORKSHEET AKUN & PASSWORD: DATABASE_PENGGUNA
     var userSheet = getOrCreateSheet(ss, "DATABASE_PENGGUNA");
     if (userSheet.getLastRow() === 0) {
       userSheet.appendRow([
-        "Waktu Pembaruan", "User ID", "Username", "Nama Pengguna", "Peran Akun",
-        "OPD / Instansi", "NIP / Kontak", "Password", "Status Akun"
+        "Waktu Pembaruan", "User ID", "Username", "Email Kedinasan", "Nama Pengguna", "Peran Akun",
+        "OPD / Instansi", "NIP / Kontak", "URL Folder Google Drive", "Password", "Status Akun"
       ]);
-      userSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#1e293b").setFontColor("#38bdf8");
+      userSheet.getRange(1, 1, 1, 11).setFontWeight("bold").setBackground("#1e293b").setFontColor("#38bdf8");
     }
 
-    // 3. WORKSHEET PENDAFTARAN FOLDER DINAS: MAPPING_FOLDER_OPD (DIDAFTARKAN OLEH ADMIN)
+    // 3. WORKSHEET PENDAFTARAN FOLDER DINAS: MAPPING_FOLDER_OPD
     var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
     if (folderSheet.getLastRow() === 0) {
       folderSheet.appendRow([
         "Waktu Pendaftaran", "ID OPD", "Nama Dinas", "URL Folder Google Drive",
-        "ID Folder Google Drive", "Nama Subfolder", "Didaftarkan Oleh Admin", "NIP Admin", "Catatan"
+        "ID Folder Google Drive", "Nama Subfolder", "Didaftarkan Oleh", "NIP / Kontak", "Catatan"
       ]);
       folderSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#065f46").setFontColor("#34d399");
     }
@@ -852,31 +984,31 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 2: UPDATE PASSWORD PENGGUNA (Masuk ke sheet DATABASE_PENGGUNA saja)
+    // Aksi 2: UPDATE PASSWORD PENGGUNA
     if (data.action === "UPDATE_PASSWORD") {
       var foundRow = -1;
       var values = userSheet.getDataRange().getValues();
       for (var r = 1; r < values.length; r++) {
-        if (values[r][2] === data.username || values[r][1] === data.userId) {
+        if (values[r][2] === data.username || values[r][1] === data.userId || values[r][3] === data.username) {
           foundRow = r + 1;
           break;
         }
       }
       
       if (foundRow > 0) {
-        // Update baris pengguna yang ada
         userSheet.getRange(foundRow, 1).setValue(data.timestamp || new Date().toISOString());
-        userSheet.getRange(foundRow, 8).setValue(data.newPassword);
+        userSheet.getRange(foundRow, 10).setValue(data.newPassword);
       } else {
-        // Tambahkan baris baru di sheet DATABASE_PENGGUNA
         userSheet.appendRow([
           data.timestamp || new Date().toISOString(),
           data.userId || "USR-" + Date.now(),
           data.username,
+          data.email || data.username + "@nagekeokab.go.id",
           data.pemohonName || data.name || "-",
           data.role || "DINAS_PEMOHON",
           data.opdName,
           data.verifierNip || "-",
+          data.driveFolderUrl || "-",
           data.newPassword,
           "AKTIF"
         ]);
@@ -893,28 +1025,35 @@ function doPost(e) {
       var userFound = -1;
       var uVals = userSheet.getDataRange().getValues();
       for (var u = 1; u < uVals.length; u++) {
-        if (uVals[u][2] === data.username || uVals[u][1] === data.userId) {
+        if (uVals[u][2] === data.username || uVals[u][1] === data.userId || (data.email && uVals[u][3] === data.email)) {
           userFound = u + 1;
           break;
         }
       }
 
+      var userEmail = data.email || data.pemohonEmail || (data.username + "@nagekeokab.go.id");
+      var userDriveUrl = data.driveFolderUrl || data.downloadUrl || "-";
+
       if (userFound > 0) {
         userSheet.getRange(userFound, 1).setValue(data.timestamp || new Date().toISOString());
-        userSheet.getRange(userFound, 4).setValue(data.pemohonName || data.nama || "-");
-        userSheet.getRange(userFound, 5).setValue(data.role || "DINAS_PEMOHON");
-        userSheet.getRange(userFound, 6).setValue(data.opdName);
-        userSheet.getRange(userFound, 7).setValue(data.verifierNip || "-");
-        userSheet.getRange(userFound, 8).setValue(data.newPassword);
+        userSheet.getRange(userFound, 4).setValue(userEmail);
+        userSheet.getRange(userFound, 5).setValue(data.pemohonName || data.nama || "-");
+        userSheet.getRange(userFound, 6).setValue(data.role || "DINAS_PEMOHON");
+        userSheet.getRange(userFound, 7).setValue(data.opdName);
+        userSheet.getRange(userFound, 8).setValue(data.verifierNip || data.nip || "-");
+        userSheet.getRange(userFound, 9).setValue(userDriveUrl);
+        userSheet.getRange(userFound, 10).setValue(data.newPassword);
       } else {
         userSheet.appendRow([
           data.timestamp || new Date().toISOString(),
           data.userId || "usr-" + data.username,
           data.username,
+          userEmail,
           data.pemohonName || data.nama || "-",
           data.role || "DINAS_PEMOHON",
           data.opdName,
-          data.verifierNip || "-",
+          data.verifierNip || data.nip || "-",
+          userDriveUrl,
           data.newPassword,
           "AKTIF"
         ]);
@@ -922,11 +1061,11 @@ function doPost(e) {
 
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
-        message: "Akun login dinas @" + data.username + " (" + data.opdName + ") berhasil didaftarkan di sheet DATABASE_PENGGUNA"
+        message: "Akun dinas @" + data.username + " (" + userEmail + ") berhasil dicatat di sheet DATABASE_PENGGUNA"
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 4: PENDAFTARAN FOLDER DINAS OLEH ADMIN (REGISTER_OPD_FOLDER)
+    // Aksi 4: PENDAFTARAN FOLDER DINAS (REGISTER_OPD_FOLDER)
     if (data.action === "REGISTER_OPD_FOLDER" && data.folderRegistration) {
       var reg = data.folderRegistration;
       var foundFolderRow = -1;
@@ -962,7 +1101,7 @@ function doPost(e) {
 
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
-        message: "Tautan folder " + reg.opdName + " berhasil didaftarkan oleh admin di sheet MAPPING_FOLDER_OPD"
+        message: "Tautan folder " + reg.opdName + " berhasil dicatat di sheet MAPPING_FOLDER_OPD"
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -1002,29 +1141,46 @@ function doPost(e) {
 
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
-        message: "Seluruh folder dinas berhasil didaftarkan oleh admin di sheet MAPPING_FOLDER_OPD"
+        message: "Seluruh folder dinas berhasil dicatat di sheet MAPPING_FOLDER_OPD"
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 3: TRANSAKSI DOKUMEN (Masuk ke sheet DATA_VERIFIKASI_DOKUMEN & Google Drive)
-    var driveFileUrl = data.downloadUrl || "";
+    // Aksi 6: TRANSAKSI & UNGGAHAN DOKUMEN (Masuk ke sheet DATA_VERIFIKASI_DOKUMEN & Google Drive)
+    var driveFileUrl = data.downloadUrl || data.driveFolderUrl || "";
     var driveFileId = "";
 
     try {
       var targetFolderId = data.driveMasterFolderId || MASTER_FOLDER_ID;
-      var targetFolder;
-      
-      try {
-        targetFolder = DriveApp.getFolderById(targetFolderId);
-      } catch (fErr) {
-        // Fallback cerdas: Simpan file langsung di folder yang sama dengan Google Sheet aktif Anda!
-        var ssId = SpreadsheetApp.getActiveSpreadsheet().getId();
-        var parentFolders = DriveApp.getFileById(ssId).getParents();
-        if (parentFolders.hasNext()) {
-          targetFolder = parentFolders.next();
-        } else {
-          targetFolder = DriveApp.getRootFolder();
+      if (targetFolderId && targetFolderId.indexOf("folders/") !== -1) {
+        var parts = targetFolderId.split("folders/");
+        if (parts.length > 1) {
+          targetFolderId = parts[1].split("?")[0].split("/")[0].trim();
         }
+      }
+
+      var targetFolder = null;
+      if (targetFolderId && targetFolderId.length > 5 && targetFolderId.indexOf("1B_SIMVERIF") === -1) {
+        try {
+          targetFolder = DriveApp.getFolderById(targetFolderId);
+        } catch (fErr) {
+          targetFolder = null;
+        }
+      }
+
+      // Fallback 1: simpan di folder tempat spreadsheet berada
+      if (!targetFolder && ss) {
+        try {
+          var ssId = ss.getId();
+          var parentFolders = DriveApp.getFileById(ssId).getParents();
+          if (parentFolders.hasNext()) {
+            targetFolder = parentFolders.next();
+          }
+        } catch (pErr) {}
+      }
+
+      // Fallback 2: simpan di root Google Drive pengguna
+      if (!targetFolder) {
+        targetFolder = DriveApp.getRootFolder();
       }
 
       if (data.fileBase64 && data.fileBase64.length > 50) {
@@ -1032,10 +1188,11 @@ function doPost(e) {
         var decodedBytes = Utilities.base64Decode(data.fileBase64);
         var blob = Utilities.newBlob(decodedBytes, contentType, data.fileName || "dokumen_verifikasi");
         
-        // Simpan LANGSUNG ke folder target tanpa membuat subfolder baru
         var driveFile = targetFolder.createFile(blob);
-        driveFile.setDescription("Dokumen SIMVERIF OPD: " + data.docNumber + " - Versi " + (data.versionNumber || 1));
-        driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        driveFile.setDescription("Dokumen SIMVERIF SAKIP: " + (data.docNumber || "") + " - " + (data.pemohonEmail || "") + " - Versi " + (data.versionNumber || 1));
+        try {
+          driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch (shErr) {}
         
         driveFileUrl = driveFile.getUrl();
         driveFileId = driveFile.getId();
@@ -1044,7 +1201,7 @@ function doPost(e) {
         driveFileId = targetFolder.getId();
       }
     } catch (driveErr) {
-      driveFileUrl = data.downloadUrl || "https://drive.google.com/drive";
+      driveFileUrl = data.downloadUrl || data.driveFolderUrl || "https://drive.google.com";
     }
 
     docSheet.appendRow([
@@ -1056,6 +1213,7 @@ function doPost(e) {
       "v" + (data.versionNumber || 1),
       data.format,
       data.pemohonName,
+      data.pemohonEmail || data.email || "-",
       data.pemohonInstansi,
       data.status,
       data.verifierName,
@@ -1090,21 +1248,18 @@ function getOrCreateSheet(spreadsheet, sheetName) {
   return sheet;
 }
 
-function getOrCreateSubfolder(parentFolder, subfolderName) {
-  var folders = parentFolder.getFoldersByName(subfolderName);
-  if (folders.hasNext()) {
-    return folders.next();
-  } else {
-    return parentFolder.createFolder(subfolderName);
-  }
-}
-
 function doGet(e) {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = getActiveSpreadsheetSafely();
+    if (!ss) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Spreadsheet tidak ditemukan."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     var action = e && e.parameter ? e.parameter.action : "";
     
-    // Kembalikan semua data dokumen, akun, dan folder jika diminta
     if (!action || action === "get_all_data") {
       var docSheet = ss.getSheetByName("DATA_VERIFIKASI_DOKUMEN");
       var userSheet = ss.getSheetByName("DATABASE_PENGGUNA");
@@ -1124,20 +1279,21 @@ function doGet(e) {
             format: docVals[i][6] ? String(docVals[i][6]) : "PDF",
             pemohon: {
               nama: docVals[i][7] ? String(docVals[i][7]) : "Pemohon",
-              instansi: docVals[i][8] ? String(docVals[i][8]) : "",
+              email: docVals[i][8] ? String(docVals[i][8]) : "",
+              instansi: docVals[i][9] ? String(docVals[i][9]) : "",
             },
-            status: docVals[i][9] ? String(docVals[i][9]) : "PENDING",
-            verifierName: docVals[i][10] ? String(docVals[i][10]) : "",
-            verifierNip: docVals[i][11] ? String(docVals[i][11]) : "",
-            bavNumber: docVals[i][12] ? String(docVals[i][12]) : "",
+            status: docVals[i][10] ? String(docVals[i][10]) : "PENDING",
+            verifierName: docVals[i][11] ? String(docVals[i][11]) : "",
+            verifierNip: docVals[i][12] ? String(docVals[i][12]) : "",
+            bavNumber: docVals[i][13] ? String(docVals[i][13]) : "",
             googleDrive: {
-              viewUrl: docVals[i][13] ? String(docVals[i][13]) : "",
-              downloadUrl: docVals[i][13] ? String(docVals[i][13]) : "",
-              fileId: docVals[i][14] ? String(docVals[i][14]) : "",
+              viewUrl: docVals[i][14] ? String(docVals[i][14]) : "",
+              downloadUrl: docVals[i][14] ? String(docVals[i][14]) : "",
+              fileId: docVals[i][15] ? String(docVals[i][15]) : "",
               storageStatus: "SYNCED"
             },
-            notes: docVals[i][15] ? String(docVals[i][15]) : "",
-            digitalSealHash: docVals[i][16] ? String(docVals[i][16]) : ""
+            notes: docVals[i][16] ? String(docVals[i][16]) : "",
+            digitalSealHash: docVals[i][17] ? String(docVals[i][17]) : ""
           });
         }
       }
@@ -1149,12 +1305,14 @@ function doGet(e) {
           users.push({
             id: userVals[u][1] ? String(userVals[u][1]) : "USR-" + u,
             username: userVals[u][2] ? String(userVals[u][2]) : "",
-            nama: userVals[u][3] ? String(userVals[u][3]) : "",
-            role: userVals[u][4] ? String(userVals[u][4]) : "DINAS_PEMOHON",
-            opdName: userVals[u][5] ? String(userVals[u][5]) : "",
-            nip: userVals[u][6] ? String(userVals[u][6]) : "",
-            password: userVals[u][7] ? String(userVals[u][7]) : "",
-            opdId: userVals[u][5] ? String(userVals[u][5]).replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 10) : "OPD"
+            email: userVals[u][3] ? String(userVals[u][3]) : userVals[u][2] + "@nagekeokab.go.id",
+            nama: userVals[u][4] ? String(userVals[u][4]) : "",
+            role: userVals[u][5] ? String(userVals[u][5]) : "DINAS_PEMOHON",
+            opdName: userVals[u][6] ? String(userVals[u][6]) : "",
+            nip: userVals[u][7] ? String(userVals[u][7]) : "",
+            driveFolderUrl: userVals[u][8] ? String(userVals[u][8]) : "",
+            password: userVals[u][9] ? String(userVals[u][9]) : "",
+            opdId: userVals[u][6] ? String(userVals[u][6]).replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 10) : "OPD"
           });
         }
       }
@@ -1194,15 +1352,6 @@ function doGet(e) {
 
 /**
  * FUNGSI OTOMATIS: AUTO-PURGE BERKAS KEDALUWARSA 3 BULAN (90 HARI)
- * Berkas draf lama atau revisi yang belum/sebelum verifikasi tersimpan di folder
- * 'ARSIP_DRAF_LAMA_3_BULAN' dan akan terhapus secara permanen otomatis setelah 90 hari.
- * 
- * Cara Mengaktifkan Jadwal Otomatis di Google Apps Script:
- * 1. Di editor Apps Script, klik menu bergambar jam di sebelah kiri (Triggers/Pemicu).
- * 2. Klik '+ Tambahkan Pemicu' (+ Add Trigger).
- * 3. Pilih fungsi: 'purgeOldDraftsOlderThan90Days'.
- * 4. Pilih sumber acara: 'Berdasarkan waktu' (Time-driven) -> 'Pengatur waktu hari' (Day timer).
- * 5. Pilih waktu eksekusi: tengah malam (00.00 - 01.00). Klik Simpan.
  */
 function purgeOldDraftsOlderThan90Days() {
   try {
@@ -1222,7 +1371,6 @@ function purgeOldDraftsOlderThan90Days() {
           var file = files.next();
           var fileAge = now - file.getDateCreated().getTime();
           if (fileAge > ninetyDaysInMillis) {
-            Logger.log("Menghapus permanen berkas kedaluwarsa 3 bulan: " + file.getName() + " (" + file.getId() + ")");
             file.setTrashed(true);
             purgedCount++;
           }

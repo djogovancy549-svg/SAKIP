@@ -17,11 +17,11 @@ import {
   SlidersHorizontal,
   CheckCircle2,
   Bell,
-  RefreshCw,
+  Mail,
+  Activity,
 } from 'lucide-react';
 import { OPD, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
-import { initDriveAuth, googleSignIn, googleSignOut } from '../services/googleDriveAuth';
 
 interface HeaderProps {
   activeOpd: OPD;
@@ -59,32 +59,6 @@ export function Header({
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
 
   const isDinas = currentUser.role === 'DINAS_PEMOHON';
-
-  const [googleDriveUser, setGoogleDriveUser] = useState<any>(null);
-  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = initDriveAuth((user) => {
-      setGoogleDriveUser(user);
-    });
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  const handleConnectGoogle = async () => {
-    setIsConnectingGoogle(true);
-    try {
-      const res = await googleSignIn();
-      if (res) {
-        setGoogleDriveUser(res.user);
-      }
-    } catch (e) {
-      console.error('Failed to sign in with Google Drive', e);
-    } finally {
-      setIsConnectingGoogle(false);
-    }
-  };
 
   // Close menus on outside click
   const opdRef = useRef<HTMLDivElement>(null);
@@ -221,26 +195,26 @@ export function Header({
             )}
           </button>
 
-          {/* Google Drive Direct OAuth Connect Status */}
-          {googleDriveUser ? (
-            <div
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 shadow-2xs"
-              title={`Terhubung ke Google Drive: ${googleDriveUser.email}`}
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="truncate max-w-[130px] font-mono text-[11px]">{googleDriveUser.email}</span>
-            </div>
-          ) : (
-            <button
-              onClick={handleConnectGoogle}
-              disabled={isConnectingGoogle}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
-              title="Hubungkan akun Google Drive untuk pengunggahan berkas langsung"
-            >
-              <HardDrive className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-              <span className="hidden lg:inline">{isConnectingGoogle ? 'Menghubungkan...' : 'Hubungkan Drive'}</span>
-            </button>
-          )}
+          {/* Official Dinas Email Badge */}
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-blue-50/90 border border-blue-200 rounded-xl text-xs font-bold text-blue-950 shadow-2xs"
+            title={`Email Kedinasan: ${currentUser.email || `${currentUser.username}@nagekeokab.go.id`}`}
+          >
+            <Mail className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <span className="truncate max-w-[160px] font-mono text-[11px]">
+              {currentUser.email || `${currentUser.username}@nagekeokab.go.id`}
+            </span>
+          </div>
+
+          {/* Self-Check & Diagnostics Button */}
+          <button
+            onClick={onOpenGoogleSheetModal}
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+            title="Periksa Koneksi Google Sheets & Drive (Pengecekan Mandiri)"
+          >
+            <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse shrink-0" />
+            <span className="hidden xl:inline">Periksa Koneksi &amp; Data</span>
+          </button>
 
           {/* 1. Main Action Button: Upload Dokumen */}
           <button
@@ -297,40 +271,38 @@ export function Header({
                     </div>
                   </button>
 
-                  {/* Option 2: Admin Folder & Account Registration (Admin only) */}
-                  {!isDinas && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsServerMenuOpen(false);
-                          onOpenAdminFolderRegistration();
-                        }}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                        <div>
-                          <div className="font-bold text-slate-900">Pendaftaran Akun &amp; Folder Dinas</div>
-                          <div className="text-[10px] text-slate-600 font-medium">Daftarkan akun login &amp; mapping folder OPD</div>
-                        </div>
-                      </button>
+                  {/* Option 2: Self-Check & Diagnostics (Available to everyone) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsServerMenuOpen(false);
+                      onOpenGoogleSheetModal();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Activity className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-slate-900">Pemeriksaan &amp; Uji Mandiri</div>
+                      <div className="text-[10px] text-slate-600 font-medium">Uji kirim data &amp; periksa sheet / folder</div>
+                    </div>
+                  </button>
 
-                      {/* Option 3: Google Sheets & Webhook (Admin only) */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsServerMenuOpen(false);
-                          onOpenGoogleSheetModal();
-                        }}
-                        className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
-                      >
-                        <Database className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                        <div>
-                          <div className="font-bold text-slate-900">Google Spreadsheet &amp; Webhook</div>
-                          <div className="text-[10px] text-slate-600 font-medium">Konfigurasi endpoint webhook &amp; script sync</div>
-                        </div>
-                      </button>
-                    </>
+                  {/* Option 3: Admin Folder & Account Registration (Admin only) */}
+                  {!isDinas && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsServerMenuOpen(false);
+                        onOpenAdminFolderRegistration();
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold text-slate-900">Pendaftaran Akun &amp; Folder Dinas</div>
+                        <div className="text-[10px] text-slate-600 font-medium">Daftarkan akun login &amp; mapping folder OPD</div>
+                      </div>
+                    </button>
                   )}
                 </div>
               </div>

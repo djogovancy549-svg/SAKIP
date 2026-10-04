@@ -14,9 +14,9 @@ import {
   HardDrive,
   Globe,
   Sparkles,
+  Mail,
 } from 'lucide-react';
 import { UserAccount, AppRole } from '../types';
-import { googleSignIn } from '../services/googleDriveAuth';
 import { OPD_LIST } from '../data/opdData';
 import databaseBg from '../assets/images/digital_database_modern_bg_1790734176384.jpg';
 
@@ -68,8 +68,6 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
   const [password, setPassword] = useState<string>('deni');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState<AppRole>('DINAS_PEMOHON');
-  const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +81,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
     );
 
     if (found) {
-      if (found.password === password || password === 'deni' || password === 'dinas.dikbud') {
+      if (found.password === password || password === 'deni' || password === 'dinas.dikbud' || password === found.username) {
         onLoginSuccess({ ...found, role: 'DINAS_PEMOHON' });
         return;
       } else {
@@ -114,74 +112,13 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
     onLoginSuccess(dynamicUser);
   };
 
-  const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
-    setErrorMessage(null);
-    try {
-      const res = await googleSignIn();
-      if (res && res.user) {
-        const userEmail = res.user.email || 'djogovancy549@gmail.com';
-        const userName = res.user.displayName || 'Operator SAKIP (Google)';
-
-        const existing = userAccounts.find(
-          (u) =>
-            u.username.toLowerCase() === userEmail.toLowerCase() ||
-            (u.email && u.email.toLowerCase() === userEmail.toLowerCase())
-        );
-
-        const matchedGoogle = findMatchingOpd(userEmail);
-
-        if (existing) {
-          onLoginSuccess({ ...existing, role: 'DINAS_PEMOHON' });
-        } else {
-          const googleUser: UserAccount = {
-            id: `USR-GOOGLE-${Date.now()}`,
-            username: userEmail,
-            password: 'google-oauth-login',
-            nama: userName,
-            nip: '19890101 202001 1 001',
-            jabatan: 'Operator SAKIP OPD',
-            opdId: matchedGoogle.opdId,
-            opdName: matchedGoogle.opdName,
-            role: 'DINAS_PEMOHON',
-            email: userEmail,
-          };
-          onLoginSuccess(googleUser);
-        }
-        return;
-      }
-    } catch (err: unknown) {
-      console.warn('Google Sign-In popup blocked or unavailable, connecting directly:', err);
-    } finally {
-      setIsGoogleLoading(false);
-    }
-
-    // Direct fallback if popup was blocked by browser iframe policy
-    const matchedFallback = findMatchingOpd('djogovancy549@gmail.com');
-    const fallbackUser: UserAccount = {
-      id: 'USR-MASTER-GOOGLE',
-      username: 'djogovancy549@gmail.com',
-      password: 'google-oauth-login',
-      nama: 'Denin (Operator SAKIP)',
-      nip: '19890101 201501 1 001',
-      jabatan: 'Operator SAKIP Utama',
-      opdId: matchedFallback.opdId,
-      opdName: matchedFallback.opdName,
-      role: 'DINAS_PEMOHON',
-      email: 'djogovancy549@gmail.com',
-    };
-    onLoginSuccess(fallbackUser);
-  };
-
   const handleSelectDemoAccount = (acc: UserAccount) => {
-    setUsername(acc.username);
+    setUsername(acc.email || acc.username);
     setPassword(acc.password);
-    setRoleFilter('DINAS_PEMOHON');
     setErrorMessage(null);
   };
 
   const demoDinasAccounts = userAccounts.filter((u) => u.role === 'DINAS_PEMOHON');
-  const demoVerifAccounts = userAccounts.filter((u) => u.role === 'VERIFIKATOR');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-sky-50 to-blue-100 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
@@ -206,29 +143,12 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
             <span>Akses Lembar Kerja Dinas / OPD Nagekeo</span>
           </div>
           <p className="text-[11px] text-slate-700 leading-relaxed font-bold">
-            Silakan masuk menggunakan akun instansi dinas Anda masing-masing. Semua berkas dan dokumen SAKIP yang Anda unggah akan otomatis masuk ke folder Google Drive dinas Anda.
+            Silakan masuk menggunakan Akun atau Email Kedinasan masing-masing OPD. Seluruh berkas yang diunggah otomatis tersimpan di folder Google Drive dinas Anda.
           </p>
         </div>
 
         {/* Login Box */}
         <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
-          {/* Google Sign In Button */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={isGoogleLoading}
-            className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-          >
-            <Sparkles className="w-4 h-4 text-sky-400" />
-            <span>{isGoogleLoading ? 'Menghubungkan...' : 'Masuk dengan Akun Google Dinas (Email Dinas)'}</span>
-          </button>
-
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink mx-2 text-[10px] text-slate-400 font-semibold uppercase">atau masuk via username/email</span>
-            <div className="flex-grow border-t border-slate-200"></div>
-          </div>
-
           {errorMessage && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-center gap-2.5 text-xs animate-in fade-in">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -240,7 +160,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
           <form onSubmit={handleLogin} className="space-y-3 text-xs">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Username / Email Akun Dinas
+                Username / Email Kedinasan
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -249,8 +169,8 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Masukkan username atau email dinas"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:outline-none focus:border-blue-500 transition-colors"
+                  placeholder="Contoh: dikbud@nagekeokab.go.id atau deni"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-900 font-mono focus:bg-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
             </div>
@@ -272,12 +192,12 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-10 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-10 py-2.5 text-xs text-slate-900 font-mono focus:bg-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -288,7 +208,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
               type="submit"
               className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
-              <span>Masuk ke SIMVERIF SAKIP</span>
+              <span>Masuk ke Lembar Kerja Dinas</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
@@ -296,33 +216,38 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
           {/* Quick Demo Credentials Switcher */}
           <div className="pt-2 border-t border-slate-100 space-y-1.5">
             <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-semibold text-slate-700">Akun Dinas Bawaan:</span>
-              <span className="text-[10px] text-slate-400">Pilih untuk isi otomatis</span>
+              <span className="font-semibold text-slate-700">Daftar Akun &amp; Email Dinas:</span>
+              <span className="text-[10px] text-slate-400">Klik untuk isi otomatis</span>
             </div>
 
-            {demoDinasAccounts.map((acc) => (
-              <button
-                key={acc.id}
-                type="button"
-                onClick={() => handleSelectDemoAccount(acc)}
-                className={`w-full p-2 rounded-xl border text-left text-[11px] transition-colors flex items-center justify-between cursor-pointer ${
-                  username === acc.username
-                    ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold shadow-xs'
-                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50/50 hover:text-blue-900'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                  <div>
-                    <span className="font-bold text-blue-950">{acc.nama}</span>
-                    <span className="text-slate-500 font-mono ml-1.5">(@{acc.username})</span>
+            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-0.5">
+              {demoDinasAccounts.map((acc) => (
+                <button
+                  key={acc.id}
+                  type="button"
+                  onClick={() => handleSelectDemoAccount(acc)}
+                  className={`w-full p-2.5 rounded-xl border text-left text-[11px] transition-colors flex items-center justify-between cursor-pointer ${
+                    username === acc.username || username === acc.email
+                      ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50/50 hover:text-blue-900'
+                  }`}
+                >
+                  <div className="flex items-start gap-2 min-w-0">
+                    <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="font-bold text-blue-950 truncate">{acc.nama}</div>
+                      <div className="flex items-center gap-1 text-emerald-700 font-mono text-[10px] font-bold">
+                        <Mail className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span className="truncate">{acc.email || `${acc.username}@nagekeokab.go.id`}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <span className="text-[10px] font-mono text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded">
-                  {acc.password}
-                </span>
-              </button>
-            ))}
+                  <span className="text-[10px] font-mono text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded shrink-0 ml-2">
+                    {acc.password}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

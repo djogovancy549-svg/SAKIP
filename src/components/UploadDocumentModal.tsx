@@ -9,19 +9,21 @@ import {
   HardDrive,
   CheckCircle2,
   FolderTree,
+  Mail,
+  Database,
 } from 'lucide-react';
-import { DocumentFormat, DocumentItem, OPD, GoogleDriveStorageInfo } from '../types';
+import { DocumentFormat, DocumentItem, OPD, GoogleDriveStorageInfo, UserAccount } from '../types';
 import {
   getGoogleDriveFolderId,
   createGoogleDriveStorageInfo,
   DEFAULT_GOOGLE_DRIVE_MASTER_NAME,
 } from '../services/googleSheetsWebhook';
-import { initDriveAuth, googleSignIn } from '../services/googleDriveAuth';
 
 interface UploadDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeOpd: OPD;
+  currentUser?: UserAccount;
   onAddDocument: (doc: DocumentItem) => void;
 }
 
@@ -29,15 +31,16 @@ export function UploadDocumentModal({
   isOpen,
   onClose,
   activeOpd,
+  currentUser,
   onAddDocument,
 }: UploadDocumentModalProps) {
   const [format, setFormat] = useState<DocumentFormat>('PDF');
   const [nomorBerkas, setNomorBerkas] = useState<string>('');
   const [judul, setJudul] = useState<string>('');
   const [perihal, setPerihal] = useState<string>('');
-  const [pemohonNama, setPemohonNama] = useState<string>('');
-  const [pemohonInstansi, setPemohonInstansi] = useState<string>('');
-  const [pemohonKontak, setPemohonKontak] = useState<string>('');
+  const [pemohonNama, setPemohonNama] = useState<string>(currentUser?.nama || '');
+  const [pemohonInstansi, setPemohonInstansi] = useState<string>(currentUser?.opdName || activeOpd.name);
+  const [pemohonKontak, setPemohonKontak] = useState<string>(currentUser?.nip || '');
   const [fileName, setFileName] = useState<string>('');
   const [fileSize, setFileSize] = useState<string>('2.4 MB');
   const [fileBase64, setFileBase64] = useState<string | undefined>(undefined);
@@ -47,31 +50,13 @@ export function UploadDocumentModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const masterFolderId = getGoogleDriveFolderId();
 
-  const [googleDriveUser, setGoogleDriveUser] = useState<any>(null);
-  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
-
   useEffect(() => {
-    const unsubscribe = initDriveAuth((user) => {
-      setGoogleDriveUser(user);
-    });
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, []);
-
-  const handleConnectGoogle = async () => {
-    setIsConnectingGoogle(true);
-    try {
-      const res = await googleSignIn();
-      if (res) {
-        setGoogleDriveUser(res.user);
-      }
-    } catch (e) {
-      console.error('Failed to sign in with Google Drive', e);
-    } finally {
-      setIsConnectingGoogle(false);
+    if (currentUser) {
+      if (!pemohonNama) setPemohonNama(currentUser.nama);
+      if (!pemohonInstansi) setPemohonInstansi(currentUser.opdName);
+      if (!pemohonKontak) setPemohonKontak(currentUser.nip);
     }
-  };
+  }, [currentUser]);
 
   if (!isOpen) return null;
 
@@ -153,8 +138,8 @@ Dokumen ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan secara fisik di
       pemohon: {
         nama: pemohonNama.trim(),
         instansi: pemohonInstansi.trim() || activeOpd.name,
-        kontak: pemohonKontak.trim() || '0812-0000-1111',
-        email: `${pemohonNama.toLowerCase().replace(/\s+/g, '.')}@daerah.go.id`,
+        kontak: pemohonKontak.trim() || currentUser?.nip || '0812-0000-1111',
+        email: currentUser?.email || `${activeOpd.shortName.toLowerCase()}@nagekeokab.go.id`,
       },
       tanggalMasuk: new Date().toLocaleString('id-ID', {
         dateStyle: 'short',
@@ -505,28 +490,29 @@ Dokumen ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan secara fisik di
             </div>
           </div>
 
-          {/* Google Drive Status Banner */}
-          <div className="p-3 bg-slate-900 text-white rounded-xl flex items-center justify-between text-xs shadow-xs">
-            <div className="flex items-center gap-2 min-w-0">
-              <HardDrive className="w-4 h-4 text-sky-400 shrink-0" />
-              <div className="truncate text-[11px]">
-                {googleDriveUser ? (
-                  <span>Akses Direct Drive: <strong className="text-emerald-400 font-mono">{googleDriveUser.email}</strong></span>
-                ) : (
-                  <span className="text-slate-300">Hubungkan akun Google Drive untuk menyimpan file fisik langsung</span>
-                )}
+          {/* Dinas Email & Google Drive Status Banner */}
+          <div className="p-3 bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 rounded-xl space-y-1.5 text-xs shadow-xs text-blue-950">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <Mail className="w-4 h-4 text-blue-600 shrink-0" />
+                <div className="truncate text-[11px]">
+                  <span>Email Pemohon: <strong className="font-mono text-blue-900">{currentUser?.email || `${activeOpd.shortName.toLowerCase()}@nagekeokab.go.id`}</strong></span>
+                </div>
+              </div>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full font-mono shrink-0">
+                Tersambung
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[10px] text-slate-600 pt-1 border-t border-blue-100/80">
+              <div className="flex items-center gap-1 font-mono text-blue-950">
+                <HardDrive className="w-3 h-3 text-blue-600 shrink-0" />
+                <span>Drive: Folder [{activeOpd.name}]</span>
+              </div>
+              <div className="flex items-center gap-1 font-mono text-emerald-950">
+                <Database className="w-3 h-3 text-emerald-600 shrink-0" />
+                <span>Sheet: DATA_VERIFIKASI_DOKUMEN</span>
               </div>
             </div>
-            {!googleDriveUser && (
-              <button
-                type="button"
-                onClick={handleConnectGoogle}
-                disabled={isConnectingGoogle}
-                className="px-3 py-1 bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer shrink-0"
-              >
-                {isConnectingGoogle ? 'Menghubungkan...' : 'Hubungkan Drive'}
-              </button>
-            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
@@ -539,10 +525,10 @@ Dokumen ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan secara fisik di
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white font-bold rounded-xl text-xs transition-colors shadow-md cursor-pointer flex items-center gap-2"
             >
-              <HardDrive className="w-4 h-4" />
-              <span>Upload ke Google Drive & Simpan</span>
+              <Upload className="w-4 h-4" />
+              <span>Simpan ke Google Drive &amp; Sheet</span>
             </button>
           </div>
         </form>
