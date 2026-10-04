@@ -23,6 +23,11 @@ import {
   Mail,
   HelpCircle,
   FileSpreadsheet,
+  LayoutDashboard,
+  Users,
+  Lock,
+  Globe,
+  FileCode,
 } from 'lucide-react';
 import {
   getGoogleSheetsWebhookUrl,
@@ -39,8 +44,8 @@ import {
   getSyncLogs,
   sendTestPingToWebhook,
   sendSampleTestDocument,
-  GOOGLE_APPS_SCRIPT_TEMPLATE,
 } from '../services/googleSheetsWebhook';
+import { APPS_SCRIPT_CODE_GS, APPS_SCRIPT_INDEX_HTML } from '../services/googleAppsScriptFiles';
 import { WebhookSyncLog } from '../types';
 import { OPD_LIST } from '../data/opdData';
 
@@ -53,8 +58,10 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
   const [webhookUrl, setWebhookUrl] = useState<string>('');
   const [driveFolderId, setDriveFolderId] = useState<string>('');
   const [sheetUrl, setSheetUrl] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'SELF_CHECK' | 'DRIVE' | 'ENDPOINT' | 'SCRIPT' | 'LOGS'>('SELF_CHECK');
-  const [copiedCode, setCopiedCode] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'SCRIPT_FILES' | 'SELF_CHECK' | 'ADMIN_DASHBOARD' | 'DRIVE' | 'ENDPOINT' | 'LOGS'>('SCRIPT_FILES');
+  const [activeCodeFile, setActiveCodeFile] = useState<'CODE_GS' | 'INDEX_HTML' | 'GUIDE'>('CODE_GS');
+  const [copiedCodeGs, setCopiedCodeGs] = useState<boolean>(false);
+  const [copiedIndexHtml, setCopiedIndexHtml] = useState<boolean>(false);
   const [copiedUrl, setCopiedUrl] = useState<boolean>(false);
   
   // Test states
@@ -88,7 +95,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
 
   if (!isOpen) return null;
 
-  const handleSaveAll = async () => {
+  const handleSaveAll = () => {
     let cleanedDriveId = driveFolderId.trim();
     if (cleanedDriveId.includes('drive.google.com')) {
       const match = cleanedDriveId.match(/folders\/([a-zA-Z0-9_-]+)/);
@@ -151,10 +158,16 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
     }
   };
 
-  const handleCopyScript = () => {
-    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_TEMPLATE);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
+  const handleCopyCodeGs = () => {
+    navigator.clipboard.writeText(APPS_SCRIPT_CODE_GS);
+    setCopiedCodeGs(true);
+    setTimeout(() => setCopiedCodeGs(false), 2500);
+  };
+
+  const handleCopyIndexHtml = () => {
+    navigator.clipboard.writeText(APPS_SCRIPT_INDEX_HTML);
+    setCopiedIndexHtml(true);
+    setTimeout(() => setCopiedIndexHtml(false), 2500);
   };
 
   const handleCopyUrl = () => {
@@ -164,25 +177,26 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-blue-950/50 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="bg-white border border-blue-200/90 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-blue-950/60 backdrop-blur-md animate-in fade-in duration-150">
+      <div className="bg-white border border-blue-200/90 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]">
+        
         {/* Modal Header */}
         <div className="px-5 py-4 bg-gradient-to-r from-blue-700 via-blue-600 to-sky-600 border-b border-blue-500 text-white flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2.5">
             <div className="p-2.5 bg-white/15 border border-white/20 rounded-2xl text-white shadow-xs">
-              <Activity className="w-5 h-5 text-sky-200" />
+              <FileCode className="w-5 h-5 text-sky-200" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm md:text-base font-bold text-white drop-shadow-xs">
-                  Pusat Pemeriksaan &amp; Verifikasi Mandiri
+                  Coding Apps Script: Code.gs &amp; Index.html
                 </h2>
                 <span className="text-[10px] font-mono bg-emerald-400 text-emerald-950 font-black px-2 py-0.5 rounded-full shadow-xs">
-                  STATUS AKTIF
+                  TINGGAL SALIN
                 </span>
               </div>
               <p className="text-[11px] text-blue-100">
-                Periksa langsung aliran data berkas, email akun dinas, Google Sheet, dan folder Google Drive
+                Salin file Code.gs &amp; Index.html ke Google Apps Script Spreadsheet untuk membuat Dashboard Admin Verifikasi yang terhubung ke User Dinas
               </p>
             </div>
           </div>
@@ -198,6 +212,30 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-200 bg-slate-50/80 px-4 sm:px-6 gap-2 sm:gap-4 text-xs font-semibold overflow-x-auto no-scrollbar">
           <button
+            onClick={() => setActiveTab('SCRIPT_FILES')}
+            className={`py-3 border-b-2 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'SCRIPT_FILES'
+                ? 'border-blue-600 text-blue-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <Code className="w-3.5 h-3.5 text-blue-600" />
+            <span>1. Salin Code.gs &amp; Index.html</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ADMIN_DASHBOARD')}
+            className={`py-3 border-b-2 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'ADMIN_DASHBOARD'
+                ? 'border-blue-600 text-blue-700 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <LayoutDashboard className="w-3.5 h-3.5 text-emerald-600" />
+            <span>2. Buka Dashboard Admin Apps Script</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('SELF_CHECK')}
             className={`py-3 border-b-2 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'SELF_CHECK'
@@ -205,20 +243,8 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            <Activity className="w-3.5 h-3.5 text-blue-600" />
-            <span>Pemeriksaan Mandiri</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('DRIVE')}
-            className={`py-3 border-b-2 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              activeTab === 'DRIVE'
-                ? 'border-blue-600 text-blue-700 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <HardDrive className="w-3.5 h-3.5" />
-            <span>Folder Google Drive</span>
+            <Activity className="w-3.5 h-3.5 text-purple-600" />
+            <span>3. Uji Koneksi &amp; Ping</span>
           </button>
 
           <button
@@ -230,19 +256,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
             }`}
           >
             <Database className="w-3.5 h-3.5" />
-            <span>Konfigurasi &amp; URL</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('SCRIPT')}
-            className={`py-3 border-b-2 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              activeTab === 'SCRIPT'
-                ? 'border-blue-600 text-blue-700 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Code className="w-3.5 h-3.5" />
-            <span>Kode Apps Script (.gs)</span>
+            <span>URL Webhook &amp; Drive</span>
           </button>
 
           <button
@@ -260,28 +274,260 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
 
         {/* Modal Body */}
         <div className="p-5 flex-1 overflow-y-auto space-y-4 text-xs text-slate-700 bg-white">
-          {/* TAB 1: SELF CHECK & DIAGNOSTICS */}
+          
+          {/* TAB 1: KODE FILE APPS SCRIPT (CODE.GS & INDEX.HTML) */}
+          {activeTab === 'SCRIPT_FILES' && (
+            <div className="space-y-4">
+              
+              {/* Instruksi Singkat */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 rounded-2xl flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1 max-w-xl">
+                  <div className="font-bold text-blue-950 text-xs flex items-center gap-1.5">
+                    <FileCode className="w-4 h-4 text-blue-600" />
+                    <span>Cara Pasang di Google Spreadsheet (2 File Saja):</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Buka Google Spreadsheet &gt; <strong>Ekstensi &gt; Apps Script</strong>. Buat file <strong>Code.gs</strong> dan file <strong>Index.html</strong> dengan menyalin kode di bawah, lalu Deploy sebagai <strong>Web app (Anyone)</strong>.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href={getGoogleSpreadsheetUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Buka Spreadsheet ↗</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* File Switcher Tabs */}
+              <div className="flex border-b border-slate-200 gap-2 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setActiveCodeFile('CODE_GS')}
+                  className={`px-4 py-2.5 rounded-t-xl border-t border-x transition-colors flex items-center gap-2 cursor-pointer ${
+                    activeCodeFile === 'CODE_GS'
+                      ? 'bg-slate-900 text-white border-slate-800'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  <FileCode className="w-4 h-4 text-sky-400" />
+                  <span>File 1: Code.gs (Backend &amp; doGet)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCodeFile('INDEX_HTML')}
+                  className={`px-4 py-2.5 rounded-t-xl border-t border-x transition-colors flex items-center gap-2 cursor-pointer ${
+                    activeCodeFile === 'INDEX_HTML'
+                      ? 'bg-slate-900 text-white border-slate-800'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  <LayoutDashboard className="w-4 h-4 text-emerald-400" />
+                  <span>File 2: Index.html (Tampilan Dashboard Admin)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveCodeFile('GUIDE')}
+                  className={`px-4 py-2.5 rounded-t-xl border-t border-x transition-colors flex items-center gap-2 cursor-pointer ${
+                    activeCodeFile === 'GUIDE'
+                      ? 'bg-blue-50 text-blue-900 border-blue-200'
+                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  <HelpCircle className="w-4 h-4 text-blue-600" />
+                  <span>Panduan Langkah Demi Langkah (1 Menit)</span>
+                </button>
+              </div>
+
+              {/* FILE 1: CODE.GS */}
+              {activeCodeFile === 'CODE_GS' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <span>Kode untuk file:</span>
+                      <code className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-blue-700">Code.gs</code>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyCodeGs}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-md shadow-blue-500/20"
+                    >
+                      {copiedCodeGs ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                      <span>{copiedCodeGs ? 'Tersalin ke Clipboard!' : 'Salin Kode Code.gs'}</span>
+                    </button>
+                  </div>
+
+                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-[11px] font-mono text-sky-300 max-h-[380px] overflow-y-auto whitespace-pre leading-relaxed select-all">
+                    {APPS_SCRIPT_CODE_GS}
+                  </div>
+                </div>
+              )}
+
+              {/* FILE 2: INDEX.HTML */}
+              {activeCodeFile === 'INDEX_HTML' && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <span>Kode untuk file:</span>
+                      <code className="px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-emerald-700">Index.html</code>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyIndexHtml}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-xl transition-all flex items-center gap-1.5 text-xs cursor-pointer shadow-md shadow-emerald-500/20"
+                    >
+                      {copiedIndexHtml ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
+                      <span>{copiedIndexHtml ? 'Tersalin ke Clipboard!' : 'Salin Kode Index.html'}</span>
+                    </button>
+                  </div>
+
+                  <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-[11px] font-mono text-emerald-300 max-h-[380px] overflow-y-auto whitespace-pre leading-relaxed select-all">
+                    {APPS_SCRIPT_INDEX_HTML}
+                  </div>
+                </div>
+              )}
+
+              {/* PANDUAN DEPLOY */}
+              {activeCodeFile === 'GUIDE' && (
+                <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 text-xs leading-relaxed text-slate-700">
+                  <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                    <span>Langkah Memasang Dashboard Admin di Apps Script (1 Menit):</span>
+                  </div>
+
+                  <ol className="list-decimal pl-5 space-y-2.5 text-slate-700">
+                    <li>
+                      <strong>Buka Spreadsheet:</strong> Buka Google Spreadsheet database Anda di peramban.
+                    </li>
+                    <li>
+                      <strong>Buka Editor Apps Script:</strong> Klik menu <strong>Ekstensi &gt; Apps Script</strong>.
+                    </li>
+                    <li>
+                      <strong>Tempel File 1 (Code.gs):</strong> Di file <code>Code.gs</code> yang sudah ada, hapus semua kode bawaan lalu tempel kode dari tab <strong>File 1: Code.gs</strong>.
+                    </li>
+                    <li>
+                      <strong>Buat File 2 (Index.html):</strong> Di sebelah kiri editor Apps Script, klik ikon <strong>+ (Tambah file)</strong> &gt; pilih <strong>HTML</strong> &gt; beri nama <code>Index</code> (tanpa .html). Hapus isinya lalu tempel kode dari tab <strong>File 2: Index.html</strong>.
+                    </li>
+                    <li>
+                      <strong>Deploy Web App:</strong> Klik tombol biru <strong>Deploy &gt; New deployment</strong> di pojok kanan atas:
+                      <ul className="list-disc pl-5 mt-1.5 space-y-1 text-slate-800 font-medium">
+                        <li>Pilih tipe: <strong>Web app</strong> (klik ikon gerigi &gt; Web app)</li>
+                        <li>Description: <strong>Dashboard Admin SAKIP</strong></li>
+                        <li>Execute as: <strong>Me (email Google Anda)</strong></li>
+                        <li>Who has access: <strong>Anyone</strong> (Wajib agar form User Dinas bisa mengirim berkas)</li>
+                      </ul>
+                    </li>
+                    <li>
+                      <strong>Salin URL Web App:</strong> Salin URL Web App (berakhiran <code>/exec</code>) dan tempelkan ke tab <strong>URL Webhook &amp; Drive</strong> di aplikasi ini!
+                    </li>
+                  </ol>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* TAB 2: APPS SCRIPT ADMIN DASHBOARD */}
+          {activeTab === 'ADMIN_DASHBOARD' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 border-2 border-emerald-300 rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-emerald-950 text-sm">
+                    <LayoutDashboard className="w-5 h-5 text-emerald-600" />
+                    <span>Dashboard Admin Google Apps Script (Web App)</span>
+                  </div>
+                  <span className="text-[10px] font-bold bg-emerald-600 text-white px-2.5 py-0.5 rounded-full shadow-xs">
+                    TERHUBUNG PENUH
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-900 leading-relaxed">
+                  Ketika Admin membuka URL Web App Apps Script di browser, sistem secara otomatis merender <strong>Dashboard Admin Profesional</strong> (melalui fungsi <code>doGet</code> dan file <code>Index.html</code>). Seluruh tindakan verifikasi, nomor BAV, catatan, atau pengembalian revisi yang dilakukan Admin akan langsung masuk ke Google Sheet dan otomatis dilihat oleh User Dinas di halaman berkas mereka!
+                </p>
+
+                <div className="pt-2 flex flex-wrap items-center gap-2.5">
+                  <a
+                    href={webhookUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-700/20 active:scale-95 cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Buka Dashboard Admin Apps Script di Tab Baru ↗</span>
+                  </a>
+
+                  <a
+                    href={getGoogleSpreadsheetUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-2 border border-slate-300 transition-colors shadow-xs"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>Buka Google Spreadsheet</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Highlights */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <FileCheck className="w-4 h-4 text-emerald-600" />
+                    <span>1. Verifikasi Admin</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Admin menyetujui (Sah), meminta revisi, atau menolak berkas lengkap dengan nomor BAV dan catatan evaluasi.
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-sky-600" />
+                    <span>2. User Dinas Upload &amp; Revisi</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    User Dinas hanya fokus mengupload dokumen baru dan mengupload berkas perbaikan jika statusnya 'Perlu Revisi'.
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
+                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <FolderTree className="w-4 h-4 text-amber-600" />
+                    <span>3. Google Drive Terpusat</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Dokumen PDF fisik otomatis tersimpan di folder Google Drive Induk Server dan dapat dibuka sekali klik.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: SELF CHECK */}
           {activeTab === 'SELF_CHECK' && (
             <div className="space-y-4">
-              {/* Core Verification Banner */}
               <div className="p-4 bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 rounded-2xl space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 font-bold text-blue-950 text-xs">
                     <ShieldCheck className="w-4 h-4 text-blue-600" />
-                    <span>Pusat Uji Coba: Pastikan Data Masuk ke Sheet &amp; Drive</span>
+                    <span>Pusat Pemeriksaan Mandiri Koneksi Webhook</span>
                   </div>
                   <span className="text-[10px] text-blue-700 font-bold bg-white px-2 py-0.5 rounded-full border border-blue-200">
-                    Pengecekan Transparan
+                    Uji Transparan
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Gunakan tombol di bawah ini untuk menguji secara langsung apakah sistem webhook Anda menerima data dan mencatatnya ke baris Google Sheet serta folder Google Drive. Anda dapat membuka Sheet dan Drive untuk membuktikannya sendiri!
+                  Uji apakah URL Webhook Apps Script Anda siap menerima data dari User Dinas dan mencatatnya ke baris Google Sheet.
                 </p>
               </div>
 
-              {/* Direct Inspection Action Buttons */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* Action 1: Ping Test */}
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 flex flex-col justify-between">
                   <div className="space-y-1">
                     <div className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -289,7 +535,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                       <span>1. Uji Ping Webhook</span>
                     </div>
                     <p className="text-[11px] text-slate-500">
-                      Mengirim sinyal cepat untuk memastikan Google Apps Script siap menerima data.
+                      Kirim sinyal uji coba untuk memastikan Apps Script aktif dan merespon.
                     </p>
                   </div>
 
@@ -304,7 +550,6 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                   </button>
                 </div>
 
-                {/* Action 2: Send Sample Document Row */}
                 <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3 flex flex-col justify-between">
                   <div className="space-y-1">
                     <div className="font-bold text-emerald-950 flex items-center gap-1.5">
@@ -312,7 +557,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                       <span>2. Kirim Dokumen Uji Coba</span>
                     </div>
                     <p className="text-[11px] text-emerald-800">
-                      Kirim 1 baris berkas sampel ke sheet <strong>DATA_VERIFIKASI_DOKUMEN</strong> agar Anda bisa melihat baris baru muncul di Google Sheet.
+                      Kirim 1 baris sampel ke sheet DATA_VERIFIKASI_DOKUMEN untuk melihat baris baru muncul di Google Sheet.
                     </p>
                   </div>
 
@@ -323,12 +568,11 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-xl font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm shadow-emerald-500/20"
                   >
                     <FileSpreadsheet className={`w-3.5 h-3.5 ${isSendingTestDoc ? 'animate-pulse' : ''}`} />
-                    <span>{isSendingTestDoc ? 'Mengirim Data Sampel...' : 'Kirim 1 Baris Sampel ke Sheet'}</span>
+                    <span>{isSendingTestDoc ? 'Mengirim Data...' : 'Kirim 1 Baris Sampel ke Sheet'}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Ping Result Notification */}
               {testResult && (
                 <div
                   className={`p-3.5 rounded-2xl border flex items-start gap-3 text-xs animate-in fade-in duration-200 ${
@@ -349,21 +593,17 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                 </div>
               )}
 
-              {/* Sample Document Sent Result Notification with direct jump link */}
               {sampleDocSent && (
                 <div className="p-4 bg-emerald-50 border-2 border-emerald-300 rounded-2xl space-y-2 text-xs text-emerald-950 animate-in zoom-in-95 duration-200 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="font-bold flex items-center gap-1.5 text-emerald-800">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>Data Uji "{sampleDocSent.docNumber}" Berhasil Terkirim!</span>
+                      <span>Data Uji "{sampleDocSent.docNumber}" Berhasil Masuk ke Google Sheet!</span>
                     </span>
                     <span className="text-[10px] font-mono text-emerald-700 font-bold bg-white px-2 py-0.5 rounded-full border border-emerald-200">
                       {sampleDocSent.timestamp}
                     </span>
                   </div>
-                  <p className="text-[11px] text-emerald-900">
-                    Sistem telah mengirimkan baris berkas ini ke sheet <strong>DATA_VERIFIKASI_DOKUMEN</strong>. Silakan periksa Google Sheet sekarang untuk memastikannya sendiri:
-                  </p>
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <a
                       href={getGoogleSpreadsheetUrl()}
@@ -374,242 +614,20 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>Buka Google Sheet Sekarang</span>
                     </a>
-                    <a
-                      href={getGoogleDriveFolderUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                    >
-                      <Folder className="w-3.5 h-3.5" />
-                      <span>Buka Folder Google Drive</span>
-                    </a>
                   </div>
                 </div>
               )}
-
-              {/* Quick Direct Links Card */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
-                <div className="font-bold text-slate-900 text-xs flex items-center justify-between">
-                  <span>Tautan Langsung untuk Memeriksa Sendiri :</span>
-                  <span className="text-[10px] text-slate-500 font-mono">Buka di Tab Baru</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <a
-                    href={getGoogleSpreadsheetUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 bg-white hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-xl flex items-center justify-between transition-colors group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg group-hover:scale-105 transition-transform">
-                        <FileSpreadsheet className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-slate-800 text-xs">Google Spreadsheet Utama</div>
-                        <div className="text-[10px] text-slate-500 font-mono">DATA_VERIFIKASI &amp; AKUN</div>
-                      </div>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
-                  </a>
-
-                  <a
-                    href={getGoogleDriveFolderUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-300 rounded-xl flex items-center justify-between transition-colors group cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-blue-100 text-blue-700 rounded-lg group-hover:scale-105 transition-transform">
-                        <HardDrive className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-slate-800 text-xs">Folder Google Drive Induk</div>
-                        <div className="text-[10px] text-slate-500 font-mono">Penyimpanan Berkas Asli</div>
-                      </div>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
-                  </a>
-                </div>
-              </div>
-
-              {/* 3 Worksheets Architecture Status */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
-                <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                  <Database className="w-4 h-4 text-blue-600" />
-                  <span>Struktur 3 Worksheet Otomatis di Google Spreadsheet Anda :</span>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      <div>
-                        <div className="font-bold text-slate-900 text-[11px] font-mono">DATA_VERIFIKASI_DOKUMEN</div>
-                        <div className="text-[10px] text-slate-500">Menyimpan berkas pengajuan, nomor berkas, status verifikasi, dan email pemohon.</div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full font-mono">
-                      Otomatis
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                      <div>
-                        <div className="font-bold text-slate-900 text-[11px] font-mono">DATABASE_PENGGUNA</div>
-                        <div className="text-[10px] text-slate-500">Menyimpan daftar akun login dinas lengkap dengan Email Kedinasan (@nagekeokab.go.id).</div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full font-mono">
-                      Otomatis
-                    </span>
-                  </div>
-
-                  <div className="p-2.5 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                      <div>
-                        <div className="font-bold text-slate-900 text-[11px] font-mono">MAPPING_FOLDER_OPD</div>
-                        <div className="text-[10px] text-slate-500">Menyimpan pemetaan tautan Google Drive khusus untuk masing-masing Dinas / OPD.</div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full font-mono">
-                      Otomatis
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Troubleshooting note for "Data only appears on web" */}
-              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl text-amber-950 space-y-1.5 text-xs">
-                <div className="font-bold flex items-center gap-1.5">
-                  <HelpCircle className="w-4 h-4 text-amber-600" />
-                  <span>Mengapa Sebelumnya Data Hanya Muncul di Web &amp; Tidak Masuk ke Sheet?</span>
-                </div>
-                <p className="text-[11px] text-amber-900 leading-relaxed">
-                  Pada Google Apps Script, jika saat klik <strong>Deploy &gt; Web app</strong> pilihan <strong>Who has access</strong> diatur ke <em>"Only myself"</em>, maka Google akan memblokir kiriman data dari web. Pastikan pilihan diatur ke <strong>"Anyone"</strong> agar Google mengizinkan aplikasi web menyimpan berkas dan mencatat baris data ke spreadsheet Anda!
-                </p>
-              </div>
             </div>
           )}
 
-          {/* TAB 2: GOOGLE DRIVE FOLDER */}
-          {activeTab === 'DRIVE' && (
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50/80 border border-blue-200/90 rounded-2xl space-y-2">
-                <div className="flex items-center gap-2 font-bold text-blue-900 text-xs">
-                  <HardDrive className="w-4 h-4 text-blue-600" />
-                  <span>Arsitektur Penyimpanan: Google Drive Induk Server</span>
-                </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Semua dokumen fisik (PDF, Word, Excel, Gambar) yang diupload oleh dinas secara otomatis disimpan ke <strong>Google Drive Induk yang berfungsi sebagai Server Penyimpanan Terpusat</strong>. Sistem otomatis mengelompokkan berkas ke dalam subfolder dinas terkait.
-                </p>
-              </div>
-
-              {/* Master Folder Configuration */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                    <Folder className="w-4 h-4 text-blue-600" />
-                    <span>URL atau ID Folder Google Drive Anda :</span>
-                  </label>
-                  <span className="text-[10px] text-blue-600 font-mono font-bold">
-                    *Tempel URL/ID Drive Anda
-                  </span>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                  <input
-                    type="text"
-                    value={driveFolderId}
-                    onChange={(e) => setDriveFolderId(e.target.value)}
-                    placeholder="Contoh: https://drive.google.com/drive/folders/1a2b3c4d5e..."
-                    className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
-                  />
-                  <a
-                    href={getGoogleDriveFolderUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shadow-xs"
-                  >
-                    <span>Uji Buka Folder</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-              </div>
-
-              {/* Subfolder list */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-                <div className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                  <FolderTree className="w-4 h-4 text-amber-600" />
-                  <span>Struktur Subfolder Otomatis per Dinas di Google Drive Induk :</span>
-                </div>
-
-                <div className="p-3 bg-white rounded-xl border border-slate-200 font-mono text-[11px] text-slate-700 space-y-1">
-                  <div className="text-blue-700 font-bold flex items-center gap-1.5">
-                    <Folder className="w-3.5 h-3.5 text-blue-600" />
-                    <span>📁 [GOOGLE DRIVE INDUK SERVER PEMDA]</span>
-                  </div>
-                  {OPD_LIST.slice(0, 5).map((opd) => (
-                    <div key={opd.id} className="pl-6 text-slate-700 flex items-center gap-1.5">
-                      <span className="text-slate-400">├──</span>
-                      <Folder className="w-3 h-3 text-amber-500" />
-                      <span>📁 {opd.name} /</span>
-                      <span className="text-[10px] text-slate-500 font-sans">
-                        (Semua berkas & revisi {opd.shortName})
-                      </span>
-                    </div>
-                  ))}
-                  <div className="pl-6 text-slate-500 flex items-center gap-1.5">
-                    <span className="text-slate-400">└──</span>
-                    <Folder className="w-3 h-3 text-amber-500" />
-                    <span>📁 ... (dan dinas-dinas lainnya)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: ENDPOINT & SPREADSHEET URL CONFIG */}
+          {/* TAB 4: ENDPOINT & URL */}
           {activeTab === 'ENDPOINT' && (
             <div className="space-y-4">
-              {/* Google Spreadsheet URL */}
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                    <span>Tautan URL Google Spreadsheet Anda :</span>
-                  </label>
-                  <a
-                    href={sheetUrl || 'https://docs.google.com/spreadsheets/'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] text-blue-600 hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    <span>Buka Sheet</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-                <input
-                  type="text"
-                  value={sheetUrl}
-                  onChange={(e) => setSheetUrl(e.target.value)}
-                  placeholder="https://docs.google.com/spreadsheets/d/1A2B3C.../edit"
-                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
-                />
-                <p className="text-[10px] text-slate-500">
-                  Tempel URL Google Spreadsheet tempat Anda memasang skrip. Ini memudahkan Anda membuka sheet dengan 1 klik dari aplikasi.
-                </p>
-              </div>
-
-              {/* Webhook URL */}
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                     <Database className="w-4 h-4 text-blue-600" />
-                    <span>URL Endpoint Webhook Google Apps Script :</span>
+                    <span>URL Webhook Google Apps Script (Web App) :</span>
                   </label>
                   <span className="text-[10px] text-blue-600 font-mono font-bold">
                     *Harus berakhiran /exec
@@ -633,13 +651,43 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>Tautan Google Spreadsheet Database Anda :</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={sheetUrl}
+                  onChange={(e) => setSheetUrl(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/..."
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <Folder className="w-4 h-4 text-amber-600" />
+                    <span>ID / URL Folder Google Drive Induk Server :</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={driveFolderId}
+                  onChange={(e) => setDriveFolderId(e.target.value)}
+                  placeholder="ID Folder Drive Induk..."
+                  className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
                 <button
                   type="button"
                   onClick={handleResetDefault}
                   className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition-colors cursor-pointer font-medium"
-                  title="Kembalikan ke konfigurasi default sistem"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Reset ke Bawaan</span>
@@ -656,47 +704,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
             </div>
           )}
 
-          {/* TAB 4: SCRIPT CODE */}
-          {activeTab === 'SCRIPT' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800">
-                  Kode Script Google Drive Server + Spreadsheet (.gs):
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyScript}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors text-xs cursor-pointer shadow-xs"
-                >
-                  {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedCode ? 'Tersalin!' : 'Salin Semua Kode'}</span>
-                </button>
-              </div>
-
-              <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl text-[11px] font-mono text-emerald-300 max-h-[300px] overflow-y-auto whitespace-pre leading-relaxed select-all">
-                {GOOGLE_APPS_SCRIPT_TEMPLATE}
-              </div>
-
-              <div className="text-[11px] text-slate-700 bg-blue-50/80 p-3.5 rounded-2xl border border-blue-200 space-y-1.5">
-                <div className="font-bold text-blue-950">Langkah Pasang &amp; Deploy Skrip:</div>
-                <ol className="list-decimal pl-5 space-y-1 text-slate-700">
-                  <li>Buka Google Spreadsheet Anda di <strong>sheets.new</strong>.</li>
-                  <li>Klik menu <strong>Extensions &gt; Apps Script</strong>.</li>
-                  <li>Hapus kode bawaan, lalu tempel kode di atas (gunakan tombol <strong>Salin Semua Kode</strong>).</li>
-                  <li>
-                    Klik <strong>Deploy &gt; New deployment</strong>, pilih jenis <strong>Web app</strong>:
-                    <ul className="list-disc pl-5 mt-1 space-y-0.5 text-blue-900 font-medium">
-                      <li>Execute as: <strong>Me (email Google Anda)</strong></li>
-                      <li>Who has access: <strong>Anyone</strong> (Wajib agar form web bisa mengirim data!)</li>
-                    </ul>
-                  </li>
-                  <li>Salin URL Web App yang dihasilkan dan tempelkan di tab <strong>Konfigurasi &amp; URL</strong>.</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: SYNC LOGS */}
+          {/* TAB 5: LOGS */}
           {activeTab === 'LOGS' && (
             <div className="space-y-3">
               {syncLogs.length === 0 ? (
@@ -722,45 +730,14 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                           {log.timestamp}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span className="text-slate-600">{log.opd}</span>
-                        <span>·</span>
-                        <span
-                          className={`font-semibold ${
-                            log.status === 'APPROVED'
-                              ? 'text-emerald-600'
-                              : log.status === 'REVISION'
-                              ? 'text-orange-600'
-                              : log.status === 'REJECTED'
-                              ? 'text-rose-600'
-                              : 'text-amber-600'
-                          }`}
-                        >
-                          {log.status}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200 font-mono truncate">
-                        {log.responseMessage}
-                      </div>
+                      <p className="text-[11px] text-slate-600">{log.responseMessage}</p>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           )}
-        </div>
 
-        {/* Modal Footer */}
-        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-          <div className="text-[11px] text-slate-500">
-            Sistem SAKIP Terintegrasi &bull; Google Drive &amp; Sheets
-          </div>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
-          >
-            Tutup
-          </button>
         </div>
       </div>
     </div>

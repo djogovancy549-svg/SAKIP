@@ -19,9 +19,13 @@ import {
   Bell,
   Mail,
   Activity,
+  LayoutDashboard,
+  FileCode,
+  Code,
 } from 'lucide-react';
 import { OPD, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
+import { getGoogleSheetsWebhookUrl } from '../services/googleSheetsWebhook';
 
 interface HeaderProps {
   activeOpd: OPD;
@@ -206,15 +210,17 @@ export function Header({
             </span>
           </div>
 
-          {/* Self-Check & Diagnostics Button */}
-          <button
-            onClick={onOpenGoogleSheetModal}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-            title="Periksa Koneksi Google Sheets & Drive (Pengecekan Mandiri)"
-          >
-            <Activity className="w-3.5 h-3.5 text-emerald-600 animate-pulse shrink-0" />
-            <span className="hidden xl:inline">Periksa Koneksi &amp; Data</span>
-          </button>
+          {/* Salin Kode Apps Script & Dashboard Button (Admin / Verifikator Only) */}
+          {!isDinas && (
+            <button
+              onClick={onOpenGoogleSheetModal}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-emerald-600/20 active:scale-95"
+              title="Salin File Code.gs & Index.html untuk Dashboard Admin Apps Script (Khusus Admin)"
+            >
+              <FileCode className="w-4 h-4 text-emerald-100 shrink-0" />
+              <span className="hidden sm:inline">Kode Apps Script (.gs &amp; .html)</span>
+            </button>
+          )}
 
           {/* 1. Main Action Button: Upload Dokumen */}
           <button
@@ -251,11 +257,29 @@ export function Header({
               <div className="absolute right-0 mt-2 w-72 bg-white border-2 border-slate-300 rounded-2xl shadow-xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3 py-2 border-b border-slate-100 mb-1">
                   <div className="font-bold text-blue-950 text-xs">Pusat Server &amp; Integrasi</div>
-                  <div className="text-[10px] text-slate-600 font-medium">Akses penyimpanan Google Drive &amp; Webhook</div>
+                  <div className="text-[10px] text-slate-600 font-medium">Akses Google Drive &amp; Sinkronisasi Spreadsheet</div>
                 </div>
 
                 <div className="space-y-1">
-                  {/* Option 1: Drive Folder Explorer */}
+                  {/* Option 1: Code Apps Script (Admin Only) */}
+                  {!isDinas && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsServerMenuOpen(false);
+                        onOpenGoogleSheetModal();
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-emerald-50 text-emerald-950 flex items-start gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <FileCode className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold text-emerald-950">Salin Code.gs &amp; Index.html</div>
+                        <div className="text-[10px] text-slate-600 font-medium">Kode Apps Script untuk Dashboard Admin</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Option 2: Drive Folder Explorer (Available for all) */}
                   <button
                     type="button"
                     onClick={() => {
@@ -271,23 +295,7 @@ export function Header({
                     </div>
                   </button>
 
-                  {/* Option 2: Self-Check & Diagnostics (Available to everyone) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsServerMenuOpen(false);
-                      onOpenGoogleSheetModal();
-                    }}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <Activity className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                    <div>
-                      <div className="font-bold text-slate-900">Pemeriksaan &amp; Uji Mandiri</div>
-                      <div className="text-[10px] text-slate-600 font-medium">Uji kirim data &amp; periksa sheet / folder</div>
-                    </div>
-                  </button>
-
-                  {/* Option 3: Admin Folder & Account Registration (Admin only) */}
+                  {/* Option 3: User & Folder Registration (Admin Only) */}
                   {!isDinas && (
                     <button
                       type="button"
@@ -299,8 +307,26 @@ export function Header({
                     >
                       <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                       <div>
-                        <div className="font-bold text-slate-900">Pendaftaran Akun &amp; Folder Dinas</div>
-                        <div className="text-[10px] text-slate-600 font-medium">Daftarkan akun login &amp; mapping folder OPD</div>
+                        <div className="font-bold text-slate-900">Kelola Akun &amp; Folder Dinas</div>
+                        <div className="text-[10px] text-slate-600 font-medium">Tambah akun dinas &amp; mapping folder Google Drive</div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Option 4: Self-Check & Diagnostics (Admin Only) */}
+                  {!isDinas && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsServerMenuOpen(false);
+                        onOpenGoogleSheetModal();
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <Activity className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold text-slate-900">Uji Ping &amp; Pemeriksaan Mandiri</div>
+                        <div className="text-[10px] text-slate-600 font-medium">Uji kirim data &amp; periksa sheet / folder</div>
                       </div>
                     </button>
                   )}
