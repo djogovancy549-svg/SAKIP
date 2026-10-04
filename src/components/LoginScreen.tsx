@@ -212,43 +212,6 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Quick Demo Credentials Switcher */}
-          <div className="pt-2 border-t border-slate-100 space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-semibold text-slate-700">Daftar Akun &amp; Email Dinas:</span>
-              <span className="text-[10px] text-slate-400">Klik untuk isi otomatis</span>
-            </div>
-
-            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-0.5">
-              {demoDinasAccounts.map((acc) => (
-                <button
-                  key={acc.id}
-                  type="button"
-                  onClick={() => handleSelectDemoAccount(acc)}
-                  className={`w-full p-2.5 rounded-xl border text-left text-[11px] transition-colors flex items-center justify-between cursor-pointer ${
-                    username === acc.username || username === acc.email
-                      ? 'bg-blue-50 border-blue-400 text-blue-900 font-bold shadow-xs'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50/50 hover:text-blue-900'
-                  }`}
-                >
-                  <div className="flex items-start gap-2 min-w-0">
-                    <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <div className="font-bold text-blue-950 truncate">{acc.nama}</div>
-                      <div className="flex items-center gap-1 text-emerald-700 font-mono text-[10px] font-bold">
-                        <Mail className="w-3 h-3 text-emerald-600 shrink-0" />
-                        <span className="truncate">{acc.email || `${acc.username}@nagekeokab.go.id`}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-mono text-blue-700 font-bold bg-blue-100 px-2 py-0.5 rounded shrink-0 ml-2">
-                    {acc.password}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Footer info */}
