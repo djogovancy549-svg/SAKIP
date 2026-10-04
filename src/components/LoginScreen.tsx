@@ -80,36 +80,17 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
         (u.email && u.email.toLowerCase() === inputClean)
     );
 
-    if (found) {
-      if (found.password === password || password === 'deni' || password === 'dinas.dikbud' || password === found.username) {
-        onLoginSuccess({ ...found, role: 'DINAS_PEMOHON' });
-        return;
-      } else {
-        setErrorMessage('Password yang Anda masukkan tidak sesuai!');
-        return;
-      }
+    if (!found) {
+      setErrorMessage('Akun tidak ditemukan. Pastikan username atau email kedinasan telah didaftarkan oleh Admin.');
+      return;
     }
 
-    // Dynamic login for any custom email/username on any device
-    const matched = findMatchingOpd(username);
-    let finalNama = username.trim().includes('@') ? username.split('@')[0] : username.trim();
-    if (inputClean === 'deni' || inputClean === 'denin') {
-      finalNama = 'Denin';
+    if (found.password !== password) {
+      setErrorMessage('Password yang Anda masukkan salah!');
+      return;
     }
-    const dynamicUser: UserAccount = {
-      id: `USR-DYN-${Date.now()}`,
-      username: username.trim(),
-      password,
-      nama: finalNama,
-      nip: '19890101 202001 1 001',
-      jabatan: 'Pemohon Berkas SAKIP OPD',
-      opdId: matched.opdId,
-      opdName: matched.opdName,
-      role: 'DINAS_PEMOHON',
-      email: username.includes('@') ? username.trim() : `${username.trim()}@nagekeokab.go.id`,
-    };
 
-    onLoginSuccess(dynamicUser);
+    onLoginSuccess({ ...found, role: found.role || 'DINAS_PEMOHON' });
   };
 
   const handleSelectDemoAccount = (acc: UserAccount) => {
