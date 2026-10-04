@@ -104,7 +104,10 @@ export function AdminFolderRegistrationModal({
 
   const handleQuickRegisterFolder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickDriveUrl.trim()) return;
+    if (!quickDriveUrl.trim()) {
+      setSuccessToast('Mohon masukkan URL Folder Google Drive terlebih dahulu.');
+      return;
+    }
 
     const opd = opdList.find((o) => o.id === quickOpdId) || opdList[0];
     const folderId = extractDriveFolderId(quickDriveUrl.trim());
@@ -164,7 +167,10 @@ export function AdminFolderRegistrationModal({
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUsername.trim() || !newPassword.trim() || !newFullName.trim()) return;
+    if (!newUsername.trim() || !newPassword.trim() || !newFullName.trim()) {
+      setSuccessToast('Mohon lengkapi Username, Password, dan Nama Pejabat terlebih dahulu.');
+      return;
+    }
 
     setIsCreatingUser(true);
     setSuccessToast(null);
@@ -489,7 +495,6 @@ export function AdminFolderRegistrationModal({
                       </label>
                       <input
                         type="url"
-                        required
                         value={quickDriveUrl}
                         onChange={(e) => setQuickDriveUrl(e.target.value)}
                         placeholder="https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7"
@@ -714,7 +719,6 @@ export function AdminFolderRegistrationModal({
                         <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                           type="email"
-                          required
                           value={newEmail}
                           onChange={(e) => setNewEmail(e.target.value)}
                           placeholder="contoh: dikbud@nagekeokab.go.id"
@@ -729,7 +733,6 @@ export function AdminFolderRegistrationModal({
                       </label>
                       <input
                         type="text"
-                        required
                         value={newUsername}
                         onChange={(e) => setNewUsername(e.target.value)}
                         placeholder="contoh: dinas.kesehatan"
@@ -743,7 +746,6 @@ export function AdminFolderRegistrationModal({
                       </label>
                       <input
                         type="text"
-                        required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="Password akun"
