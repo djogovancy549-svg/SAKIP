@@ -7,6 +7,29 @@ import {
   UserAccount,
   OpdFolderRegistration,
 } from '../types';
+import { OPD_LIST } from '../data/opdData';
+
+export function findOpdIdFromText(opdName?: string, opdId?: string): string {
+  if (opdId && opdId.trim() && opdId.trim() !== 'Dinas' && opdId.trim() !== 'OPD' && opdId.trim() !== 'Umum') {
+    const cleanId = opdId.trim().toUpperCase();
+    const exact = OPD_LIST.find((o) => o.id === cleanId);
+    if (exact) return exact.id;
+  }
+  if (!opdName || !opdName.trim()) return 'SETDA';
+  const nameUpper = opdName.trim().toUpperCase();
+
+  const match = OPD_LIST.find(
+    (o) =>
+      o.id === nameUpper ||
+      o.name.toUpperCase() === nameUpper ||
+      o.shortName.toUpperCase() === nameUpper ||
+      nameUpper.includes(o.name.toUpperCase()) ||
+      o.name.toUpperCase().includes(nameUpper) ||
+      nameUpper.includes(o.id)
+  );
+
+  return match ? match.id : 'SETDA';
+}
 
 import {
   APPS_SCRIPT_CODE_GS,
@@ -116,11 +139,11 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
 } | null> {
   const webhookUrl = getGoogleSheetsWebhookUrl();
   
-  // Abort controller with a 4-second network timeout
+  // Abort controller with a 12-second network timeout for Google Apps Script response
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
-  }, 4000);
+  }, 12000);
 
   try {
     const res = await fetch(`${webhookUrl}?action=get_all_data`, {
@@ -134,7 +157,9 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
         const docId = d.id || `DOC-SYN-${Date.now()}`;
         const currentStatus: VerificationStatus = (d.status as VerificationStatus) || 'PENDING';
         const isApproved = currentStatus === 'APPROVED';
-        const bavNum = d.bavNumber || (isApproved ? `BAV/SAKIP-NGK/${d.opdId || 'OPD'}/2026/${docId.slice(-4)}` : '');
+        const matchedOpdId = findOpdIdFromText(d.opdName, d.opdId);
+        const matchedOpdName = d.opdName || (OPD_LIST.find(o => o.id === matchedOpdId)?.name || 'Sekretariat Daerah');
+        const bavNum = d.bavNumber || (isApproved ? `BAV/SAKIP-NGK/${matchedOpdId}/2026/${docId.slice(-4)}` : '');
         const sealHash = d.digitalSealHash || (isApproved ? `SHA256-${docId}-${Date.now().toString().slice(-4)}` : '');
         const verifierName = d.verifierName || 'Admin Verifikator SAKIP';
         const verifierNip = d.verifierNip || '19850101 201001 1 002';
@@ -145,11 +170,11 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
           nomorBerkas: d.nomorBerkas || 'Draf',
           judul: d.judul || 'Dokumen SAKIP',
           perihal: noteContent,
-          opdId: d.opdId || 'DISKOMINFO',
-          opdName: d.opdName || 'Umum',
+          opdId: matchedOpdId,
+          opdName: matchedOpdName,
           pemohon: {
             nama: d.pemohon?.nama || 'Pemohon',
-            instansi: d.pemohon?.instansi || d.opdName || 'Dinas',
+            instansi: d.pemohon?.instansi || matchedOpdName,
             kontak: '0812-0000-1111',
             email: d.pemohon?.email || `${(d.pemohon?.nama || 'user').toLowerCase().replace(/\s+/g, '.')}@nagekeokab.go.id`,
           },

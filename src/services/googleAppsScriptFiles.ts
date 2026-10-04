@@ -428,6 +428,7 @@ function adminGetDashboardData() {
         nomorBerkas: String(v[i][2] || ""),
         judul: String(v[i][3] || ""),
         opdName: String(v[i][4] || ""),
+        opdId: String(v[i][4] || ""),
         currentVersion: Number(String(v[i][5] || "1").replace("v", "")) || 1,
         format: String(v[i][6] || "PDF"),
         pemohon: {
@@ -909,7 +910,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         <button type="button" onclick="closeVerifyModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
-      {/* Header Info Dokumen */}
+      <!-- Header Info Dokumen -->
       <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-2">
         <div class="flex items-center justify-between">
           <div class="text-[10px] text-emerald-400 font-mono font-bold" id="modalDocNumber">-</div>

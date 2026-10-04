@@ -374,13 +374,77 @@ export default function App() {
       const data = await fetchDatabaseFromGoogleSheet();
       if (data) {
         if (data.documents && data.documents.length > 0) {
-          setDocuments(data.documents);
+          setDocuments((prevDocs) => {
+            const merged = [...prevDocs];
+            data.documents.forEach((remoteDoc) => {
+              const idx = merged.findIndex(
+                (d) =>
+                  d.id === remoteDoc.id ||
+                  (d.nomorBerkas &&
+                    remoteDoc.nomorBerkas &&
+                    d.nomorBerkas.trim().toLowerCase() === remoteDoc.nomorBerkas.trim().toLowerCase())
+              );
+              if (idx !== -1) {
+                merged[idx] = {
+                  ...merged[idx],
+                  ...remoteDoc,
+                  fileBase64: merged[idx].fileBase64 || remoteDoc.fileBase64,
+                  fileBlobUrl: merged[idx].fileBlobUrl || remoteDoc.fileBlobUrl,
+                  opdId: remoteDoc.opdId || merged[idx].opdId,
+                  verification: remoteDoc.verification
+                    ? {
+                        verifiedAt: remoteDoc.verification.verifiedAt || merged[idx]?.verification?.verifiedAt || new Date().toLocaleString('id-ID'),
+                        verifiedBy: remoteDoc.verification.verifiedBy || merged[idx]?.verification?.verifiedBy || 'Admin Verifikator',
+                        nip: remoteDoc.verification.nip || merged[idx]?.verification?.nip || '-',
+                        jabatan: remoteDoc.verification.jabatan || merged[idx]?.verification?.jabatan || 'Verifikator SAKIP',
+                        status: remoteDoc.status,
+                        checklist: remoteDoc.verification.checklist || merged[idx]?.verification?.checklist || {},
+                        notes: remoteDoc.verification.notes || merged[idx]?.verification?.notes || '',
+                        qrCodeUrl: remoteDoc.verification.qrCodeUrl || merged[idx]?.verification?.qrCodeUrl || '',
+                        digitalSealHash: remoteDoc.verification.digitalSealHash || merged[idx]?.verification?.digitalSealHash || '',
+                        bavNumber: remoteDoc.verification.bavNumber || merged[idx]?.verification?.bavNumber || '',
+                        syncedToGoogleSheet: true,
+                      }
+                    : merged[idx].verification,
+                };
+              } else {
+                merged.push(remoteDoc);
+              }
+            });
+            return merged;
+          });
+
           setSelectedDocument((prev) => {
             if (prev) {
-              const updated = data.documents.find((docItem) => docItem.id === prev.id);
-              return updated || data.documents[0];
+              const updated = data.documents.find(
+                (docItem) =>
+                  docItem.id === prev.id ||
+                  (docItem.nomorBerkas && prev.nomorBerkas && docItem.nomorBerkas === prev.nomorBerkas)
+              );
+              if (updated) {
+                return {
+                  ...prev,
+                  ...updated,
+                  opdId: updated.opdId || prev.opdId,
+                  verification: updated.verification
+                    ? {
+                        verifiedAt: updated.verification.verifiedAt || prev.verification?.verifiedAt || new Date().toLocaleString('id-ID'),
+                        verifiedBy: updated.verification.verifiedBy || prev.verification?.verifiedBy || 'Admin Verifikator',
+                        nip: updated.verification.nip || prev.verification?.nip || '-',
+                        jabatan: updated.verification.jabatan || prev.verification?.jabatan || 'Verifikator SAKIP',
+                        status: updated.status,
+                        checklist: updated.verification.checklist || prev.verification?.checklist || {},
+                        notes: updated.verification.notes || prev.verification?.notes || '',
+                        qrCodeUrl: updated.verification.qrCodeUrl || prev.verification?.qrCodeUrl || '',
+                        digitalSealHash: updated.verification.digitalSealHash || prev.verification?.digitalSealHash || '',
+                        bavNumber: updated.verification.bavNumber || prev.verification?.bavNumber || '',
+                        syncedToGoogleSheet: true,
+                      }
+                    : prev.verification,
+                };
+              }
             }
-            return data.documents[0];
+            return prev;
           });
         }
         if (Array.isArray(data.users)) {
