@@ -132,11 +132,19 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
     if (data && data.status === 'success') {
       const docs: DocumentItem[] = (data.documents || []).map((d: any) => {
         const docId = d.id || `DOC-SYN-${Date.now()}`;
+        const currentStatus: VerificationStatus = (d.status as VerificationStatus) || 'PENDING';
+        const isApproved = currentStatus === 'APPROVED';
+        const bavNum = d.bavNumber || (isApproved ? `BAV/SAKIP-NGK/${d.opdId || 'OPD'}/2026/${docId.slice(-4)}` : '');
+        const sealHash = d.digitalSealHash || (isApproved ? `SHA256-${docId}-${Date.now().toString().slice(-4)}` : '');
+        const verifierName = d.verifierName || 'Admin Verifikator SAKIP';
+        const verifierNip = d.verifierNip || '19850101 201001 1 002';
+        const noteContent = d.notes || (isApproved ? 'Seluruh instrumen kelengkapan berkas dan syarat teknis telah dipenuhi dan dinyatakan sah.' : 'Dokumen diajukan untuk verifikasi.');
+
         return {
           id: docId,
           nomorBerkas: d.nomorBerkas || 'Draf',
           judul: d.judul || 'Dokumen SAKIP',
-          perihal: d.notes || d.judul || 'Berkas SAKIP',
+          perihal: noteContent,
           opdId: d.opdId || 'DISKOMINFO',
           opdName: d.opdName || 'Umum',
           pemohon: {
@@ -149,11 +157,44 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
           format: d.format || 'PDF',
           fileSize: '3.5 MB',
           fileName: d.fileName || 'dokumen_sakip.pdf',
-          status: d.status || 'PENDING',
+          status: currentStatus,
           urgency: 'TINGGI',
           currentVersion: d.currentVersion || 1,
-          isLocked: d.status === 'APPROVED',
+          isLocked: isApproved,
           googleDrive: d.googleDrive,
+          verification: {
+            status: currentStatus,
+            verifiedBy: verifierName,
+            nip: verifierNip,
+            jabatan: 'Verifikator SAKIP Nagekeo',
+            verifiedAt: d.tanggalMasuk || new Date().toLocaleString('id-ID'),
+            notes: noteContent,
+            checklist: d.checklist || {
+              'chk-ttd': true,
+              'chk-format': true,
+              'chk-identitas': true,
+              'chk-lampiran': isApproved,
+              'chk-evaluasi': isApproved,
+              'chk-anggaran': isApproved,
+            },
+            bavNumber: bavNum,
+            digitalSealHash: sealHash,
+            syncedToGoogleSheet: true,
+          },
+          registrationSeal: isApproved
+            ? {
+                regNumber: `REG-${d.opdId || 'OPD'}-${(d.nomorBerkas || 'DOC').replace(/[^a-zA-Z0-9]/g, '')}-2026`,
+                bavNumber: bavNum,
+                issuedAt: d.tanggalMasuk || new Date().toLocaleString('id-ID'),
+                examinedBy: verifierName,
+                examinedNip: verifierNip,
+                verifiedBy: verifierName,
+                verifiedNip: verifierNip,
+                qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(bavNum)}&size=150x150`,
+                securityHash: sealHash,
+                isLocked: true,
+              }
+            : undefined,
           versions: [
             {
               versionNumber: d.currentVersion || 1,
@@ -162,7 +203,9 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
               fileName: d.fileName || 'dokumen_sakip.pdf',
               fileSize: '3.5 MB',
               changeSummary: 'Pengajuan berkas.',
-              status: d.status || 'PENDING',
+              status: currentStatus,
+              reviewerNotes: noteContent,
+              reviewedAt: d.tanggalMasuk || new Date().toLocaleString('id-ID'),
               googleDrive: d.googleDrive,
             },
           ],
