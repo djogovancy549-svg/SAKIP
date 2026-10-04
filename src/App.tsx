@@ -198,16 +198,16 @@ export default function App() {
     return INITIAL_USER_ACCOUNTS;
   });
 
-  // Current Logged In User Session (Defaults to Master Admin)
+  // Current Logged In User Session (Defaults to null so app always starts at Login Screen)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    if (typeof window === 'undefined') return INITIAL_USER_ACCOUNTS[0];
+    if (typeof window === 'undefined') return null;
     try {
       const saved = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
       if (saved) return JSON.parse(saved);
     } catch (e) {
       console.error('Error loading session', e);
     }
-    return INITIAL_USER_ACCOUNTS[0];
+    return null;
   });
 
   // Load persisted documents or fallback to empty array

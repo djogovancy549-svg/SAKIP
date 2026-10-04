@@ -64,8 +64,8 @@ const findMatchingOpd = (userStr: string): { opdId: string; opdName: string } =>
 };
 
 export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) {
-  const [username, setUsername] = useState<string>('deni');
-  const [password, setPassword] = useState<string>('deni');
+  const [username, setUsername] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
