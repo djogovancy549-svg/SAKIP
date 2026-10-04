@@ -1082,20 +1082,8 @@ export default function App() {
                 className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs text-xs"
               >
                 <HardDrive className="w-3.5 h-3.5" />
-                <span>Buka Drive</span>
+                <span>Buka Drive Dinas</span>
               </a>
-
-              {!isDinas && (
-                <button
-                  type="button"
-                  onClick={() => setIsGoogleSheetOpen(true)}
-                  className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer text-xs"
-                  title="Buka Pusat Pemeriksaan & Diagnostik Mandiri"
-                >
-                  <Activity className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Uji Mandiri</span>
-                </button>
-              )}
 
               <button
                 type="button"

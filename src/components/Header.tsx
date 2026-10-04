@@ -210,18 +210,6 @@ export function Header({
             </span>
           </div>
 
-          {/* Salin Kode Apps Script & Dashboard Button (Admin / Verifikator Only) */}
-          {!isDinas && (
-            <button
-              onClick={onOpenGoogleSheetModal}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-emerald-600/20 active:scale-95"
-              title="Salin File Code.gs & Index.html untuk Dashboard Admin Apps Script (Khusus Admin)"
-            >
-              <FileCode className="w-4 h-4 text-emerald-100 shrink-0" />
-              <span className="hidden sm:inline">Kode Apps Script (.gs &amp; .html)</span>
-            </button>
-          )}
-
           {/* 1. Main Action Button: Upload Dokumen */}
           <button
             onClick={onOpenUploadModal}
