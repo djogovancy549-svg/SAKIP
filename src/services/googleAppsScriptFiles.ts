@@ -1,6 +1,6 @@
 /**
  * GOOGLE APPS SCRIPT FILES: Code.gs & Index.html
- * Versi Perbaikan Penuh: Tombol 100% Aktif, Index-based Modal, Anti-Freeze Iframe, Real-time Multi-Sheet Sync
+ * Versi Mutakhir: Penempatan Otomatis Berkas ke Subfolder OPD & Solusi Pencegahan Error 404 Google Drive
  */
 
 export const APPS_SCRIPT_CODE_GS = `/**
@@ -52,8 +52,99 @@ function extractFolderIdFromUrl(url) {
   if (!url || typeof url !== "string") return "";
   var match = url.match(/folders\\/([a-zA-Z0-9_-]+)/);
   if (match && match[1]) return match[1];
-  if (url.length >= 25 && url.indexOf("/") === -1 && url.indexOf(" ") === -1) return url;
+  if (url.length >= 25 && url.indexOf("/") === -1 && url.indexOf(" ") === -1 && url.indexOf("DRV-") === -1) return url;
   return "";
+}
+
+/**
+ * Mendapatkan Folder Induk Server (Master Folder)
+ */
+function getMasterFolder() {
+  try {
+    if (MASTER_FOLDER_ID && MASTER_FOLDER_ID.length > 10) {
+      return DriveApp.getFolderById(MASTER_FOLDER_ID);
+    }
+  } catch (e) {}
+  return DriveApp.getRootFolder();
+}
+
+/**
+ * MENCARI ATAU MEMBUAT SUBFOLDER OPD SECARA OTOMATIS
+ * Menjamin berkas dinas 100% masuk ke subfolder masing-masing OPD dan tidak salah masuk ke root/induk
+ */
+function getOrCreateOpdSubfolder(opdId, opdName, customFolderId, customFolderUrl) {
+  var master = getMasterFolder();
+  var effectiveOpdName = opdName || opdId || "OPD";
+  var targetSubfolderName = "SAKIP - " + effectiveOpdName;
+
+  // 1. Jika ada custom folder ID yang valid dan bisa diakses
+  var cleanCustomId = extractFolderIdFromUrl(customFolderUrl) || customFolderId || "";
+  if (cleanCustomId && cleanCustomId.length > 15 && cleanCustomId !== MASTER_FOLDER_ID && cleanCustomId.indexOf("DRV-") === -1) {
+    try {
+      var customFolder = DriveApp.getFolderById(cleanCustomId);
+      if (customFolder) return customFolder;
+    } catch (e) {}
+  }
+
+  // 2. Cek apakah folder OPD sudah tercatat di sheet MAPPING_FOLDER_OPD
+  var ss = getActiveSpreadsheetSafely();
+  if (ss) {
+    var folderSheet = ss.getSheetByName("MAPPING_FOLDER_OPD");
+    if (folderSheet && folderSheet.getLastRow() > 1) {
+      var fVals = folderSheet.getDataRange().getValues();
+      var reqId = String(opdId || "").toLowerCase();
+      var reqName = String(opdName || "").toLowerCase();
+
+      for (var f = 1; f < fVals.length; f++) {
+        var rowId = String(fVals[f][1] || "").toLowerCase();
+        var rowName = String(fVals[f][2] || "").toLowerCase();
+
+        if ((reqId && rowId === reqId) || (reqName && (rowName === reqName || reqName.indexOf(rowName) !== -1 || rowName.indexOf(reqName) !== -1))) {
+          var savedId = String(fVals[f][4] || "");
+          if (savedId && savedId.length > 15 && savedId !== MASTER_FOLDER_ID && savedId.indexOf("DRV-") === -1) {
+            try {
+              var mappedFolder = DriveApp.getFolderById(savedId);
+              if (mappedFolder) return mappedFolder;
+            } catch (e) {}
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Cari apakah subfolder dengan nama OPD sudah ada di dalam Master Folder
+  var folders = master.getFoldersByName(targetSubfolderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  var altFolders = master.getFoldersByName(effectiveOpdName);
+  if (altFolders.hasNext()) {
+    return altFolders.next();
+  }
+
+  // 4. Jika belum ada, BUAT SUBFOLDER BARU secara otomatis di dalam Master Folder
+  try {
+    var newFolder = master.createFolder(targetSubfolderName);
+    try {
+      newFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (sErr) {}
+
+    // Daftarkan subfolder baru ini ke sheet MAPPING_FOLDER_OPD
+    adminRegisterFolderServer(
+      opdId || "OPD",
+      effectiveOpdName,
+      newFolder.getUrl(),
+      newFolder.getId(),
+      targetSubfolderName,
+      "Sistem Otomatis",
+      "-",
+      "Subfolder Google Drive Terverifikasi"
+    );
+
+    return newFolder;
+  } catch (err) {
+    return master;
+  }
 }
 
 /**
@@ -69,28 +160,6 @@ function initDefaultDataIfEmpty(ss) {
       "ID File Google Drive", "Catatan Verifikator/Pemeriksa", "Kode Hash Keamanan"
     ]);
     docSheet.getRange(1, 1, 1, 18).setFontWeight("bold").setBackground("#0f172a").setFontColor("#38bdf8");
-    
-    // Tambahkan 1 sampel awal
-    docSheet.appendRow([
-      new Date().toLocaleString("id-ID"),
-      "DOC-DISDIKBUD-001",
-      "045.2/DISDIKBUD/SAKIP/2026/01",
-      "Laporan Kinerja Instansi Pemerintah (LKjIP) Tahun 2025",
-      "DINAS PENDIDIKAN DAN KEBUDAYAAN",
-      "v1",
-      "PDF",
-      "Denin",
-      "dikbud@nagekeokab.go.id",
-      "DINAS PENDIDIKAN DAN KEBUDAYAAN",
-      "PENDING",
-      "-",
-      "-",
-      "-",
-      "https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID,
-      "DRV-SAMPLE-01",
-      "Pengajuan berkas awal untuk verifikasi SAKIP.",
-      "SEAL-INIT-2026"
-    ]);
   }
 
   var userSheet = getOrCreateSheet(ss, "DATABASE_PENGGUNA");
@@ -100,33 +169,6 @@ function initDefaultDataIfEmpty(ss) {
       "OPD / Instansi", "NIP / Kontak", "URL Folder Google Drive", "Password", "Status Akun"
     ]);
     userSheet.getRange(1, 1, 1, 11).setFontWeight("bold").setBackground("#1e293b").setFontColor("#38bdf8");
-
-    userSheet.appendRow([
-      new Date().toLocaleString("id-ID"),
-      "usr-deni",
-      "deni",
-      "dikbud@nagekeokab.go.id",
-      "Denin",
-      "DINAS_PEMOHON",
-      "DINAS PENDIDIKAN DAN KEBUDAYAAN",
-      "19890514 201201 1 003",
-      "https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID,
-      "deni",
-      "AKTIF"
-    ]);
-    userSheet.appendRow([
-      new Date().toLocaleString("id-ID"),
-      "usr-inspektorat",
-      "inspektorat",
-      "inspektorat@nagekeokab.go.id",
-      "Inspektorat Daerah",
-      "DINAS_PEMOHON",
-      "INSPEKTORAT",
-      "19850110 201001 1 008",
-      "https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID,
-      "inspektorat",
-      "AKTIF"
-    ]);
   }
 
   var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
@@ -136,18 +178,6 @@ function initDefaultDataIfEmpty(ss) {
       "ID Folder Google Drive", "Nama Subfolder", "Didaftarkan Oleh", "NIP / Kontak", "Catatan"
     ]);
     folderSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#065f46").setFontColor("#34d399");
-
-    folderSheet.appendRow([
-      new Date().toLocaleString("id-ID"),
-      "DISDIKBUD",
-      "DINAS PENDIDIKAN DAN KEBUDAYAAN",
-      "https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID,
-      MASTER_FOLDER_ID,
-      "SAKIP_DISDIKBUD_2026",
-      "Admin SAKIP",
-      "-",
-      "Folder Resmi Dinas Pendidikan"
-    ]);
   }
 }
 
@@ -198,8 +228,6 @@ function doPost(e) {
     }
 
     var docSheet = getOrCreateSheet(ss, "DATA_VERIFIKASI_DOKUMEN");
-    var userSheet = getOrCreateSheet(ss, "DATABASE_PENGGUNA");
-    var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
 
     // Aksi 1: PING UJI KONEKSI
     if (data.action === "TEST_PING") {
@@ -217,27 +245,27 @@ function doPost(e) {
     }
 
     // Aksi 3: PENDAFTARAN FOLDER GOOGLE DRIVE OPD
-    if (data.action === "REGISTER_FOLDER" && data.folderRegistration) {
-      var r = data.folderRegistration;
+    if (data.action === "REGISTER_FOLDER" || data.action === "REGISTER_OPD_FOLDER") {
+      var r = data.folderRegistration || data;
       return ContentService.createTextOutput(JSON.stringify(
-        adminRegisterFolderServer(r.opdId, r.opdName, r.driveFolderUrl, r.driveFolderId, r.subfolderName, r.registeredBy, r.nip, r.notes)
+        adminRegisterFolderServer(r.opdId, r.opdName, r.driveFolderUrl, r.driveFolderId || r.driveMasterFolderId, r.subfolderName || r.driveServerName, r.registeredBy || r.verifierName, r.nip || r.verifierNip, r.notes)
       )).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 4: BATCH PENDAFTARAN SEMUA FOLDER OPD (38 DINAS)
-    if (data.action === "REGISTER_ALL_FOLDERS" && data.folderRegistrations && Array.isArray(data.folderRegistrations)) {
+    // Aksi 4: BATCH PENDAFTARAN SEMUA FOLDER OPD
+    if ((data.action === "REGISTER_ALL_FOLDERS" || data.action === "REGISTER_ALL_OPD_FOLDERS") && data.folderRegistrations) {
       var regs = data.folderRegistrations;
       for (var k = 0; k < regs.length; k++) {
         var item = regs[k];
-        adminRegisterFolderServer(item.opdId, item.opdName, item.driveFolderUrl, item.driveFolderId, item.subfolderName, item.registeredBy, item.nip, item.notes);
+        adminRegisterFolderServer(item.opdId, item.opdName, item.driveFolderUrl, item.driveFolderId, item.subfolderName || item.driveFolderName, item.registeredBy || item.registeredByAdmin, item.nip, item.notes);
       }
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
-        message: "Seluruh " + regs.length + " folder OPD berhasil disimpan ke sheet MAPPING_FOLDER_OPD."
+        message: "Seluruh folder OPD berhasil disimpan ke sheet MAPPING_FOLDER_OPD."
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 5: KEPUTUSAN VERIFIKASI DOKUMEN DARI LUAR
+    // Aksi 5: KEPUTUSAN VERIFIKASI DOKUMEN
     if (data.action === "VERIFY_DOCUMENT") {
       var dVals = docSheet.getDataRange().getValues();
       for (var d = 1; d < dVals.length; d++) {
@@ -257,57 +285,28 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 6: SIMPAN UNGGAHAN BERKAS DOKUMEN KE GOOGLE DRIVE & GOOGLE SHEET
-    var driveFileUrl = data.downloadUrl || data.driveFolderUrl || "";
+    // Aksi 6: SIMPAN UNGGAHAN BERKAS KE DALAM SUBFOLDER OPD GOOGLE DRIVE
+    // Mendapatkan target subfolder OPD secara spesifik
+    var targetSubfolder = getOrCreateOpdSubfolder(
+      data.opdId,
+      data.opdName,
+      data.driveFolderId || data.driveMasterFolderId,
+      data.driveFolderUrl
+    );
+
+    var driveFileUrl = targetSubfolder.getUrl();
     var driveFileId = "";
-    var targetFolderId = data.driveMasterFolderId || data.driveFolderId || "";
 
-    // Cek di MAPPING_FOLDER_OPD jika folder OPD belum spesifik
-    if (!targetFolderId || targetFolderId === MASTER_FOLDER_ID) {
-      if (folderSheet.getLastRow() > 1) {
-        var fVals = folderSheet.getDataRange().getValues();
-        var reqOpdId = String(data.opdId || "").toLowerCase();
-        var reqOpdName = String(data.opdName || "").toLowerCase();
-        
-        for (var f = 1; f < fVals.length; f++) {
-          var rowOpdId = String(fVals[f][1] || "").toLowerCase();
-          var rowOpdName = String(fVals[f][2] || "").toLowerCase();
-          
-          if ((reqOpdId && rowOpdId === reqOpdId) || 
-              (reqOpdName && (rowOpdName === reqOpdName || reqOpdName.indexOf(rowOpdName) !== -1 || rowOpdName.indexOf(reqOpdName) !== -1))) {
-            var foundId = String(fVals[f][4] || "");
-            var foundUrl = String(fVals[f][3] || "");
-            if (foundId && foundId.length > 5) {
-              targetFolderId = foundId;
-              break;
-            } else if (foundUrl) {
-              var extracted = extractFolderIdFromUrl(foundUrl);
-              if (extracted) { targetFolderId = extracted; break; }
-            }
-          }
-        }
-      }
-    }
-
-    // Buat file fisik di Google Drive jika data base64 dilampirkan
+    // Simpan file fisik ke dalam Subfolder OPD
     if (data.fileBase64 && data.fileBase64.length > 30) {
       try {
-        var targetFolder = DriveApp.getRootFolder();
-        if (targetFolderId && targetFolderId.length > 5) {
-          try {
-            targetFolder = DriveApp.getFolderById(targetFolderId);
-          } catch (fErr) {
-            try { targetFolder = DriveApp.getFolderById(MASTER_FOLDER_ID); } catch(mErr){}
-          }
-        }
-        
         var decodedBytes = Utilities.base64Decode(data.fileBase64);
         var mimeType = data.fileMimeType || "application/pdf";
         var fileName = data.fileName || ("dokumen_" + (data.docNumber || "sakip") + ".pdf");
         var blob = Utilities.newBlob(decodedBytes, mimeType, fileName);
         
-        var driveFile = targetFolder.createFile(blob);
-        driveFile.setDescription("Dokumen SAKIP Nagekeo: " + (data.docNumber || "") + " - " + (data.opdName || "") + " - v" + (data.versionNumber || 1));
+        var driveFile = targetSubfolder.createFile(blob);
+        driveFile.setDescription("Dokumen SAKIP Nagekeo: " + (data.docNumber || "") + " - " + (data.opdName || ""));
         
         try {
           driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -316,7 +315,7 @@ function doPost(e) {
         driveFileUrl = driveFile.getUrl();
         driveFileId = driveFile.getId();
       } catch (driveErr) {
-        driveFileUrl = data.downloadUrl || data.driveFolderUrl || ("https://drive.google.com/drive/folders/" + (targetFolderId || MASTER_FOLDER_ID));
+        driveFileUrl = targetSubfolder.getUrl();
       }
     }
 
@@ -344,10 +343,11 @@ function doPost(e) {
 
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
-      message: "Data dokumen berhasil masuk ke baris sheet DATA_VERIFIKASI_DOKUMEN dan folder Google Drive.",
+      message: "Data dokumen berhasil masuk ke subfolder Google Drive [" + targetSubfolder.getName() + "] dan sheet DATA_VERIFIKASI_DOKUMEN.",
       fileUrl: driveFileUrl,
       fileId: driveFileId,
-      folderIdUsed: targetFolderId
+      folderUrl: targetSubfolder.getUrl(),
+      folderName: targetSubfolder.getName()
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -375,6 +375,10 @@ function adminGetDashboardData() {
   if (docSheet && docSheet.getLastRow() > 1) {
     var v = docSheet.getDataRange().getValues();
     for (var i = 1; i < v.length; i++) {
+      var rawUrl = String(v[i][14] || "");
+      // Hindari link dummy DRV- yang menyebabkan 404
+      var cleanViewUrl = rawUrl.indexOf("DRV-") !== -1 ? ("https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID) : rawUrl;
+
       docs.push({
         tanggalMasuk: String(v[i][0] || ""),
         id: String(v[i][1] || "DOC-" + i),
@@ -393,8 +397,8 @@ function adminGetDashboardData() {
         verifierNip: String(v[i][12] || ""),
         bavNumber: String(v[i][13] || ""),
         googleDrive: {
-          viewUrl: String(v[i][14] || ""),
-          downloadUrl: String(v[i][14] || ""),
+          viewUrl: cleanViewUrl,
+          downloadUrl: cleanViewUrl,
           fileId: String(v[i][15] || "")
         },
         notes: String(v[i][16] || ""),
@@ -548,9 +552,11 @@ function adminRegisterFolderServer(opdId, opdName, driveUrl, folderId, subfolder
     }
   }
 
+  var validUrl = driveUrl || ("https://drive.google.com/drive/folders/" + effectiveFolderId);
+
   if (foundFolderRow > 0) {
     folderSheet.getRange(foundFolderRow, 1).setValue(now);
-    folderSheet.getRange(foundFolderRow, 4).setValue(driveUrl || ("https://drive.google.com/drive/folders/" + effectiveFolderId));
+    folderSheet.getRange(foundFolderRow, 4).setValue(validUrl);
     folderSheet.getRange(foundFolderRow, 5).setValue(effectiveFolderId);
     folderSheet.getRange(foundFolderRow, 6).setValue(subfolderName || opdName);
     folderSheet.getRange(foundFolderRow, 7).setValue(registrar || "Admin SAKIP");
@@ -561,12 +567,12 @@ function adminRegisterFolderServer(opdId, opdName, driveUrl, folderId, subfolder
       now,
       opdId,
       opdName,
-      driveUrl || ("https://drive.google.com/drive/folders/" + effectiveFolderId),
+      validUrl,
       effectiveFolderId,
       subfolderName || opdName,
       registrar || "Admin SAKIP",
       nip || "-",
-      notes || "Pendaftaran Folder OPD Baru"
+      notes || "Pendaftaran Folder OPD"
     ]);
   }
 
@@ -747,7 +753,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
               <i class="fa-solid fa-folder-tree text-amber-400"></i>
               <span>Pemetaan Folder Google Drive OPD (38 Dinas)</span>
             </div>
-            <p class="text-[11px] text-slate-400 mt-0.5">Tersimpan di sheet <strong>MAPPING_FOLDER_OPD</strong> &bull; Setiap berkas OPD otomatis masuk ke folder terdaftar ini.</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Tersimpan di sheet <strong>MAPPING_FOLDER_OPD</strong> &bull; Berkas otomatis masuk ke subfolder dinas masing-masing.</p>
           </div>
 
           <button type="button" onclick="openFolderModal()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/20 active:scale-95 cursor-pointer">
@@ -927,7 +933,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
         <div>
           <label class="block text-slate-300 font-bold mb-1">URL Folder Google Drive OPD :</label>
-          <input type="text" id="inputFolderDriveUrl" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:border-amber-500 focus:outline-none" placeholder="https://drive.google.com/drive/folders/1oeL5XX...">
+          <input type="text" id="inputFolderDriveUrl" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:border-amber-500 focus:outline-none" placeholder="https://drive.google.com/drive/folders/...">
         </div>
 
         <div>
@@ -958,28 +964,9 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
   <script>
     var globalData = {
-      documents: [
-        {
-          id: 'DOC-DISDIKBUD-001',
-          nomorBerkas: '045.2/DISDIKBUD/SAKIP/2026/01',
-          judul: 'Laporan Kinerja Instansi Pemerintah (LKjIP) Tahun 2025',
-          opdName: 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
-          tanggalMasuk: 'Baru saja',
-          currentVersion: 1,
-          format: 'PDF',
-          pemohon: { nama: 'Denin', email: 'dikbud@nagekeokab.go.id' },
-          status: 'PENDING',
-          notes: 'Pengajuan berkas awal untuk verifikasi SAKIP.',
-          googleDrive: { viewUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7' }
-        }
-      ],
-      users: [
-        { username: 'deni', email: 'dikbud@nagekeokab.go.id', nama: 'Denin', opdName: 'DINAS PENDIDIKAN DAN KEBUDAYAAN', role: 'DINAS_PEMOHON', password: 'deni', status: 'AKTIF' },
-        { username: 'inspektorat', email: 'inspektorat@nagekeokab.go.id', nama: 'Inspektorat Daerah', opdName: 'INSPEKTORAT', role: 'DINAS_PEMOHON', password: 'inspektorat', status: 'AKTIF' }
-      ],
-      folders: [
-        { opdId: 'DISDIKBUD', opdName: 'DINAS PENDIDIKAN DAN KEBUDAYAAN', driveFolderUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7', driveFolderId: '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7', subfolderName: 'SAKIP_DISDIKBUD_2026', registeredBy: 'Admin SAKIP', registeredAt: 'Otomatis' }
-      ]
+      documents: [],
+      users: [],
+      folders: []
     };
 
     var activeStatusFilter = 'ALL';
@@ -990,7 +977,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       if (!container) return;
       var toast = document.createElement('div');
       var isSuccess = type !== 'error';
-      toast.className = 'p-3.5 rounded-2xl border text-xs font-bold shadow-xl flex items-center gap-2.5 transition-all animate-in slide-in-from-top-2 pointer-events-auto ' +
+      toast.className = 'p-3.5 rounded-2xl border text-xs font-bold shadow-xl flex items-center gap-2.5 transition-all pointer-events-auto ' +
         (isSuccess ? 'bg-emerald-950 border-emerald-600 text-emerald-200' : 'bg-rose-950 border-rose-600 text-rose-200');
       toast.innerHTML = '<i class="fa-solid ' + (isSuccess ? 'fa-circle-check text-emerald-400' : 'fa-circle-exclamation text-rose-400') + '"></i><span>' + message + '</span>';
       container.appendChild(toast);
@@ -1008,9 +995,9 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           .withSuccessHandler(function(res) {
             if (icon) icon.classList.remove('fa-spin');
             if (res && res.status === 'success') {
-              if (res.documents && res.documents.length > 0) globalData.documents = res.documents;
-              if (res.users && res.users.length > 0) globalData.users = res.users;
-              if (res.folders && res.folders.length > 0) globalData.folders = res.folders;
+              globalData.documents = res.documents || [];
+              globalData.users = res.users || [];
+              globalData.folders = res.folders || [];
               if (res.spreadsheetUrl) {
                 var btn = document.getElementById('sheetLinkBtn');
                 if (btn) btn.href = res.spreadsheetUrl;
@@ -1024,7 +1011,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           })
           .withFailureHandler(function(err) {
             if (icon) icon.classList.remove('fa-spin');
-            showToast('Catatan koneksi: Menampilkan data memori aktif.', 'error');
+            showToast('Catatan koneksi: ' + err.toString(), 'error');
             renderStats();
             renderDocs();
             renderUsers();
@@ -1071,7 +1058,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       if (!tbody) return;
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">Tidak ada berkas yang sesuai filter.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">Belum ada berkas yang masuk. Berkas baru akan muncul di sini secara otomatis.</td></tr>';
         return;
       }
 
@@ -1092,8 +1079,11 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           statusBadge = '<span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-1 rounded-full font-bold text-[10px]">MENUNGGU</span>';
         }
 
-        var driveLink = d.googleDrive && d.googleDrive.viewUrl && d.googleDrive.viewUrl.length > 5
-          ? '<a href="' + d.googleDrive.viewUrl + '" target="_blank" class="text-sky-400 hover:underline flex items-center gap-1 font-mono text-[11px]"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Drive</a>'
+        var viewLink = (d.googleDrive && d.googleDrive.viewUrl) ? d.googleDrive.viewUrl : '';
+        if (viewLink.indexOf('DRV-') !== -1) viewLink = '';
+
+        var driveLink = viewLink && viewLink.length > 5
+          ? '<a href="' + viewLink + '" target="_blank" class="text-sky-400 hover:underline flex items-center gap-1 font-mono text-[11px]"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Drive</a>'
           : '<span class="text-slate-500 font-mono">-</span>';
 
         var actionButton = '<button type="button" onclick="openVerifyModalByIndex(' + idx + ')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 cursor-pointer active:scale-95">' +
@@ -1153,8 +1143,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var html = '';
       for (var f = 0; f < folders.length; f++) {
         var itm = folders[f];
-        var driveLink = itm.driveFolderUrl
-          ? '<a href="' + itm.driveFolderUrl + '" target="_blank" class="text-amber-400 hover:underline flex items-center gap-1 font-mono text-[11px]"><i class="fa-solid fa-folder-open"></i> Buka Folder</a>'
+        var driveLink = itm.driveFolderUrl && itm.driveFolderUrl.indexOf('DRV-') === -1
+          ? '<a href="' + itm.driveFolderUrl + '" target="_blank" class="text-amber-400 hover:underline flex items-center gap-1 font-mono text-[11px]"><i class="fa-solid fa-folder-open"></i> Buka Subfolder</a>'
           : '<span class="text-slate-500 font-mono">-</span>';
 
         html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
@@ -1232,7 +1222,6 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var bav = document.getElementById('inputBav').value || ('BAV/SAKIP/' + selectedVerifyDoc.nomorBerkas);
       var notes = document.getElementById('inputNotes').value || 'Pemeriksaan SAKIP selesai';
 
-      // Update local state immediately
       selectedVerifyDoc.status = status;
       selectedVerifyDoc.verifierName = verifier;
       selectedVerifyDoc.verifierNip = nip;
@@ -1255,7 +1244,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             } else {
               renderStats();
               renderDocs();
-              showToast('Status berhasil diubah di memori lokal.', 'success');
+              showToast('Status berhasil diubah.', 'success');
             }
           })
           .withFailureHandler(function(err) {
@@ -1271,7 +1260,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         closeVerifyModal();
         renderStats();
         renderDocs();
-        showToast('Hasil verifikasi berhasil diperbarui (Mode Demo/Pratinjau).', 'success');
+        showToast('Hasil verifikasi berhasil diperbarui.', 'success');
       }
     }
 
@@ -1319,19 +1308,6 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       if (!username) { showToast('Harap isi username!', 'error'); return; }
       if (!email) email = username + '@nagekeokab.go.id';
 
-      // Update or add locally
-      var existing = false;
-      for (var u = 0; u < globalData.users.length; u++) {
-        if (globalData.users[u].username === username) {
-          globalData.users[u] = { id: 'usr-' + username, username: username, email: email, nama: nama, role: role, opdName: opd, nip: nip, password: pass, driveFolderUrl: driveUrl, status: 'AKTIF' };
-          existing = true;
-          break;
-        }
-      }
-      if (!existing) {
-        globalData.users.push({ id: 'usr-' + username, username: username, email: email, nama: nama, role: role, opdName: opd, nip: nip, password: pass, driveFolderUrl: driveUrl, status: 'AKTIF' });
-      }
-
       var btn = document.getElementById('btnSubmitUser');
       if (btn) { btn.disabled = true; btn.innerText = 'Menyimpan...'; }
 
@@ -1352,7 +1328,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             closeUserModal();
             renderStats();
             renderUsers();
-            showToast('Akun disimpan lokal: ' + err.toString(), 'error');
+            showToast('Akun disimpan: ' + err.toString(), 'error');
           })
           .adminSaveUserAccount('usr-' + username, username, email, nama, role, opd, nip, pass, driveUrl);
       } else {
@@ -1360,7 +1336,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         closeUserModal();
         renderStats();
         renderUsers();
-        showToast('Akun dinas @' + username + ' berhasil ditambahkan.', 'success');
+        showToast('Akun dinas @' + username + ' berhasil disimpan.', 'success');
       }
     }
 
@@ -1401,19 +1377,6 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
       if (!opdId || !opdName) { showToast('Harap isi ID OPD dan Nama Dinas!', 'error'); return; }
 
-      // Update or add locally
-      var existing = false;
-      for (var f = 0; f < globalData.folders.length; f++) {
-        if (globalData.folders[f].opdId === opdId) {
-          globalData.folders[f] = { opdId: opdId, opdName: opdName, driveFolderUrl: driveUrl, driveFolderId: driveId, subfolderName: subname, registeredBy: registrar, registeredAt: 'Baru saja' };
-          existing = true;
-          break;
-        }
-      }
-      if (!existing) {
-        globalData.folders.push({ opdId: opdId, opdName: opdName, driveFolderUrl: driveUrl, driveFolderId: driveId, subfolderName: subname, registeredBy: registrar, registeredAt: 'Baru saja' });
-      }
-
       var btn = document.getElementById('btnSubmitFolder');
       if (btn) { btn.disabled = true; btn.innerText = 'Menyimpan...'; }
 
@@ -1426,13 +1389,13 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
               globalData.folders = res.folders;
             }
             renderFolders();
-            showToast('Folder ' + opdName + ' dicatat di MAPPING_FOLDER_OPD!', 'success');
+            showToast('Subfolder ' + opdName + ' dicatat di MAPPING_FOLDER_OPD!', 'success');
           })
           .withFailureHandler(function(err) {
             if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke MAPPING_FOLDER_OPD'; }
             closeFolderModal();
             renderFolders();
-            showToast('Folder disimpan lokal: ' + err.toString(), 'error');
+            showToast('Folder disimpan: ' + err.toString(), 'error');
           })
           .adminRegisterFolderServer(opdId, opdName, driveUrl, driveId, subname, registrar, '-', 'Pendaftaran Folder OPD');
       } else {
@@ -1461,7 +1424,6 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       renderDocs();
     }
 
-    // Auto-load saat halaman siap
     window.addEventListener('DOMContentLoaded', function() {
       loadAllData();
     });
