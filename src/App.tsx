@@ -680,15 +680,20 @@ export default function App() {
 
   // Handle adding a new Dinas user account by Admin
   const handleAddUserAccount = async (newUser: UserAccount) => {
-    if (!currentUser) return;
     setUserAccounts((prev) => {
       const filtered = prev.filter((u) => u.username.toLowerCase() !== newUser.username.toLowerCase());
-      return [...filtered, newUser];
+      const updated = [...filtered, newUser];
+      try {
+        localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updated));
+      } catch (e) {
+        console.error('Failed to save users to storage', e);
+      }
+      return updated;
     });
 
     // Directly Transmit to Google Sheet (DATABASE_PENGGUNA)
     try {
-      await sendUserRegistrationToGoogleSheet(newUser, currentUser);
+      await sendUserRegistrationToGoogleSheet(newUser, currentUser || newUser);
     } catch (e) {
       console.warn('Google Sheet user registration sync note:', e);
     }
