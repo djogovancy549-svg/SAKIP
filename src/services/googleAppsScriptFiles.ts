@@ -959,6 +959,13 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
       <div class="space-y-3 text-xs">
         <div>
+          <label class="block text-slate-300 font-bold mb-1">Pilih dari Akun Dinas Terdaftar :</label>
+          <select id="selectRegisteredUserOpd" onchange="onSelectRegisteredUserForFolder()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-medium focus:border-amber-500 focus:outline-none cursor-pointer">
+            <option value="">-- Pilih dari Akun Dinas Terdaftar --</option>
+          </select>
+        </div>
+
+        <div>
           <label class="block text-slate-300 font-bold mb-1">ID OPD / Kode Dinas :</label>
           <input type="text" id="inputFolderOpdId" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:border-amber-500 focus:outline-none" placeholder="Contoh: DISDIKBUD">
         </div>
@@ -1378,6 +1385,13 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     function openFolderModal() {
+      var select = document.getElementById('selectRegisteredUserOpd');
+      if (select) {
+        select.innerHTML = '<option value="">-- Pilih dari Akun Dinas Terdaftar --</option>' +
+          (globalData.users || []).map(function(u) {
+            return '<option value="' + (u.opdName || '') + '" data-username="' + (u.username || '') + '">' + (u.opdName || '') + ' (@' + (u.username || '') + ')</option>';
+          }).join('');
+      }
       document.getElementById('inputFolderOpdId').value = '';
       document.getElementById('inputFolderOpdName').value = '';
       document.getElementById('inputFolderDriveUrl').value = '';
@@ -1385,6 +1399,17 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('inputFolderSubname').value = '';
       var modal = document.getElementById('folderModal');
       if (modal) modal.style.display = 'flex';
+    }
+
+    function onSelectRegisteredUserForFolder() {
+      var select = document.getElementById('selectRegisteredUserOpd');
+      var val = select.value;
+      if (val) {
+        document.getElementById('inputFolderOpdName').value = val;
+        var cleanId = val.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 15);
+        document.getElementById('inputFolderOpdId').value = cleanId;
+        document.getElementById('inputFolderSubname').value = 'SAKIP - ' + val;
+      }
     }
 
     function editFolderMappingByIndex(index) {
