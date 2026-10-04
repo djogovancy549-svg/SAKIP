@@ -1,22 +1,25 @@
 /**
  * GOOGLE APPS SCRIPT FILES: Code.gs & Index.html
- * Lengkap dengan Pengelolaan Akun Dinas, Verifikasi Berkas, dan Pemetaan Folder Google Drive
+ * Lengkap dengan Pengelolaan Akun Dinas, Verifikasi Berkas, dan Pemetaan Folder Google Drive OPD (38 Dinas)
  */
 
 export const APPS_SCRIPT_CODE_GS = `/**
  * =========================================================================
- * GOOGLE APPS SCRIPT: Code.gs (Backend Controller & Database Engine)
- * SAKIP / SIMVERIF KABUPATEN NAGEKEO
+ * GOOGLE APPS SCRIPT: Code.gs (Backend Controller & Multi-Sheet Engine)
+ * SIMVERIF SAKIP - PEMERINTAH KABUPATEN NAGEKEO
  * =========================================================================
  * 
  * STRUKTUR DATABASE MULTI-SHEET:
- * 1. Sheet 'DATA_VERIFIKASI_DOKUMEN': Transaksi berkas, status verifikasi, email pemohon, dan link Drive.
- * 2. Sheet 'DATABASE_PENGGUNA': Akun dinas (@nagekeokab.go.id), password, dan peran pengguna.
- * 3. Sheet 'MAPPING_FOLDER_OPD': Pemetaan tautan Google Drive per masing-masing 38 OPD.
+ * 1. Sheet 'DATA_VERIFIKASI_DOKUMEN': Transaksi berkas SAKIP, status verifikasi, pemohon, dan link Drive.
+ * 2. Sheet 'DATABASE_PENGGUNA': Akun dinas (@nagekeokab.go.id), password, OPD, dan hak akses.
+ * 3. Sheet 'MAPPING_FOLDER_OPD': Pemetaan folder Google Drive per masing-masing 38 OPD.
  */
 
 var MASTER_FOLDER_ID = "1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7";
 
+/**
+ * Mendapatkan Spreadsheet aktif atau membuat baru jika belum ada
+ */
 function getActiveSpreadsheetSafely() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -31,6 +34,9 @@ function getActiveSpreadsheetSafely() {
   }
 }
 
+/**
+ * Mengambil atau membuat sheet berdasarkan nama
+ */
 function getOrCreateSheet(spreadsheet, sheetName) {
   var sheet = spreadsheet.getSheetByName(sheetName);
   if (!sheet) {
@@ -40,20 +46,30 @@ function getOrCreateSheet(spreadsheet, sheetName) {
 }
 
 /**
- * 1. doGet: Merender Web App Dashboard Admin & Melayani API JSON untuk User Dinas
+ * Ekstraksi ID Folder dari URL Google Drive
+ */
+function extractFolderIdFromUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  var match = url.match(/folders\/([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) return match[1];
+  if (url.length >= 25 && url.indexOf("/") === -1 && url.indexOf(" ") === -1) return url;
+  return "";
+}
+
+/**
+ * 1. doGet: Merender Web App Dashboard Admin & Menyajikan JSON untuk User Dinas
  */
 function doGet(e) {
   try {
-    var ss = getActiveSpreadsheetSafely();
     var action = e && e.parameter ? e.parameter.action : "";
     
-    // API 1: JSON Endpoint untuk Aplikasi Web User Dinas (Mengambil status berkas real-time)
+    // API Endpoint JSON: Melayani data real-time untuk aplikasi Web User Dinas
     if (action === "get_all_data" || (e && e.parameter && e.parameter.format === "json")) {
       return ContentService.createTextOutput(JSON.stringify(adminGetDashboardData()))
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Render Dashboard Admin Profesional dari file Index.html
+    // Render Dashboard Admin Web App dari Index.html
     return HtmlService.createTemplateFromFile("Index").evaluate()
       .setTitle("DASHBOARD ADMIN SAKIP - KABUPATEN NAGEKEO")
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
@@ -64,7 +80,7 @@ function doGet(e) {
 }
 
 /**
- * 2. doPost: Menerima Unggahan Berkas Dokumen & Revisi dari User Dinas
+ * 2. doPost: Menerima Unggahan Berkas Dokumen, Pendaftaran Folder, & Sinkronisasi
  */
 function doPost(e) {
   try {
@@ -74,10 +90,12 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    var data = JSON.parse(e.postData.contents);
+    var data = {};
+    if (e && e.postData && e.postData.contents) {
+      data = JSON.parse(e.postData.contents);
+    }
+
     var docSheet = getOrCreateSheet(ss, "DATA_VERIFIKASI_DOKUMEN");
-    
-    // Inisialisasi Header Dokumen
     if (docSheet.getLastRow() === 0) {
       docSheet.appendRow([
         "Waktu Transaksi", "ID Dokumen", "Nomor Berkas", "Judul Dokumen", "OPD / Dinas",
@@ -110,22 +128,43 @@ function doPost(e) {
     if (data.action === "TEST_PING") {
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
-        message: "Koneksi Webhook Google Sheets & Drive Server Aktif!"
+        message: "Koneksi Webhook Google Sheets & Google Drive Server Aktif!"
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 2: PENDAFTARAN AKUN DARI WEB
-    if (data.action === "REGISTER_USER_ACCOUNT") {
+    // Aksi 2: PENDAFTARAN ATAU PEMBARUAN AKUN DINAS
+    if (data.action === "REGISTER_USER_ACCOUNT" || data.action === "UPDATE_USER_PASSWORD") {
       return ContentService.createTextOutput(JSON.stringify(
         adminSaveUserAccount(data.userId, data.username, data.email, data.pemohonName || data.nama, data.role, data.opdName, data.verifierNip || data.nip, data.newPassword, data.driveFolderUrl)
       )).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 3: VERIFIKASI DOKUMEN DARI LUAR
+    // Aksi 3: PENDAFTARAN FOLDER GOOGLE DRIVE OPD
+    if (data.action === "REGISTER_FOLDER" && data.folderRegistration) {
+      var r = data.folderRegistration;
+      return ContentService.createTextOutput(JSON.stringify(
+        adminRegisterFolderServer(r.opdId, r.opdName, r.driveFolderUrl, r.driveFolderId, r.subfolderName, r.registeredBy, r.nip, r.notes)
+      )).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Aksi 4: BATCH PENDAFTARAN SEMUA FOLDER OPD (38 DINAS)
+    if (data.action === "REGISTER_ALL_FOLDERS" && data.folderRegistrations && Array.isArray(data.folderRegistrations)) {
+      var regs = data.folderRegistrations;
+      for (var k = 0; k < regs.length; k++) {
+        var item = regs[k];
+        adminRegisterFolderServer(item.opdId, item.opdName, item.driveFolderUrl, item.driveFolderId, item.subfolderName, item.registeredBy, item.nip, item.notes);
+      }
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        message: "Seluruh " + regs.length + " folder OPD berhasil disimpan ke sheet MAPPING_FOLDER_OPD."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Aksi 5: KEPUTUSAN VERIFIKASI DOKUMEN DARI LUAR
     if (data.action === "VERIFY_DOCUMENT") {
       var dVals = docSheet.getDataRange().getValues();
       for (var d = 1; d < dVals.length; d++) {
-        if (dVals[d][1] === data.docId || dVals[d][2] === data.docNumber) {
+        if (String(dVals[d][1]) === String(data.docId) || String(dVals[d][2]) === String(data.docNumber)) {
           docSheet.getRange(d + 1, 11).setValue(data.status);
           docSheet.getRange(d + 1, 12).setValue(data.verifierName || "Admin Verifikator");
           docSheet.getRange(d + 1, 13).setValue(data.verifierNip || "-");
@@ -137,33 +176,76 @@ function doPost(e) {
       }
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
-        message: "Status verifikasi berhasil dicatat di sheet."
+        message: "Status verifikasi berhasil dicatat di sheet DATA_VERIFIKASI_DOKUMEN."
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Aksi 4: SIMPAN UNGGAHAN DOKUMEN BARU ATAU REVISI DARI DINAS
+    // Aksi 6: SIMPAN UNGGAHAN BERKAS DOKUMEN KE GOOGLE DRIVE & GOOGLE SHEET
     var driveFileUrl = data.downloadUrl || data.driveFolderUrl || "";
     var driveFileId = "";
 
-    if (data.fileBase64 && data.fileBase64.length > 50) {
-      try {
-        var targetFolder = DriveApp.getRootFolder();
-        var targetFolderId = data.driveMasterFolderId || MASTER_FOLDER_ID;
-        if (targetFolderId && targetFolderId.length > 5) {
-          try { targetFolder = DriveApp.getFolderById(targetFolderId); } catch(fErr){}
+    // 1. Cari folder Google Drive tujuan: Prioritaskan Folder OPD dari sheet MAPPING_FOLDER_OPD
+    var targetFolderId = data.driveMasterFolderId || data.driveFolderId || "";
+    
+    // Cek di MAPPING_FOLDER_OPD jika folder OPD belum spesifik
+    if (!targetFolderId || targetFolderId === MASTER_FOLDER_ID) {
+      if (folderSheet.getLastRow() > 1) {
+        var fVals = folderSheet.getDataRange().getValues();
+        var reqOpdId = String(data.opdId || "").toLowerCase();
+        var reqOpdName = String(data.opdName || "").toLowerCase();
+        
+        for (var f = 1; f < fVals.length; f++) {
+          var rowOpdId = String(fVals[f][1] || "").toLowerCase();
+          var rowOpdName = String(fVals[f][2] || "").toLowerCase();
+          
+          if ((reqOpdId && rowOpdId === reqOpdId) || 
+              (reqOpdName && (rowOpdName === reqOpdName || reqOpdName.indexOf(rowOpdName) !== -1 || rowOpdName.indexOf(reqOpdName) !== -1))) {
+            var foundId = String(fVals[f][4] || "");
+            var foundUrl = String(fVals[f][3] || "");
+            if (foundId && foundId.length > 5) {
+              targetFolderId = foundId;
+              break;
+            } else if (foundUrl) {
+              var extracted = extractFolderIdFromUrl(foundUrl);
+              if (extracted) { targetFolderId = extracted; break; }
+            }
+          }
         }
-        var decodedBytes = Utilities.base64Decode(data.fileBase64);
-        var blob = Utilities.newBlob(decodedBytes, data.fileMimeType || "application/pdf", data.fileName || "dokumen_sakip.pdf");
-        var driveFile = targetFolder.createFile(blob);
-        driveFile.setDescription("Dokumen SAKIP: " + (data.docNumber || "") + " - " + (data.pemohonEmail || "") + " - v" + (data.versionNumber || 1));
-        driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        driveFileUrl = driveFile.getUrl();
-        driveFileId = driveFile.getId();
-      } catch (driveErr) {
-        driveFileUrl = data.downloadUrl || data.driveFolderUrl || "https://drive.google.com";
       }
     }
 
+    // 2. Buat file fisik di Google Drive jika data base64 dilampirkan
+    if (data.fileBase64 && data.fileBase64.length > 30) {
+      try {
+        var targetFolder = DriveApp.getRootFolder();
+        if (targetFolderId && targetFolderId.length > 5) {
+          try {
+            targetFolder = DriveApp.getFolderById(targetFolderId);
+          } catch (fErr) {
+            try { targetFolder = DriveApp.getFolderById(MASTER_FOLDER_ID); } catch(mErr){}
+          }
+        }
+        
+        var decodedBytes = Utilities.base64Decode(data.fileBase64);
+        var mimeType = data.fileMimeType || "application/pdf";
+        var fileName = data.fileName || ("dokumen_" + (data.docNumber || "sakip") + ".pdf");
+        var blob = Utilities.newBlob(decodedBytes, mimeType, fileName);
+        
+        var driveFile = targetFolder.createFile(blob);
+        driveFile.setDescription("Dokumen SAKIP Nagekeo: " + (data.docNumber || "") + " - " + (data.opdName || "") + " - v" + (data.versionNumber || 1));
+        
+        try {
+          driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch (shareErr) {}
+        
+        driveFileUrl = driveFile.getUrl();
+        driveFileId = driveFile.getId();
+      } catch (driveErr) {
+        driveFileUrl = data.downloadUrl || data.driveFolderUrl || ("https://drive.google.com/drive/folders/" + (targetFolderId || MASTER_FOLDER_ID));
+      }
+    }
+
+    // 3. Catat transaksi berkas ke sheet DATA_VERIFIKASI_DOKUMEN
     docSheet.appendRow([
       data.timestamp || new Date().toISOString(),
       data.docId,
@@ -171,10 +253,10 @@ function doPost(e) {
       data.title,
       data.opdName,
       "v" + (data.versionNumber || 1),
-      data.format,
+      data.format || "PDF",
       data.pemohonName,
       data.pemohonEmail || data.email || "-",
-      data.pemohonInstansi,
+      data.pemohonInstansi || data.opdName,
       data.status || "PENDING",
       data.verifierName || "-",
       data.verifierNip || "-",
@@ -187,9 +269,10 @@ function doPost(e) {
 
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
-      message: "Data dokumen berhasil masuk ke baris sheet DATA_VERIFIKASI_DOKUMEN.",
+      message: "Data dokumen berhasil masuk ke baris sheet DATA_VERIFIKASI_DOKUMEN dan folder Google Drive.",
       fileUrl: driveFileUrl,
-      fileId: driveFileId
+      fileId: driveFileId,
+      folderIdUsed: targetFolderId
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
@@ -201,14 +284,15 @@ function doPost(e) {
 }
 
 /**
- * 3. Helper Pengambil Seluruh Data untuk Dashboard & API
+ * 3. Helper Pengambil Seluruh Data untuk Dashboard & API JSON
  */
 function adminGetDashboardData() {
   var ss = getActiveSpreadsheetSafely();
-  if (!ss) return { status: "error", documents: [], users: [], spreadsheetUrl: "" };
+  if (!ss) return { status: "error", documents: [], users: [], folders: [], spreadsheetUrl: "" };
 
   var docSheet = ss.getSheetByName("DATA_VERIFIKASI_DOKUMEN");
   var userSheet = ss.getSheetByName("DATABASE_PENGGUNA");
+  var folderSheet = ss.getSheetByName("MAPPING_FOLDER_OPD");
   
   var docs = [];
   if (docSheet && docSheet.getLastRow() > 1) {
@@ -261,16 +345,35 @@ function adminGetDashboardData() {
     }
   }
 
+  var folders = [];
+  if (folderSheet && folderSheet.getLastRow() > 1) {
+    var f = folderSheet.getDataRange().getValues();
+    for (var k = 1; k < f.length; k++) {
+      folders.push({
+        registeredAt: String(f[k][0] || ""),
+        opdId: String(f[k][1] || ""),
+        opdName: String(f[k][2] || ""),
+        driveFolderUrl: String(f[k][3] || ""),
+        driveFolderId: String(f[k][4] || ""),
+        subfolderName: String(f[k][5] || ""),
+        registeredBy: String(f[k][6] || ""),
+        nip: String(f[k][7] || ""),
+        notes: String(f[k][8] || "")
+      });
+    }
+  }
+
   return {
     status: "success",
     spreadsheetUrl: ss.getUrl(),
     documents: docs,
-    users: users
+    users: users,
+    folders: folders
   };
 }
 
 /**
- * 4. Fungsi Server untuk Memproses Keputusan Verifikasi Admin
+ * 4. Fungsi Server Verifikasi Dokumen Admin
  */
 function adminProcessVerification(docId, docNumber, status, verifierName, verifierNip, bavNumber, notes) {
   var ss = getActiveSpreadsheetSafely();
@@ -281,7 +384,7 @@ function adminProcessVerification(docId, docNumber, status, verifierName, verifi
   var foundRow = -1;
   var dVals = docSheet.getDataRange().getValues();
   for (var d = 1; d < dVals.length; d++) {
-    if (dVals[d][1] === docId || dVals[d][2] === docNumber) {
+    if (String(dVals[d][1]) === String(docId) || String(dVals[d][2]) === String(docNumber)) {
       foundRow = d + 1;
       break;
     }
@@ -301,7 +404,7 @@ function adminProcessVerification(docId, docNumber, status, verifierName, verifi
 }
 
 /**
- * 5. Fungsi Server untuk Mengelola Akun Dinas di Sheet 'DATABASE_PENGGUNA'
+ * 5. Fungsi Server Pengelolaan Akun Dinas di Sheet 'DATABASE_PENGGUNA'
  */
 function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip, password, driveFolderUrl) {
   var ss = getActiveSpreadsheetSafely();
@@ -311,7 +414,7 @@ function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip,
   var foundUserRow = -1;
   var uVals = userSheet.getDataRange().getValues();
   for (var u = 1; u < uVals.length; u++) {
-    if (uVals[u][2] === username || uVals[u][3] === email || uVals[u][1] === userId) {
+    if (String(uVals[u][2]) === String(username) || String(uVals[u][3]) === String(email) || String(uVals[u][1]) === String(userId)) {
       foundUserRow = u + 1;
       break;
     }
@@ -347,6 +450,51 @@ function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip,
 
   return adminGetDashboardData();
 }
+
+/**
+ * 6. Fungsi Server Pendaftaran Folder Google Drive di Sheet 'MAPPING_FOLDER_OPD'
+ */
+function adminRegisterFolderServer(opdId, opdName, driveUrl, folderId, subfolderName, registrar, nip, notes) {
+  var ss = getActiveSpreadsheetSafely();
+  if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan" };
+  var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
+
+  var effectiveFolderId = folderId || extractFolderIdFromUrl(driveUrl) || MASTER_FOLDER_ID;
+  var now = new Date().toISOString();
+
+  var foundFolderRow = -1;
+  var fVals = folderSheet.getDataRange().getValues();
+  for (var f = 1; f < fVals.length; f++) {
+    if (String(fVals[f][1]) === String(opdId) || String(fVals[f][2]) === String(opdName)) {
+      foundFolderRow = f + 1;
+      break;
+    }
+  }
+
+  if (foundFolderRow > 0) {
+    folderSheet.getRange(foundFolderRow, 1).setValue(now);
+    folderSheet.getRange(foundFolderRow, 4).setValue(driveUrl || ("https://drive.google.com/drive/folders/" + effectiveFolderId));
+    folderSheet.getRange(foundFolderRow, 5).setValue(effectiveFolderId);
+    folderSheet.getRange(foundFolderRow, 6).setValue(subfolderName || opdName);
+    folderSheet.getRange(foundFolderRow, 7).setValue(registrar || "Admin SAKIP");
+    folderSheet.getRange(foundFolderRow, 8).setValue(nip || "-");
+    folderSheet.getRange(foundFolderRow, 9).setValue(notes || "Pembaruan Folder OPD");
+  } else {
+    folderSheet.appendRow([
+      now,
+      opdId,
+      opdName,
+      driveUrl || ("https://drive.google.com/drive/folders/" + effectiveFolderId),
+      effectiveFolderId,
+      subfolderName || opdName,
+      registrar || "Admin SAKIP",
+      nip || "-",
+      notes || "Pendaftaran Folder OPD Baru"
+    ]);
+  }
+
+  return adminGetDashboardData();
+}
 `;
 
 export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
@@ -373,7 +521,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-sm sm:text-base font-extrabold text-white tracking-tight">DASHBOARD ADMIN SAKIP</h1>
-          <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold">VERIFIKASI &amp; USER</span>
+          <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold">VERIFIKASI &amp; USER &amp; DRIVE</span>
         </div>
         <p class="text-[11px] text-slate-400 font-medium">Pemerintah Kabupaten Nagekeo &bull; Terhubung Langsung ke Sheet &amp; User Dinas</p>
       </div>
@@ -421,13 +569,17 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     <!-- TAB NAVIGASI UTAMA DASHBOARD ADMIN -->
     <div class="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
       <div class="flex border-b border-slate-800 bg-slate-900 px-4 sm:px-6 gap-3 sm:gap-6 text-xs font-bold overflow-x-auto">
-        <button onclick="switchTab('DOCS')" id="tabBtnDocs" class="py-4 border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 cursor-pointer">
+        <button onclick="switchTab('DOCS')" id="tabBtnDocs" class="py-4 border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 cursor-pointer shrink-0">
           <i class="fa-solid fa-file-signature"></i>
           <span>1. Verifikasi Berkas Dokumen SAKIP</span>
         </button>
-        <button onclick="switchTab('USERS')" id="tabBtnUsers" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer">
+        <button onclick="switchTab('USERS')" id="tabBtnUsers" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
           <i class="fa-solid fa-users-gear text-sky-400"></i>
-          <span>2. Kelola Akun &amp; Pengguna Dinas (@nagekeokab.go.id)</span>
+          <span>2. Kelola Akun &amp; Pengguna Dinas</span>
+        </button>
+        <button onclick="switchTab('FOLDERS')" id="tabBtnFolders" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
+          <i class="fa-solid fa-folder-tree text-amber-400"></i>
+          <span>3. Pemetaan Folder Google Drive (38 OPD)</span>
         </button>
       </div>
 
@@ -473,9 +625,9 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           <div>
             <div class="font-bold text-white text-sm flex items-center gap-2">
               <i class="fa-solid fa-users text-sky-400"></i>
-              <span>Pusat Pengelolaan Akun Dinas Kabupaten Nagekeo</span>
+              <span>Pusat Pengelolaan Akun Dinas (@nagekeokab.go.id)</span>
             </div>
-            <p class="text-[11px] text-slate-400 mt-0.5">Tersinkronisasi ke Google Sheet lembar <strong>DATABASE_PENGGUNA</strong></p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Tersinkronisasi langsung ke Google Sheet lembar <strong>DATABASE_PENGGUNA</strong></p>
           </div>
 
           <button onclick="openUserModal()" class="px-4 py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-600/20 active:scale-95 cursor-pointer">
@@ -504,12 +656,48 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- TAB 3: PEMETAAN FOLDER GOOGLE DRIVE OPD (38 DINAS) -->
+      <div id="tabContentFolders" class="p-5 space-y-4 hidden">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+          <div>
+            <div class="font-bold text-white text-sm flex items-center gap-2">
+              <i class="fa-solid fa-folder-tree text-amber-400"></i>
+              <span>Pemetaan Folder Google Drive OPD (38 Dinas)</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">Tersimpan di sheet <strong>MAPPING_FOLDER_OPD</strong> &bull; Setiap berkas OPD otomatis masuk ke folder terdaftar ini.</p>
+          </div>
+
+          <button onclick="openFolderModal()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/20 active:scale-95 cursor-pointer">
+            <i class="fa-solid fa-folder-plus"></i>
+            <span>+ Daftarkan / Edit Folder OPD</span>
+          </button>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
+              <tr>
+                <th class="p-3.5">ID &amp; Nama Dinas</th>
+                <th class="p-3.5">Subfolder Target</th>
+                <th class="p-3.5">ID Folder Google Drive</th>
+                <th class="p-3.5">Tautan Drive</th>
+                <th class="p-3.5">Didaftarkan Oleh</th>
+                <th class="p-3.5 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="foldersTableBody" class="divide-y divide-slate-800/80 text-slate-300">
+              <tr><td colspan="6" class="p-8 text-center text-slate-500">Memuat pemetaan folder OPD...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </main>
 
   <!-- MODAL VERIFIKASI DOKUMEN -->
   <div id="verifyModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-150">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="font-bold text-white text-base flex items-center gap-2">
           <i class="fa-solid fa-file-signature text-emerald-400"></i>
@@ -567,7 +755,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
   <!-- MODAL TAMBAH / EDIT AKUN PENGGUNA DINAS -->
   <div id="userModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="font-bold text-white text-base flex items-center gap-2">
           <i class="fa-solid fa-user-gear text-sky-400"></i>
@@ -632,8 +820,61 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- MODAL DAFTAR / EDIT FOLDER GOOGLE DRIVE OPD -->
+  <div id="folderModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="font-bold text-white text-base flex items-center gap-2">
+          <i class="fa-solid fa-folder-plus text-amber-400"></i>
+          <span>Pemetaan Folder Google Drive OPD</span>
+        </div>
+        <button onclick="closeFolderModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-300 font-bold mb-1">ID OPD / Kode Dinas :</label>
+          <input type="text" id="inputFolderOpdId" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:border-amber-500 focus:outline-none" placeholder="Contoh: DISDIKBUD">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-bold mb-1">Nama Lengkap Dinas / OPD :</label>
+          <input type="text" id="inputFolderOpdName" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-amber-500 focus:outline-none" placeholder="Dinas Pendidikan dan Kebudayaan">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-bold mb-1">URL Folder Google Drive OPD :</label>
+          <input type="text" id="inputFolderDriveUrl" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono text-[11px] focus:border-amber-500 focus:outline-none" placeholder="https://drive.google.com/drive/folders/1oeL5XX...">
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-bold mb-1">ID Folder Google Drive (Opsional) :</label>
+          <input type="text" id="inputFolderDriveId" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono focus:border-amber-500 focus:outline-none" placeholder="1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-bold mb-1">Nama Subfolder :</label>
+            <input type="text" id="inputFolderSubname" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-amber-500 focus:outline-none" placeholder="SAKIP_DISDIKBUD_2026">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-bold mb-1">Didaftarkan Oleh :</label>
+            <input type="text" id="inputFolderRegistrar" value="Admin Verifikator" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-amber-500 focus:outline-none">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+        <button onclick="closeFolderModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer">Batal</button>
+        <button id="btnSubmitFolder" onclick="submitFolder()" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-amber-600/30 cursor-pointer active:scale-95">
+          <i class="fa-solid fa-save"></i> <span>Simpan ke MAPPING_FOLDER_OPD</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    var globalData = { documents: [], users: [] };
+    var globalData = { documents: [], users: [], folders: [] };
     var activeStatusFilter = 'ALL';
     var selectedVerifyDoc = null;
 
@@ -652,6 +893,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             renderStats();
             renderDocs();
             renderUsers();
+            renderFolders();
           }
         })
         .withFailureHandler(function(err) {
@@ -741,7 +983,34 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '<td class="p-3.5"><span class="bg-slate-800 border border-slate-700 px-2 py-0.5 rounded font-mono text-[10px]">' + (u.role || 'DINAS_PEMOHON') + '</span></td>' +
           '<td class="p-3.5 font-mono text-slate-300 font-bold">' + (u.password || '******') + '</td>' +
           '<td class="p-3.5"><span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold text-[10px]">AKTIF</span></td>' +
-          '<td class="p-3.5 text-right"><button onclick="editUserAccount(\\'' + (u.username || '') + '\\', \\'' + (u.email || '') + '\\', \\'' + (u.nama || '') + '\\', \\'' + (u.opdName || '') + '\\', \\'' + (u.password || '') + '\\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-xs font-bold transition-colors"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>' +
+          '<td class="p-3.5 text-right"><button onclick="editUserAccount(\\'' + (u.username || '') + '\\', \\'' + (u.email || '') + '\\', \\'' + (u.nama || '').replace(/'/g, "\\\\'") + '\\', \\'' + (u.opdName || '').replace(/'/g, "\\\\'") + '\\', \\'' + (u.password || '') + '\\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-xs font-bold transition-colors cursor-pointer"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>' +
+          '</tr>';
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function renderFolders() {
+      var folders = globalData.folders || [];
+      var tbody = document.getElementById('foldersTableBody');
+      if (folders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada pemetaan folder OPD. Klik "+ Daftarkan / Edit Folder OPD" di atas.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      folders.forEach(function(f) {
+        var driveLink = f.driveFolderUrl
+          ? '<a href="' + f.driveFolderUrl + '" target="_blank" class="text-amber-400 hover:underline flex items-center gap-1 font-mono text-[11px]"><i class="fa-solid fa-folder-open"></i> Buka Folder</a>'
+          : '<span class="text-slate-500 font-mono">-</span>';
+
+        html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
+          '<td class="p-3.5"><div class="font-bold text-white">' + (f.opdName || '-') + '</div><div class="text-[10px] text-amber-400 font-mono font-bold">' + (f.opdId || '-') + '</div></td>' +
+          '<td class="p-3.5 font-mono text-slate-300">' + (f.subfolderName || '-') + '</td>' +
+          '<td class="p-3.5 font-mono text-slate-400 text-[11px]">' + (f.driveFolderId || '-') + '</td>' +
+          '<td class="p-3.5">' + driveLink + '</td>' +
+          '<td class="p-3.5 text-[11px] text-slate-400"><div class="text-slate-200">' + (f.registeredBy || '-') + '</div><div>' + (f.registeredAt || '') + '</div></td>' +
+          '<td class="p-3.5 text-right"><button onclick="editFolderMapping(\\'' + (f.opdId || '') + '\\', \\'' + (f.opdName || '').replace(/'/g, "\\\\'") + '\\', \\'' + (f.driveFolderUrl || '') + '\\', \\'' + (f.driveFolderId || '') + '\\', \\'' + (f.subfolderName || '').replace(/'/g, "\\\\'") + '\\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs font-bold transition-colors cursor-pointer"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>' +
           '</tr>';
       });
 
@@ -751,15 +1020,20 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     function switchTab(tab) {
       document.getElementById('tabContentDocs').classList.add('hidden');
       document.getElementById('tabContentUsers').classList.add('hidden');
-      document.getElementById('tabBtnDocs').className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer';
-      document.getElementById('tabBtnUsers').className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer';
+      document.getElementById('tabContentFolders').classList.add('hidden');
+      document.getElementById('tabBtnDocs').className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
+      document.getElementById('tabBtnUsers').className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
+      document.getElementById('tabBtnFolders').className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
 
       if (tab === 'DOCS') {
         document.getElementById('tabContentDocs').classList.remove('hidden');
-        document.getElementById('tabBtnDocs').className = 'py-4 border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 cursor-pointer';
-      } else {
+        document.getElementById('tabBtnDocs').className = 'py-4 border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 cursor-pointer shrink-0';
+      } else if (tab === 'USERS') {
         document.getElementById('tabContentUsers').classList.remove('hidden');
-        document.getElementById('tabBtnUsers').className = 'py-4 border-b-2 border-sky-500 text-sky-400 flex items-center gap-2 cursor-pointer';
+        document.getElementById('tabBtnUsers').className = 'py-4 border-b-2 border-sky-500 text-sky-400 flex items-center gap-2 cursor-pointer shrink-0';
+      } else {
+        document.getElementById('tabContentFolders').classList.remove('hidden');
+        document.getElementById('tabBtnFolders').className = 'py-4 border-b-2 border-amber-500 text-amber-400 flex items-center gap-2 cursor-pointer shrink-0';
       }
     }
 
@@ -866,6 +1140,58 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         .adminSaveUserAccount('usr-' + username, username, email, nama, role, opd, nip, pass, driveUrl);
     }
 
+    function openFolderModal() {
+      document.getElementById('inputFolderOpdId').value = '';
+      document.getElementById('inputFolderOpdName').value = '';
+      document.getElementById('inputFolderDriveUrl').value = '';
+      document.getElementById('inputFolderDriveId').value = '';
+      document.getElementById('inputFolderSubname').value = '';
+      document.getElementById('folderModal').classList.remove('hidden');
+    }
+
+    function editFolderMapping(opdId, opdName, driveUrl, driveId, subname) {
+      document.getElementById('inputFolderOpdId').value = opdId;
+      document.getElementById('inputFolderOpdName').value = opdName;
+      document.getElementById('inputFolderDriveUrl').value = driveUrl;
+      document.getElementById('inputFolderDriveId').value = driveId;
+      document.getElementById('inputFolderSubname').value = subname;
+      document.getElementById('folderModal').classList.remove('hidden');
+    }
+
+    function closeFolderModal() {
+      document.getElementById('folderModal').classList.add('hidden');
+    }
+
+    function submitFolder() {
+      var opdId = document.getElementById('inputFolderOpdId').value.trim();
+      var opdName = document.getElementById('inputFolderOpdName').value.trim();
+      var driveUrl = document.getElementById('inputFolderDriveUrl').value.trim();
+      var driveId = document.getElementById('inputFolderDriveId').value.trim();
+      var subname = document.getElementById('inputFolderSubname').value.trim();
+      var registrar = document.getElementById('inputFolderRegistrar').value.trim() || 'Admin SAKIP';
+
+      if (!opdId || !opdName) { alert('Harap isi ID OPD dan Nama Dinas!'); return; }
+
+      var btn = document.getElementById('btnSubmitFolder');
+      if (btn) { btn.disabled = true; btn.innerText = 'Menyimpan Folder...'; }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke MAPPING_FOLDER_OPD'; }
+          closeFolderModal();
+          if (res && res.status === 'success') {
+            globalData = res;
+            renderFolders();
+            alert('Pemetaan folder untuk ' + opdName + ' berhasil dicatat di sheet MAPPING_FOLDER_OPD!');
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke MAPPING_FOLDER_OPD'; }
+          alert('Gagal menyimpan folder: ' + err.toString());
+        })
+        .adminRegisterFolderServer(opdId, opdName, driveUrl, driveId, subname, registrar, '-', 'Pendaftaran Folder OPD');
+    }
+
     function filterByStatus(status) {
       activeStatusFilter = status;
       var btnIds = ['filterStatusAll', 'filterStatusPending', 'filterStatusRevision', 'filterStatusApproved'];
@@ -890,3 +1216,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
   </script>
 </body>
 </html>`;
+
+export const GOOGLE_APPS_SCRIPT_TEMPLATE = APPS_SCRIPT_CODE_GS;
+export const GOOGLE_APPS_SCRIPT_CODE_GS = APPS_SCRIPT_CODE_GS;
+export const GOOGLE_APPS_SCRIPT_INDEX_HTML = APPS_SCRIPT_INDEX_HTML;
