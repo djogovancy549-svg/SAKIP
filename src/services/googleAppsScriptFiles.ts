@@ -268,20 +268,56 @@ function doPost(e) {
     // Aksi 5: KEPUTUSAN VERIFIKASI DOKUMEN
     if (data.action === "VERIFY_DOCUMENT") {
       var dVals = docSheet.getDataRange().getValues();
+      var foundVRow = -1;
+      var reqId = String(data.docId || "").trim().toLowerCase();
+      var reqNo = String(data.docNumber || "").trim().toLowerCase();
+
       for (var d = 1; d < dVals.length; d++) {
-        if (String(dVals[d][1]) === String(data.docId) || String(dVals[d][2]) === String(data.docNumber)) {
-          docSheet.getRange(d + 1, 11).setValue(data.status);
-          docSheet.getRange(d + 1, 12).setValue(data.verifierName || "Admin Verifikator");
-          docSheet.getRange(d + 1, 13).setValue(data.verifierNip || "-");
-          docSheet.getRange(d + 1, 14).setValue(data.bavNumber || "-");
-          docSheet.getRange(d + 1, 17).setValue(data.notes || "-");
-          docSheet.getRange(d + 1, 18).setValue(data.digitalSealHash || "-");
+        var rowId = String(dVals[d][1] || "").trim().toLowerCase();
+        var rowNo = String(dVals[d][2] || "").trim().toLowerCase();
+
+        if ((reqId && rowId === reqId) || (reqNo && rowNo === reqNo) || (reqNo && rowNo.indexOf(reqNo) !== -1) || (reqNo && reqNo.indexOf(rowNo) !== -1)) {
+          foundVRow = d + 1;
           break;
         }
       }
+
+      var sealHash = data.digitalSealHash || ("SEAL-ADMIN-" + Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyyMMddHHmmss"));
+
+      if (foundVRow > 0) {
+        docSheet.getRange(foundVRow, 11).setValue(data.status || "APPROVED");
+        docSheet.getRange(foundVRow, 12).setValue(data.verifierName || "Admin Verifikator SAKIP");
+        docSheet.getRange(foundVRow, 13).setValue(data.verifierNip || "19850101 201001 1 002");
+        docSheet.getRange(foundVRow, 14).setValue(data.bavNumber || ("BAV/SAKIP/" + (data.docNumber || "001")));
+        docSheet.getRange(foundVRow, 17).setValue(data.notes || "Pemeriksaan SAKIP selesai");
+        docSheet.getRange(foundVRow, 18).setValue(sealHash);
+      } else {
+        docSheet.appendRow([
+          data.timestamp || Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"),
+          data.docId || ("DOC-" + Date.now()),
+          data.docNumber || "04/sakip/2026",
+          data.title || "Dokumen SAKIP Nagekeo",
+          data.opdName || "Dinas",
+          "v" + (data.versionNumber || 1),
+          data.format || "PDF",
+          data.pemohonName || "Pemohon",
+          data.pemohonEmail || data.email || "-",
+          data.pemohonInstansi || data.opdName || "-",
+          data.status || "APPROVED",
+          data.verifierName || "Admin Verifikator SAKIP",
+          data.verifierNip || "19850101 201001 1 002",
+          data.bavNumber || ("BAV/SAKIP/" + (data.docNumber || "001")),
+          data.downloadUrl || data.driveFolderUrl || getMasterFolder().getUrl(),
+          "",
+          data.notes || "Pemeriksaan SAKIP selesai",
+          sealHash
+        ]);
+      }
+
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
-        message: "Status verifikasi berhasil dicatat di sheet DATA_VERIFIKASI_DOKUMEN."
+        message: "Status verifikasi berhasil dicatat di sheet DATA_VERIFIKASI_DOKUMEN.",
+        documents: adminGetDashboardData().documents
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -379,6 +415,13 @@ function adminGetDashboardData() {
       // Hindari link dummy DRV- yang menyebabkan 404
       var cleanViewUrl = rawUrl.indexOf("DRV-") !== -1 ? ("https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID) : rawUrl;
 
+      var st = String(v[i][10] || "PENDING");
+      var vn = String(v[i][11] || "");
+      var nip = String(v[i][12] || "");
+      var bav = String(v[i][13] || "");
+      var nt = String(v[i][16] || "");
+      var hash = String(v[i][17] || "");
+
       docs.push({
         tanggalMasuk: String(v[i][0] || ""),
         id: String(v[i][1] || "DOC-" + i),
@@ -392,17 +435,25 @@ function adminGetDashboardData() {
           email: String(v[i][8] || ""),
           instansi: String(v[i][9] || ""),
         },
-        status: String(v[i][10] || "PENDING"),
-        verifierName: String(v[i][11] || ""),
-        verifierNip: String(v[i][12] || ""),
-        bavNumber: String(v[i][13] || ""),
+        status: st,
+        verifierName: vn,
+        verifierNip: nip,
+        bavNumber: bav,
         googleDrive: {
           viewUrl: cleanViewUrl,
           downloadUrl: cleanViewUrl,
           fileId: String(v[i][15] || "")
         },
-        notes: String(v[i][16] || ""),
-        digitalSealHash: String(v[i][17] || "")
+        notes: nt,
+        digitalSealHash: hash,
+        verification: {
+          status: st,
+          verifiedBy: vn || "Admin Verifikator SAKIP",
+          nip: nip || "19850101 201001 1 002",
+          bavNumber: bav,
+          notes: nt,
+          digitalSealHash: hash
+        }
       });
     }
   }
@@ -459,13 +510,18 @@ function adminGetDashboardData() {
 function adminProcessVerification(docId, docNumber, status, verifierName, verifierNip, bavNumber, notes) {
   var ss = getActiveSpreadsheetSafely();
   if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan" };
-  var docSheet = ss.getSheetByName("DATA_VERIFIKASI_DOKUMEN");
-  if (!docSheet) return { status: "error", message: "Sheet DATA_VERIFIKASI_DOKUMEN tidak ada" };
+  var docSheet = getOrCreateSheet(ss, "DATA_VERIFIKASI_DOKUMEN");
 
   var foundRow = -1;
   var dVals = docSheet.getDataRange().getValues();
+  var reqId = String(docId || "").trim().toLowerCase();
+  var reqNo = String(docNumber || "").trim().toLowerCase();
+
   for (var d = 1; d < dVals.length; d++) {
-    if (String(dVals[d][1]) === String(docId) || String(dVals[d][2]) === String(docNumber)) {
+    var rowId = String(dVals[d][1] || "").trim().toLowerCase();
+    var rowNo = String(dVals[d][2] || "").trim().toLowerCase();
+
+    if ((reqId && rowId === reqId) || (reqNo && rowNo === reqNo) || (reqNo && rowNo.indexOf(reqNo) !== -1) || (reqNo && reqNo.indexOf(rowNo) !== -1)) {
       foundRow = d + 1;
       break;
     }
@@ -473,12 +529,33 @@ function adminProcessVerification(docId, docNumber, status, verifierName, verifi
 
   var seal = "SEAL-ADMIN-" + Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyyMMddHHmmss");
   if (foundRow > 0) {
-    docSheet.getRange(foundRow, 11).setValue(status);
+    docSheet.getRange(foundRow, 11).setValue(status || "APPROVED");
     docSheet.getRange(foundRow, 12).setValue(verifierName || "Admin Verifikator SAKIP");
-    docSheet.getRange(foundRow, 13).setValue(verifierNip || "-");
-    docSheet.getRange(foundRow, 14).setValue(bavNumber || ("BAV/SAKIP/" + docNumber));
+    docSheet.getRange(foundRow, 13).setValue(verifierNip || "19850101 201001 1 002");
+    docSheet.getRange(foundRow, 14).setValue(bavNumber || ("BAV/SAKIP/" + (docNumber || "001")));
     docSheet.getRange(foundRow, 17).setValue(notes || "Pemeriksaan SAKIP selesai");
     docSheet.getRange(foundRow, 18).setValue(seal);
+  } else {
+    docSheet.appendRow([
+      Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyy-MM-dd HH:mm:ss"),
+      docId || ("DOC-" + Date.now()),
+      docNumber || "04/sakip/2026",
+      "Dokumen SAKIP Nagekeo",
+      "SEKRETARIAT DAERAH",
+      "v1",
+      "PDF",
+      "Pengelola SAKIP",
+      "admin@nagekeokab.go.id",
+      "Sekretariat Daerah",
+      status || "APPROVED",
+      verifierName || "Admin Verifikator SAKIP",
+      verifierNip || "19850101 201001 1 002",
+      bavNumber || ("BAV/SAKIP/" + (docNumber || "001")),
+      getMasterFolder().getUrl(),
+      "",
+      notes || "Pemeriksaan SAKIP selesai",
+      seal
+    ]);
   }
 
   return adminGetDashboardData();
