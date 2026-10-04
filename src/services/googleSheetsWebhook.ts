@@ -63,12 +63,6 @@ export function getGoogleSheetsWebhookUrl(): string {
   if (cachedWebhookUrl && cachedWebhookUrl.trim().startsWith('http')) {
     return cachedWebhookUrl.trim();
   }
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem(STORAGE_KEY_WEBHOOK_URL);
-    if (saved && saved.trim().startsWith('http') && saved.includes('AKfycb')) {
-      return saved.trim();
-    }
-  }
   return DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL;
 }
 
