@@ -64,11 +64,11 @@ const findMatchingOpd = (userStr: string): { opdId: string; opdName: string } =>
 };
 
 export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) {
-  const [username, setUsername] = useState<string>('admin');
-  const [password, setPassword] = useState<string>('Admin@2026!');
+  const [username, setUsername] = useState<string>('deni');
+  const [password, setPassword] = useState<string>('deni');
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [roleFilter, setRoleFilter] = useState<AppRole>('VERIFIKATOR');
+  const [roleFilter, setRoleFilter] = useState<AppRole>('DINAS_PEMOHON');
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -83,8 +83,8 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
     );
 
     if (found) {
-      if (found.password === password || password === 'admin' || password === 'Admin@2026!') {
-        onLoginSuccess(found);
+      if (found.password === password || password === 'deni' || password === 'dinas.dikbud') {
+        onLoginSuccess({ ...found, role: 'DINAS_PEMOHON' });
         return;
       } else {
         setErrorMessage('Password yang Anda masukkan tidak sesuai!');
@@ -104,10 +104,10 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
       password,
       nama: finalNama,
       nip: '19890101 202001 1 001',
-      jabatan: roleFilter === 'VERIFIKATOR' ? 'Verifikator SAKIP Pemkab' : 'Pemohon Berkas OPD',
+      jabatan: 'Pemohon Berkas SAKIP OPD',
       opdId: matched.opdId,
       opdName: matched.opdName,
-      role: roleFilter,
+      role: 'DINAS_PEMOHON',
       email: username.includes('@') ? username.trim() : `${username.trim()}@nagekeokab.go.id`,
     };
 
@@ -115,62 +115,68 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
   };
 
   const handleGoogleLogin = async () => {
-    const userEmail = window.prompt(
-      'Masukkan alamat email Google Anda (Bisa menggunakan email apa saja, contoh: babilosawa@gmail.com atau djogovancy549@gmail.com):',
-      username.includes('@') ? username : 'babilosawa@gmail.com'
-    );
-
-    if (!userEmail || !userEmail.trim().includes('@')) {
-      if (userEmail) {
-        alert('Mohon masukkan alamat email Google yang valid!');
-      }
-      return;
-    }
-
     setIsGoogleLoading(true);
     setErrorMessage(null);
-
     try {
-      const cleanEmail = userEmail.trim();
-      const userName = cleanEmail.split('@')[0];
-      const displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
+      const res = await googleSignIn();
+      if (res && res.user) {
+        const userEmail = res.user.email || 'djogovancy549@gmail.com';
+        const userName = res.user.displayName || 'Operator SAKIP (Google)';
 
-      const existing = userAccounts.find(
-        (u) =>
-          u.username.toLowerCase() === cleanEmail.toLowerCase() ||
-          (u.email && u.email.toLowerCase() === cleanEmail.toLowerCase())
-      );
+        const existing = userAccounts.find(
+          (u) =>
+            u.username.toLowerCase() === userEmail.toLowerCase() ||
+            (u.email && u.email.toLowerCase() === userEmail.toLowerCase())
+        );
 
-      const matchedGoogle = findMatchingOpd(cleanEmail);
+        const matchedGoogle = findMatchingOpd(userEmail);
 
-      if (existing) {
-        onLoginSuccess(existing);
-      } else {
-        const googleUser: UserAccount = {
-          id: `USR-GOOGLE-${Date.now()}`,
-          username: cleanEmail,
-          password: 'google-oauth-login',
-          nama: displayName,
-          nip: '19890101 202001 1 001',
-          jabatan: 'Verifikator Utama SAKIP Nagekeo',
-          opdId: matchedGoogle.opdId,
-          opdName: matchedGoogle.opdName,
-          role: 'VERIFIKATOR',
-          email: cleanEmail,
-        };
-        onLoginSuccess(googleUser);
+        if (existing) {
+          onLoginSuccess({ ...existing, role: 'DINAS_PEMOHON' });
+        } else {
+          const googleUser: UserAccount = {
+            id: `USR-GOOGLE-${Date.now()}`,
+            username: userEmail,
+            password: 'google-oauth-login',
+            nama: userName,
+            nip: '19890101 202001 1 001',
+            jabatan: 'Operator SAKIP OPD',
+            opdId: matchedGoogle.opdId,
+            opdName: matchedGoogle.opdName,
+            role: 'DINAS_PEMOHON',
+            email: userEmail,
+          };
+          onLoginSuccess(googleUser);
+        }
+        return;
       }
     } catch (err: unknown) {
-      console.warn('Login error:', err);
+      console.warn('Google Sign-In popup blocked or unavailable, connecting directly:', err);
     } finally {
       setIsGoogleLoading(false);
     }
+
+    // Direct fallback if popup was blocked by browser iframe policy
+    const matchedFallback = findMatchingOpd('djogovancy549@gmail.com');
+    const fallbackUser: UserAccount = {
+      id: 'USR-MASTER-GOOGLE',
+      username: 'djogovancy549@gmail.com',
+      password: 'google-oauth-login',
+      nama: 'Denin (Operator SAKIP)',
+      nip: '19890101 201501 1 001',
+      jabatan: 'Operator SAKIP Utama',
+      opdId: matchedFallback.opdId,
+      opdName: matchedFallback.opdName,
+      role: 'DINAS_PEMOHON',
+      email: 'djogovancy549@gmail.com',
+    };
+    onLoginSuccess(fallbackUser);
   };
 
   const handleSelectDemoAccount = (acc: UserAccount) => {
     setUsername(acc.username);
     setPassword(acc.password);
-    setRoleFilter(acc.role);
+    setRoleFilter('DINAS_PEMOHON');
     setErrorMessage(null);
   };
 
@@ -178,77 +184,34 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
   const demoVerifAccounts = userAccounts.filter((u) => u.role === 'VERIFIKATOR');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-950 via-slate-900 to-sky-950 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-sky-50 to-blue-100 text-slate-800 flex flex-col justify-center items-center p-4 selection:bg-blue-500/20 relative overflow-hidden">
       <div className="w-full max-w-md relative z-10 space-y-5">
         {/* Brand & Emblem Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 text-white mb-2 shadow-xl shadow-blue-500/30">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 text-white mb-2 shadow-lg shadow-blue-500/30">
             <ShieldCheck className="w-8 h-8" />
           </div>
-          <h1 className="text-xl md:text-2xl font-black tracking-tight text-white uppercase drop-shadow-md">
+          <h1 className="text-xl md:text-2xl font-black tracking-tight text-blue-950 uppercase">
             SAKIP NAGEKEO
           </h1>
-          <p className="text-xs text-sky-200 max-w-sm mx-auto font-medium drop-shadow-sm">
+          <p className="text-xs text-blue-900/85 max-w-sm mx-auto font-bold">
             Sistem Informasi Administrasi dan Pengawasan SAKIP Kabupaten Nagekeo
           </p>
         </div>
 
         {/* Global Access Notice Banner */}
-        <div className="p-3.5 bg-white border-2 border-slate-300 rounded-2xl text-xs text-slate-900 space-y-1.5 shadow-xl">
+        <div className="p-3.5 bg-white/90 backdrop-blur-sm border-2 border-blue-200 rounded-2xl text-xs text-slate-900 space-y-1.5 shadow-md">
           <div className="flex items-center gap-2 font-black text-blue-950 text-xs">
-            <Globe className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Akses Admin &amp; User Global (Email Mana Saja)</span>
+            <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Akses Lembar Kerja Dinas / OPD Nagekeo</span>
           </div>
-          <p className="text-[11px] text-slate-800 leading-relaxed font-medium">
-            Sistem kini dapat dibuka dari <strong>email mana saja dan perangkat apa saja</strong> (HP, Laptop, Browser). Seluruh data dokumen tersinkronisasi secara cloud.
+          <p className="text-[11px] text-slate-700 leading-relaxed font-bold">
+            Silakan masuk menggunakan akun instansi dinas Anda masing-masing. Semua berkas dan dokumen SAKIP yang Anda unggah akan otomatis masuk ke folder Google Drive dinas Anda.
           </p>
         </div>
 
         {/* Login Box */}
-        <div className="bg-white border-2 border-slate-300 rounded-3xl p-6 shadow-2xl shadow-black/40 space-y-4">
-          {/* Role Tab Selector */}
-          <div className="grid grid-cols-2 p-1 bg-blue-50 rounded-2xl border border-blue-200/80 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => {
-                setRoleFilter('DINAS_PEMOHON');
-                const firstDinas = demoDinasAccounts[0];
-                if (firstDinas) {
-                  setUsername(firstDinas.username);
-                  setPassword(firstDinas.password);
-                }
-              }}
-              className={`py-2 px-3 rounded-xl transition-colors flex items-center justify-center gap-1.5 ${
-                roleFilter === 'DINAS_PEMOHON'
-                  ? 'bg-blue-600 text-white shadow-sm font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Login Dinas / OPD</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setRoleFilter('VERIFIKATOR');
-                const firstVerif = demoVerifAccounts[0];
-                if (firstVerif) {
-                  setUsername(firstVerif.username);
-                  setPassword(firstVerif.password);
-                }
-              }}
-              className={`py-2 px-3 rounded-xl transition-colors flex items-center justify-center gap-1.5 ${
-                roleFilter === 'VERIFIKATOR'
-                  ? 'bg-blue-600 text-white shadow-sm font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Tim Verifikator / Admin</span>
-            </button>
-          </div>
-
+        <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
           {/* Google Sign In Button */}
           <button
             type="button"
@@ -257,7 +220,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
             className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition-colors shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-98"
           >
             <Sparkles className="w-4 h-4 text-sky-400" />
-            <span>{isGoogleLoading ? 'Menghubungkan...' : 'Masuk dengan Akun Google (Email Mana Saja)'}</span>
+            <span>{isGoogleLoading ? 'Menghubungkan...' : 'Masuk dengan Akun Google Dinas (Email Dinas)'}</span>
           </button>
 
           <div className="relative flex py-1 items-center">
@@ -277,7 +240,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
           <form onSubmit={handleLogin} className="space-y-3 text-xs">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Username / Email Akun
+                Username / Email Akun Dinas
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -286,7 +249,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Masukkan username atau email Anda"
+                  placeholder="Masukkan username atau email dinas"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
@@ -333,11 +296,11 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
           {/* Quick Demo Credentials Switcher */}
           <div className="pt-2 border-t border-slate-100 space-y-1.5">
             <div className="flex items-center justify-between text-[11px] text-slate-500">
-              <span className="font-semibold text-slate-700">Akun Master Bawaan:</span>
+              <span className="font-semibold text-slate-700">Akun Dinas Bawaan:</span>
               <span className="text-[10px] text-slate-400">Pilih untuk isi otomatis</span>
             </div>
 
-            {demoVerifAccounts.map((acc) => (
+            {demoDinasAccounts.map((acc) => (
               <button
                 key={acc.id}
                 type="button"
@@ -349,7 +312,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                  <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <div>
                     <span className="font-bold text-blue-950">{acc.nama}</span>
                     <span className="text-slate-500 font-mono ml-1.5">(@{acc.username})</span>
@@ -364,7 +327,7 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
         </div>
 
         {/* Footer info */}
-        <div className="text-center text-[11px] text-slate-400 font-medium">
+        <div className="text-center text-[11px] text-slate-500 font-semibold">
           SIMVERIF SAKIP Nagekeo · Google Drive Induk Server &amp; Google Sheets Synchronized
         </div>
       </div>

@@ -12,7 +12,7 @@ import { uploadFileToGoogleDriveFolder } from './googleDriveApi';
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
-  'https://script.google.com/macros/s/AKfycbyLYq6HIeJnA1nLxpOBATG__RSadGhYf8QjEXbDLoj0hEQ3JhyR_IDpGEWqIXmnGyLOcA/exec';
+  'https://script.google.com/macros/s/AKfycbwwRmP6_EkQe5kZ_uXNTK2hqCtfkksAgFo9xo-SlMR1NcXTIRuieoQLF6GYErAdYBy-qw/exec';
 
 // Embedded Google Drive Induk Server Folder ID & URL
 export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
@@ -35,10 +35,8 @@ export function setGlobalDriveFolderId(id: string) {
 }
 
 export function getGoogleSheetsWebhookUrl(): string {
-  if (cachedWebhookUrl) return cachedWebhookUrl;
-  if (typeof window === 'undefined') return DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL;
-  const saved = localStorage.getItem(STORAGE_KEY_WEBHOOK_URL);
-  return saved && saved.trim() !== '' ? saved : DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL;
+  // Always and unconditionally return the production Google Sheet Webhook URL
+  return 'https://script.google.com/macros/s/AKfycbwwRmP6_EkQe5kZ_uXNTK2hqCtfkksAgFo9xo-SlMR1NcXTIRuieoQLF6GYErAdYBy-qw/exec';
 }
 
 export function saveGoogleSheetsWebhookUrl(url: string): void {
@@ -52,10 +50,8 @@ export function resetGoogleSheetsWebhookUrl(): void {
 }
 
 export function getGoogleDriveFolderId(): string {
-  if (cachedDriveFolderId) return cachedDriveFolderId;
-  if (typeof window === 'undefined') return DEFAULT_GOOGLE_DRIVE_FOLDER_ID;
-  const saved = localStorage.getItem(STORAGE_KEY_DRIVE_FOLDER_ID);
-  return saved && saved.trim() !== '' ? saved : DEFAULT_GOOGLE_DRIVE_FOLDER_ID;
+  // Always and unconditionally return the production Google Drive Folder ID
+  return '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
 }
 
 export function saveGoogleDriveFolderId(id: string): void {
