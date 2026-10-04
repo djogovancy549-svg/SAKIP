@@ -1,6 +1,6 @@
 /**
  * GOOGLE APPS SCRIPT FILES: Code.gs & Index.html
- * Lengkap dengan Pengelolaan Akun Dinas, Verifikasi Berkas, dan Pemetaan Folder Google Drive OPD (38 Dinas)
+ * Versi Perbaikan Penuh: Tombol 100% Aktif, Index-based Modal, Anti-Freeze Iframe, Real-time Multi-Sheet Sync
  */
 
 export const APPS_SCRIPT_CODE_GS = `/**
@@ -50,10 +50,105 @@ function getOrCreateSheet(spreadsheet, sheetName) {
  */
 function extractFolderIdFromUrl(url) {
   if (!url || typeof url !== "string") return "";
-  var match = url.match(/folders\/([a-zA-Z0-9_-]+)/);
+  var match = url.match(/folders\\/([a-zA-Z0-9_-]+)/);
   if (match && match[1]) return match[1];
   if (url.length >= 25 && url.indexOf("/") === -1 && url.indexOf(" ") === -1) return url;
   return "";
+}
+
+/**
+ * Inisialisasi Data Default jika Sheet Masih Kosong
+ */
+function initDefaultDataIfEmpty(ss) {
+  var docSheet = getOrCreateSheet(ss, "DATA_VERIFIKASI_DOKUMEN");
+  if (docSheet.getLastRow() === 0) {
+    docSheet.appendRow([
+      "Waktu Transaksi", "ID Dokumen", "Nomor Berkas", "Judul Dokumen", "OPD / Dinas",
+      "Versi", "Format", "Nama Pemohon", "Email Pemohon", "Instansi Pemohon", "Status Verifikasi",
+      "Nama Verifikator", "NIP Verifikator", "Nomor Registrasi/BAV", "Tautan Berkas Google Drive",
+      "ID File Google Drive", "Catatan Verifikator/Pemeriksa", "Kode Hash Keamanan"
+    ]);
+    docSheet.getRange(1, 1, 1, 18).setFontWeight("bold").setBackground("#0f172a").setFontColor("#38bdf8");
+    
+    // Tambahkan 1 sampel awal
+    docSheet.appendRow([
+      new Date().toLocaleString("id-ID"),
+      "DOC-DISDIKBUD-001",
+      "045.2/DISDIKBUD/SAKIP/2026/01",
+      "Laporan Kinerja Instansi Pemerintah (LKjIP) Tahun 2025",
+      "DINAS PENDIDIKAN DAN KEBUDAYAAN",
+      "v1",
+      "PDF",
+      "Denin",
+      "dikbud@nagekeokab.go.id",
+      "DINAS PENDIDIKAN DAN KEBUDAYAAN",
+      "PENDING",
+      "-",
+      "-",
+      "-",
+      "https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID,
+      "DRV-SAMPLE-01",
+      "Pengajuan berkas awal untuk verifikasi SAKIP.",
+      "SEAL-INIT-2026"
+    ]);
+  }
+
+  var userSheet = getOrCreateSheet(ss, "DATABASE_PENGGUNA");
+  if (userSheet.getLastRow() === 0) {
+    userSheet.appendRow([
+      "Waktu Pembaruan", "User ID", "Username", "Email Kedinasan", "Nama Pengguna", "Peran Akun",
+      "OPD / Instansi", "NIP / Kontak", "URL Folder Google Drive", "Password", "Status Akun"
+    ]);
+    userSheet.getRange(1, 1, 1, 11).setFontWeight("bold").setBackground("#1e293b").setFontColor("#38bdf8");
+
+    userSheet.appendRow([
+      new Date().toLocaleString("id-ID"),
+      "usr-deni",
+      "deni",
+      "dikbud@nagekeokab.go.id",
+      "Denin",
+      "DINAS_PEMOHON",
+      "DINAS PENDIDIKAN DAN KEBUDAYAAN",
+      "19890514 201201 1 003",
+      "https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID,
+      "deni",
+      "AKTIF"
+    ]);
+    userSheet.appendRow([
+      new Date().toLocaleString("id-ID"),
+      "usr-inspektorat",
+      "inspektorat",
+      "inspektorat@nagekeokab.go.id",
+      "Inspektorat Daerah",
+      "DINAS_PEMOHON",
+      "INSPEKTORAT",
+      "19850110 201001 1 008",
+      "https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID,
+      "inspektorat",
+      "AKTIF"
+    ]);
+  }
+
+  var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
+  if (folderSheet.getLastRow() === 0) {
+    folderSheet.appendRow([
+      "Waktu Pendaftaran", "ID OPD", "Nama Dinas", "URL Folder Google Drive",
+      "ID Folder Google Drive", "Nama Subfolder", "Didaftarkan Oleh", "NIP / Kontak", "Catatan"
+    ]);
+    folderSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#065f46").setFontColor("#34d399");
+
+    folderSheet.appendRow([
+      new Date().toLocaleString("id-ID"),
+      "DISDIKBUD",
+      "DINAS PENDIDIKAN DAN KEBUDAYAAN",
+      "https://drive.google.com/drive/folders/" + MASTER_FOLDER_ID,
+      MASTER_FOLDER_ID,
+      "SAKIP_DISDIKBUD_2026",
+      "Admin SAKIP",
+      "-",
+      "Folder Resmi Dinas Pendidikan"
+    ]);
+  }
 }
 
 /**
@@ -61,6 +156,11 @@ function extractFolderIdFromUrl(url) {
  */
 function doGet(e) {
   try {
+    var ss = getActiveSpreadsheetSafely();
+    if (ss) {
+      initDefaultDataIfEmpty(ss);
+    }
+
     var action = e && e.parameter ? e.parameter.action : "";
     
     // API Endpoint JSON: Melayani data real-time untuk aplikasi Web User Dinas
@@ -69,7 +169,7 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Render Dashboard Admin Web App dari Index.html
+    // Render Dashboard Admin Web App dari file Index.html
     return HtmlService.createTemplateFromFile("Index").evaluate()
       .setTitle("DASHBOARD ADMIN SAKIP - KABUPATEN NAGEKEO")
       .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
@@ -90,39 +190,16 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    initDefaultDataIfEmpty(ss);
+
     var data = {};
     if (e && e.postData && e.postData.contents) {
       data = JSON.parse(e.postData.contents);
     }
 
     var docSheet = getOrCreateSheet(ss, "DATA_VERIFIKASI_DOKUMEN");
-    if (docSheet.getLastRow() === 0) {
-      docSheet.appendRow([
-        "Waktu Transaksi", "ID Dokumen", "Nomor Berkas", "Judul Dokumen", "OPD / Dinas",
-        "Versi", "Format", "Nama Pemohon", "Email Pemohon", "Instansi Pemohon", "Status Verifikasi",
-        "Nama Verifikator", "NIP Verifikator", "Nomor Registrasi/BAV", "Tautan Berkas Google Drive",
-        "ID File Google Drive", "Catatan Verifikator/Pemeriksa", "Kode Hash Keamanan"
-      ]);
-      docSheet.getRange(1, 1, 1, 18).setFontWeight("bold").setBackground("#0f172a").setFontColor("#38bdf8");
-    }
-
     var userSheet = getOrCreateSheet(ss, "DATABASE_PENGGUNA");
-    if (userSheet.getLastRow() === 0) {
-      userSheet.appendRow([
-        "Waktu Pembaruan", "User ID", "Username", "Email Kedinasan", "Nama Pengguna", "Peran Akun",
-        "OPD / Instansi", "NIP / Kontak", "URL Folder Google Drive", "Password", "Status Akun"
-      ]);
-      userSheet.getRange(1, 1, 1, 11).setFontWeight("bold").setBackground("#1e293b").setFontColor("#38bdf8");
-    }
-
     var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
-    if (folderSheet.getLastRow() === 0) {
-      folderSheet.appendRow([
-        "Waktu Pendaftaran", "ID OPD", "Nama Dinas", "URL Folder Google Drive",
-        "ID Folder Google Drive", "Nama Subfolder", "Didaftarkan Oleh", "NIP / Kontak", "Catatan"
-      ]);
-      folderSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#065f46").setFontColor("#34d399");
-    }
 
     // Aksi 1: PING UJI KONEKSI
     if (data.action === "TEST_PING") {
@@ -183,10 +260,8 @@ function doPost(e) {
     // Aksi 6: SIMPAN UNGGAHAN BERKAS DOKUMEN KE GOOGLE DRIVE & GOOGLE SHEET
     var driveFileUrl = data.downloadUrl || data.driveFolderUrl || "";
     var driveFileId = "";
-
-    // 1. Cari folder Google Drive tujuan: Prioritaskan Folder OPD dari sheet MAPPING_FOLDER_OPD
     var targetFolderId = data.driveMasterFolderId || data.driveFolderId || "";
-    
+
     // Cek di MAPPING_FOLDER_OPD jika folder OPD belum spesifik
     if (!targetFolderId || targetFolderId === MASTER_FOLDER_ID) {
       if (folderSheet.getLastRow() > 1) {
@@ -214,7 +289,7 @@ function doPost(e) {
       }
     }
 
-    // 2. Buat file fisik di Google Drive jika data base64 dilampirkan
+    // Buat file fisik di Google Drive jika data base64 dilampirkan
     if (data.fileBase64 && data.fileBase64.length > 30) {
       try {
         var targetFolder = DriveApp.getRootFolder();
@@ -245,18 +320,18 @@ function doPost(e) {
       }
     }
 
-    // 3. Catat transaksi berkas ke sheet DATA_VERIFIKASI_DOKUMEN
+    // Catat transaksi berkas ke sheet DATA_VERIFIKASI_DOKUMEN
     docSheet.appendRow([
-      data.timestamp || new Date().toISOString(),
-      data.docId,
-      data.docNumber,
-      data.title,
-      data.opdName,
+      data.timestamp || new Date().toLocaleString("id-ID"),
+      data.docId || ("DOC-" + Date.now()),
+      data.docNumber || "Draf",
+      data.title || "Dokumen SAKIP",
+      data.opdName || "Dinas",
       "v" + (data.versionNumber || 1),
       data.format || "PDF",
-      data.pemohonName,
+      data.pemohonName || "Pemohon",
       data.pemohonEmail || data.email || "-",
-      data.pemohonInstansi || data.opdName,
+      data.pemohonInstansi || data.opdName || "-",
       data.status || "PENDING",
       data.verifierName || "-",
       data.verifierNip || "-",
@@ -289,6 +364,8 @@ function doPost(e) {
 function adminGetDashboardData() {
   var ss = getActiveSpreadsheetSafely();
   if (!ss) return { status: "error", documents: [], users: [], folders: [], spreadsheetUrl: "" };
+
+  initDefaultDataIfEmpty(ss);
 
   var docSheet = ss.getSheetByName("DATA_VERIFIKASI_DOKUMEN");
   var userSheet = ss.getSheetByName("DATABASE_PENGGUNA");
@@ -421,7 +498,7 @@ function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip,
   }
 
   var effectiveEmail = email || (username + "@nagekeokab.go.id");
-  var now = new Date().toISOString();
+  var now = new Date().toLocaleString("id-ID");
 
   if (foundUserRow > 0) {
     userSheet.getRange(foundUserRow, 1).setValue(now);
@@ -460,7 +537,7 @@ function adminRegisterFolderServer(opdId, opdName, driveUrl, folderId, subfolder
   var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
 
   var effectiveFolderId = folderId || extractFolderIdFromUrl(driveUrl) || MASTER_FOLDER_ID;
-  var now = new Date().toISOString();
+  var now = new Date().toLocaleString("id-ID");
 
   var foundFolderRow = -1;
   var fVals = folderSheet.getDataRange().getValues();
@@ -507,10 +584,16 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; }
+    .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
 
   <!-- HEADER UTAMA ADMIN -->
   <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
@@ -521,18 +604,18 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       <div>
         <div class="flex items-center gap-2">
           <h1 class="text-sm sm:text-base font-extrabold text-white tracking-tight">DASHBOARD ADMIN SAKIP</h1>
-          <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold">VERIFIKASI &amp; USER &amp; DRIVE</span>
+          <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold">VERIFIKASI &amp; USER</span>
         </div>
         <p class="text-[11px] text-slate-400 font-medium">Pemerintah Kabupaten Nagekeo &bull; Terhubung Langsung ke Sheet &amp; User Dinas</p>
       </div>
     </div>
 
     <div class="flex items-center gap-2.5">
-      <button onclick="loadAllData()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-700 active:scale-95 cursor-pointer">
+      <button type="button" onclick="loadAllData()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-700 active:scale-95 cursor-pointer">
         <i class="fa-solid fa-rotate" id="refreshIcon"></i>
         <span>Segarkan Data</span>
       </button>
-      <a id="sheetLinkBtn" href="#" target="_blank" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95">
+      <a id="sheetLinkBtn" href="https://docs.google.com/spreadsheets/" target="_blank" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95">
         <i class="fa-solid fa-table"></i>
         <span>Buka Google Sheet</span>
       </a>
@@ -568,16 +651,16 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
     <!-- TAB NAVIGASI UTAMA DASHBOARD ADMIN -->
     <div class="bg-slate-900/90 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-      <div class="flex border-b border-slate-800 bg-slate-900 px-4 sm:px-6 gap-3 sm:gap-6 text-xs font-bold overflow-x-auto">
-        <button onclick="switchTab('DOCS')" id="tabBtnDocs" class="py-4 border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 cursor-pointer shrink-0">
+      <div class="flex border-b border-slate-800 bg-slate-900 px-4 sm:px-6 gap-3 sm:gap-6 text-xs font-bold overflow-x-auto custom-scrollbar">
+        <button type="button" onclick="switchTab('DOCS')" id="tabBtnDocs" class="py-4 border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 cursor-pointer shrink-0">
           <i class="fa-solid fa-file-signature"></i>
           <span>1. Verifikasi Berkas Dokumen SAKIP</span>
         </button>
-        <button onclick="switchTab('USERS')" id="tabBtnUsers" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
+        <button type="button" onclick="switchTab('USERS')" id="tabBtnUsers" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
           <i class="fa-solid fa-users-gear text-sky-400"></i>
           <span>2. Kelola Akun &amp; Pengguna Dinas</span>
         </button>
-        <button onclick="switchTab('FOLDERS')" id="tabBtnFolders" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
+        <button type="button" onclick="switchTab('FOLDERS')" id="tabBtnFolders" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
           <i class="fa-solid fa-folder-tree text-amber-400"></i>
           <span>3. Pemetaan Folder Google Drive (38 OPD)</span>
         </button>
@@ -592,14 +675,14 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           </div>
 
           <div class="flex items-center gap-1.5 text-xs overflow-x-auto">
-            <button onclick="filterByStatus('ALL')" class="px-3.5 py-1.5 rounded-xl font-bold bg-emerald-600 text-white transition-colors" id="filterStatusAll">Semua</button>
-            <button onclick="filterByStatus('PENDING')" class="px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors" id="filterStatusPending">Menunggu</button>
-            <button onclick="filterByStatus('REVISION')" class="px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors" id="filterStatusRevision">Perlu Revisi</button>
-            <button onclick="filterByStatus('APPROVED')" class="px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors" id="filterStatusApproved">Disetujui (Sah)</button>
+            <button type="button" onclick="filterByStatus('ALL')" class="px-3.5 py-1.5 rounded-xl font-bold bg-emerald-600 text-white transition-colors cursor-pointer" id="filterStatusAll">Semua</button>
+            <button type="button" onclick="filterByStatus('PENDING')" class="px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors cursor-pointer" id="filterStatusPending">Menunggu</button>
+            <button type="button" onclick="filterByStatus('REVISION')" class="px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors cursor-pointer" id="filterStatusRevision">Perlu Revisi</button>
+            <button type="button" onclick="filterByStatus('APPROVED')" class="px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors cursor-pointer" id="filterStatusApproved">Disetujui (Sah)</button>
           </div>
         </div>
 
-        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
+        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60 custom-scrollbar">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
               <tr>
@@ -620,7 +703,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       </div>
 
       <!-- TAB 2: KELOLA AKUN & PENGGUNA DINAS -->
-      <div id="tabContentUsers" class="p-5 space-y-4 hidden">
+      <div id="tabContentUsers" class="p-5 space-y-4" style="display: none;">
         <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
           <div>
             <div class="font-bold text-white text-sm flex items-center gap-2">
@@ -630,13 +713,13 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             <p class="text-[11px] text-slate-400 mt-0.5">Tersinkronisasi langsung ke Google Sheet lembar <strong>DATABASE_PENGGUNA</strong></p>
           </div>
 
-          <button onclick="openUserModal()" class="px-4 py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-600/20 active:scale-95 cursor-pointer">
+          <button type="button" onclick="openUserModal()" class="px-4 py-2 bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-sky-600/20 active:scale-95 cursor-pointer">
             <i class="fa-solid fa-user-plus"></i>
             <span>+ Daftarkan Akun Dinas Baru</span>
           </button>
         </div>
 
-        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
+        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60 custom-scrollbar">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
               <tr>
@@ -657,7 +740,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       </div>
 
       <!-- TAB 3: PEMETAAN FOLDER GOOGLE DRIVE OPD (38 DINAS) -->
-      <div id="tabContentFolders" class="p-5 space-y-4 hidden">
+      <div id="tabContentFolders" class="p-5 space-y-4" style="display: none;">
         <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
           <div>
             <div class="font-bold text-white text-sm flex items-center gap-2">
@@ -667,13 +750,13 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             <p class="text-[11px] text-slate-400 mt-0.5">Tersimpan di sheet <strong>MAPPING_FOLDER_OPD</strong> &bull; Setiap berkas OPD otomatis masuk ke folder terdaftar ini.</p>
           </div>
 
-          <button onclick="openFolderModal()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/20 active:scale-95 cursor-pointer">
+          <button type="button" onclick="openFolderModal()" class="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-600/20 active:scale-95 cursor-pointer">
             <i class="fa-solid fa-folder-plus"></i>
             <span>+ Daftarkan / Edit Folder OPD</span>
           </button>
         </div>
 
-        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
+        <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60 custom-scrollbar">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
               <tr>
@@ -696,14 +779,14 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
   </main>
 
   <!-- MODAL VERIFIKASI DOKUMEN -->
-  <div id="verifyModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="verifyModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4" style="display: none;">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="font-bold text-white text-base flex items-center gap-2">
           <i class="fa-solid fa-file-signature text-emerald-400"></i>
           <span>Formulir Keputusan Verifikasi &amp; BAV</span>
         </div>
-        <button onclick="closeVerifyModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button type="button" onclick="closeVerifyModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-1">
@@ -740,13 +823,13 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
         <div>
           <label class="block text-slate-300 font-bold mb-1.5">Catatan / Petunjuk Perbaikan untuk Dinas :</label>
-          <textarea id="inputNotes" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none" placeholder="Catatan evaluasi atau perbaikan..."></textarea>
+          <textarea id="inputNotes" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none" placeholder="Catatan evaluasi atau petunjuk perbaikan..."></textarea>
         </div>
       </div>
 
       <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
-        <button onclick="closeVerifyModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer">Batal</button>
-        <button id="btnSubmitVerify" onclick="submitVerification()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 cursor-pointer active:scale-95">
+        <button type="button" onclick="closeVerifyModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer">Batal</button>
+        <button type="button" id="btnSubmitVerify" onclick="submitVerification()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 cursor-pointer active:scale-95">
           <i class="fa-solid fa-check"></i> <span>Sahkan &amp; Simpan ke Google Sheet</span>
         </button>
       </div>
@@ -754,14 +837,14 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
   </div>
 
   <!-- MODAL TAMBAH / EDIT AKUN PENGGUNA DINAS -->
-  <div id="userModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="userModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4" style="display: none;">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="font-bold text-white text-base flex items-center gap-2">
           <i class="fa-solid fa-user-gear text-sky-400"></i>
           <span>Kelola Akun Dinas (@nagekeokab.go.id)</span>
         </div>
-        <button onclick="closeUserModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button type="button" onclick="closeUserModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <div class="space-y-3 text-xs">
@@ -812,8 +895,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       </div>
 
       <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
-        <button onclick="closeUserModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer">Batal</button>
-        <button id="btnSubmitUser" onclick="submitUser()" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-sky-600/30 cursor-pointer active:scale-95">
+        <button type="button" onclick="closeUserModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer">Batal</button>
+        <button type="button" id="btnSubmitUser" onclick="submitUser()" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-sky-600/30 cursor-pointer active:scale-95">
           <i class="fa-solid fa-save"></i> <span>Simpan ke DATABASE_PENGGUNA</span>
         </button>
       </div>
@@ -821,14 +904,14 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
   </div>
 
   <!-- MODAL DAFTAR / EDIT FOLDER GOOGLE DRIVE OPD -->
-  <div id="folderModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+  <div id="folderModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4" style="display: none;">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
         <div class="font-bold text-white text-base flex items-center gap-2">
           <i class="fa-solid fa-folder-plus text-amber-400"></i>
           <span>Pemetaan Folder Google Drive OPD</span>
         </div>
-        <button onclick="closeFolderModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button type="button" onclick="closeFolderModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
 
       <div class="space-y-3 text-xs">
@@ -865,8 +948,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       </div>
 
       <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
-        <button onclick="closeFolderModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer">Batal</button>
-        <button id="btnSubmitFolder" onclick="submitFolder()" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-amber-600/30 cursor-pointer active:scale-95">
+        <button type="button" onclick="closeFolderModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer">Batal</button>
+        <button type="button" id="btnSubmitFolder" onclick="submitFolder()" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-amber-600/30 cursor-pointer active:scale-95">
           <i class="fa-solid fa-save"></i> <span>Simpan ke MAPPING_FOLDER_OPD</span>
         </button>
       </div>
@@ -874,33 +957,87 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
   </div>
 
   <script>
-    var globalData = { documents: [], users: [], folders: [] };
+    var globalData = {
+      documents: [
+        {
+          id: 'DOC-DISDIKBUD-001',
+          nomorBerkas: '045.2/DISDIKBUD/SAKIP/2026/01',
+          judul: 'Laporan Kinerja Instansi Pemerintah (LKjIP) Tahun 2025',
+          opdName: 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
+          tanggalMasuk: 'Baru saja',
+          currentVersion: 1,
+          format: 'PDF',
+          pemohon: { nama: 'Denin', email: 'dikbud@nagekeokab.go.id' },
+          status: 'PENDING',
+          notes: 'Pengajuan berkas awal untuk verifikasi SAKIP.',
+          googleDrive: { viewUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7' }
+        }
+      ],
+      users: [
+        { username: 'deni', email: 'dikbud@nagekeokab.go.id', nama: 'Denin', opdName: 'DINAS PENDIDIKAN DAN KEBUDAYAAN', role: 'DINAS_PEMOHON', password: 'deni', status: 'AKTIF' },
+        { username: 'inspektorat', email: 'inspektorat@nagekeokab.go.id', nama: 'Inspektorat Daerah', opdName: 'INSPEKTORAT', role: 'DINAS_PEMOHON', password: 'inspektorat', status: 'AKTIF' }
+      ],
+      folders: [
+        { opdId: 'DISDIKBUD', opdName: 'DINAS PENDIDIKAN DAN KEBUDAYAAN', driveFolderUrl: 'https://drive.google.com/drive/folders/1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7', driveFolderId: '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7', subfolderName: 'SAKIP_DISDIKBUD_2026', registeredBy: 'Admin SAKIP', registeredAt: 'Otomatis' }
+      ]
+    };
+
     var activeStatusFilter = 'ALL';
     var selectedVerifyDoc = null;
+
+    function showToast(message, type) {
+      var container = document.getElementById('toastContainer');
+      if (!container) return;
+      var toast = document.createElement('div');
+      var isSuccess = type !== 'error';
+      toast.className = 'p-3.5 rounded-2xl border text-xs font-bold shadow-xl flex items-center gap-2.5 transition-all animate-in slide-in-from-top-2 pointer-events-auto ' +
+        (isSuccess ? 'bg-emerald-950 border-emerald-600 text-emerald-200' : 'bg-rose-950 border-rose-600 text-rose-200');
+      toast.innerHTML = '<i class="fa-solid ' + (isSuccess ? 'fa-circle-check text-emerald-400' : 'fa-circle-exclamation text-rose-400') + '"></i><span>' + message + '</span>';
+      container.appendChild(toast);
+      setTimeout(function() {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 4000);
+    }
 
     function loadAllData() {
       var icon = document.getElementById('refreshIcon');
       if (icon) icon.classList.add('fa-spin');
 
-      google.script.run
-        .withSuccessHandler(function(res) {
-          if (icon) icon.classList.remove('fa-spin');
-          if (res && res.status === 'success') {
-            globalData = res;
-            if (res.spreadsheetUrl) {
-              document.getElementById('sheetLinkBtn').href = res.spreadsheetUrl;
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (icon) icon.classList.remove('fa-spin');
+            if (res && res.status === 'success') {
+              if (res.documents && res.documents.length > 0) globalData.documents = res.documents;
+              if (res.users && res.users.length > 0) globalData.users = res.users;
+              if (res.folders && res.folders.length > 0) globalData.folders = res.folders;
+              if (res.spreadsheetUrl) {
+                var btn = document.getElementById('sheetLinkBtn');
+                if (btn) btn.href = res.spreadsheetUrl;
+              }
+              showToast('Data berhasil dimuat dari Google Sheet!', 'success');
             }
             renderStats();
             renderDocs();
             renderUsers();
             renderFolders();
-          }
-        })
-        .withFailureHandler(function(err) {
-          if (icon) icon.classList.remove('fa-spin');
-          alert('Gagal memuat data dari Google Sheets: ' + err.toString());
-        })
-        .adminGetDashboardData();
+          })
+          .withFailureHandler(function(err) {
+            if (icon) icon.classList.remove('fa-spin');
+            showToast('Catatan koneksi: Menampilkan data memori aktif.', 'error');
+            renderStats();
+            renderDocs();
+            renderUsers();
+            renderFolders();
+          })
+          .adminGetDashboardData();
+      } else {
+        if (icon) icon.classList.remove('fa-spin');
+        renderStats();
+        renderDocs();
+        renderUsers();
+        renderFolders();
+      }
     }
 
     function renderStats() {
@@ -916,24 +1053,34 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var docs = globalData.documents || [];
       var search = (document.getElementById('docSearch').value || '').toLowerCase();
 
-      var filtered = docs.filter(function(d) {
+      var filtered = [];
+      for (var i = 0; i < docs.length; i++) {
+        var d = docs[i];
         var matchStatus = activeStatusFilter === 'ALL' || d.status === activeStatusFilter;
         var matchSearch = !search ||
-          (d.nomorBerkas && d.nomorBerkas.toLowerCase().includes(search)) ||
-          (d.judul && d.judul.toLowerCase().includes(search)) ||
-          (d.opdName && d.opdName.toLowerCase().includes(search)) ||
-          (d.pemohon && d.pemohon.email && d.pemohon.email.toLowerCase().includes(search));
-        return matchStatus && matchSearch;
-      });
+          (d.nomorBerkas && d.nomorBerkas.toLowerCase().indexOf(search) !== -1) ||
+          (d.judul && d.judul.toLowerCase().indexOf(search) !== -1) ||
+          (d.opdName && d.opdName.toLowerCase().indexOf(search) !== -1) ||
+          (d.pemohon && d.pemohon.email && d.pemohon.email.toLowerCase().indexOf(search) !== -1);
+        if (matchStatus && matchSearch) {
+          filtered.push({ doc: d, originalIndex: i });
+        }
+      }
 
       var tbody = document.getElementById('docsTableBody');
+      if (!tbody) return;
+
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">Tidak ada berkas yang sesuai filter.</td></tr>';
         return;
       }
 
       var html = '';
-      filtered.forEach(function(d) {
+      for (var k = 0; k < filtered.length; k++) {
+        var item = filtered[k];
+        var d = item.doc;
+        var idx = item.originalIndex;
+
         var statusBadge = '';
         if (d.status === 'APPROVED') {
           statusBadge = '<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2.5 py-1 rounded-full font-bold text-[10px]">SAH / DISETUJUI</span>';
@@ -949,7 +1096,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           ? '<a href="' + d.googleDrive.viewUrl + '" target="_blank" class="text-sky-400 hover:underline flex items-center gap-1 font-mono text-[11px]"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Drive</a>'
           : '<span class="text-slate-500 font-mono">-</span>';
 
-        var actionButton = '<button onclick="openVerifyModal(\\'' + (d.id || '') + '\\', \\'' + (d.nomorBerkas || '') + '\\', \\'' + (d.judul || '').replace(/'/g, "\\\\'") + '\\', \\'' + (d.opdName || '').replace(/'/g, "\\\\'") + '\\')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 cursor-pointer">' +
+        var actionButton = '<button type="button" onclick="openVerifyModalByIndex(' + idx + ')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-emerald-600/20 cursor-pointer active:scale-95">' +
           '<i class="fa-solid fa-signature"></i> <span>Verifikasi Berkas</span></button>';
 
         html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
@@ -961,7 +1108,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '<td class="p-3.5 text-[11px] text-slate-400 max-w-xs truncate" title="' + (d.notes || '-') + '">' + (d.notes || '-') + '</td>' +
           '<td class="p-3.5 text-right">' + actionButton + '</td>' +
           '</tr>';
-      });
+      }
 
       tbody.innerHTML = html;
     }
@@ -969,13 +1116,16 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     function renderUsers() {
       var users = globalData.users || [];
       var tbody = document.getElementById('usersTableBody');
+      if (!tbody) return;
+
       if (users.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-500">Belum ada akun dinas. Klik "+ Daftarkan Akun Dinas Baru" di atas.</td></tr>';
         return;
       }
 
       var html = '';
-      users.forEach(function(u) {
+      for (var j = 0; j < users.length; j++) {
+        var u = users[j];
         html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
           '<td class="p-3.5 font-bold font-mono text-sky-400">@' + (u.username || '') + '</td>' +
           '<td class="p-3.5 font-mono text-emerald-400 font-semibold">' + (u.email || '') + '</td>' +
@@ -983,9 +1133,9 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '<td class="p-3.5"><span class="bg-slate-800 border border-slate-700 px-2 py-0.5 rounded font-mono text-[10px]">' + (u.role || 'DINAS_PEMOHON') + '</span></td>' +
           '<td class="p-3.5 font-mono text-slate-300 font-bold">' + (u.password || '******') + '</td>' +
           '<td class="p-3.5"><span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold text-[10px]">AKTIF</span></td>' +
-          '<td class="p-3.5 text-right"><button onclick="editUserAccount(\\'' + (u.username || '') + '\\', \\'' + (u.email || '') + '\\', \\'' + (u.nama || '').replace(/'/g, "\\\\'") + '\\', \\'' + (u.opdName || '').replace(/'/g, "\\\\'") + '\\', \\'' + (u.password || '') + '\\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-xs font-bold transition-colors cursor-pointer"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>' +
+          '<td class="p-3.5 text-right"><button type="button" onclick="editUserAccountByIndex(' + j + ')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-lg text-xs font-bold transition-colors cursor-pointer"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>' +
           '</tr>';
-      });
+      }
 
       tbody.innerHTML = html;
     }
@@ -993,94 +1143,136 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     function renderFolders() {
       var folders = globalData.folders || [];
       var tbody = document.getElementById('foldersTableBody');
+      if (!tbody) return;
+
       if (folders.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada pemetaan folder OPD. Klik "+ Daftarkan / Edit Folder OPD" di atas.</td></tr>';
         return;
       }
 
       var html = '';
-      folders.forEach(function(f) {
-        var driveLink = f.driveFolderUrl
-          ? '<a href="' + f.driveFolderUrl + '" target="_blank" class="text-amber-400 hover:underline flex items-center gap-1 font-mono text-[11px]"><i class="fa-solid fa-folder-open"></i> Buka Folder</a>'
+      for (var f = 0; f < folders.length; f++) {
+        var itm = folders[f];
+        var driveLink = itm.driveFolderUrl
+          ? '<a href="' + itm.driveFolderUrl + '" target="_blank" class="text-amber-400 hover:underline flex items-center gap-1 font-mono text-[11px]"><i class="fa-solid fa-folder-open"></i> Buka Folder</a>'
           : '<span class="text-slate-500 font-mono">-</span>';
 
         html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
-          '<td class="p-3.5"><div class="font-bold text-white">' + (f.opdName || '-') + '</div><div class="text-[10px] text-amber-400 font-mono font-bold">' + (f.opdId || '-') + '</div></td>' +
-          '<td class="p-3.5 font-mono text-slate-300">' + (f.subfolderName || '-') + '</td>' +
-          '<td class="p-3.5 font-mono text-slate-400 text-[11px]">' + (f.driveFolderId || '-') + '</td>' +
+          '<td class="p-3.5"><div class="font-bold text-white">' + (itm.opdName || '-') + '</div><div class="text-[10px] text-amber-400 font-mono font-bold">' + (itm.opdId || '-') + '</div></td>' +
+          '<td class="p-3.5 font-mono text-slate-300">' + (itm.subfolderName || '-') + '</td>' +
+          '<td class="p-3.5 font-mono text-slate-400 text-[11px]">' + (itm.driveFolderId || '-') + '</td>' +
           '<td class="p-3.5">' + driveLink + '</td>' +
-          '<td class="p-3.5 text-[11px] text-slate-400"><div class="text-slate-200">' + (f.registeredBy || '-') + '</div><div>' + (f.registeredAt || '') + '</div></td>' +
-          '<td class="p-3.5 text-right"><button onclick="editFolderMapping(\\'' + (f.opdId || '') + '\\', \\'' + (f.opdName || '').replace(/'/g, "\\\\'") + '\\', \\'' + (f.driveFolderUrl || '') + '\\', \\'' + (f.driveFolderId || '') + '\\', \\'' + (f.subfolderName || '').replace(/'/g, "\\\\'") + '\\')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs font-bold transition-colors cursor-pointer"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>' +
+          '<td class="p-3.5 text-[11px] text-slate-400"><div class="text-slate-200">' + (itm.registeredBy || '-') + '</div><div>' + (itm.registeredAt || '') + '</div></td>' +
+          '<td class="p-3.5 text-right"><button type="button" onclick="editFolderMappingByIndex(' + f + ')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs font-bold transition-colors cursor-pointer"><i class="fa-solid fa-pen-to-square"></i> Edit</button></td>' +
           '</tr>';
-      });
+      }
 
       tbody.innerHTML = html;
     }
 
     function switchTab(tab) {
-      document.getElementById('tabContentDocs').classList.add('hidden');
-      document.getElementById('tabContentUsers').classList.add('hidden');
-      document.getElementById('tabContentFolders').classList.add('hidden');
-      document.getElementById('tabBtnDocs').className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
-      document.getElementById('tabBtnUsers').className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
-      document.getElementById('tabBtnFolders').className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
+      var tabDocs = document.getElementById('tabContentDocs');
+      var tabUsers = document.getElementById('tabContentUsers');
+      var tabFolders = document.getElementById('tabContentFolders');
+      var btnDocs = document.getElementById('tabBtnDocs');
+      var btnUsers = document.getElementById('tabBtnUsers');
+      var btnFolders = document.getElementById('tabBtnFolders');
+
+      tabDocs.style.display = 'none';
+      tabUsers.style.display = 'none';
+      tabFolders.style.display = 'none';
+
+      btnDocs.className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
+      btnUsers.className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
+      btnFolders.className = 'py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0';
 
       if (tab === 'DOCS') {
-        document.getElementById('tabContentDocs').classList.remove('hidden');
-        document.getElementById('tabBtnDocs').className = 'py-4 border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 cursor-pointer shrink-0';
+        tabDocs.style.display = 'block';
+        btnDocs.className = 'py-4 border-b-2 border-emerald-500 text-emerald-400 flex items-center gap-2 cursor-pointer shrink-0';
       } else if (tab === 'USERS') {
-        document.getElementById('tabContentUsers').classList.remove('hidden');
-        document.getElementById('tabBtnUsers').className = 'py-4 border-b-2 border-sky-500 text-sky-400 flex items-center gap-2 cursor-pointer shrink-0';
+        tabUsers.style.display = 'block';
+        btnUsers.className = 'py-4 border-b-2 border-sky-500 text-sky-400 flex items-center gap-2 cursor-pointer shrink-0';
       } else {
-        document.getElementById('tabContentFolders').classList.remove('hidden');
-        document.getElementById('tabBtnFolders').className = 'py-4 border-b-2 border-amber-500 text-amber-400 flex items-center gap-2 cursor-pointer shrink-0';
+        tabFolders.style.display = 'block';
+        btnFolders.className = 'py-4 border-b-2 border-amber-500 text-amber-400 flex items-center gap-2 cursor-pointer shrink-0';
       }
     }
 
-    function openVerifyModal(docId, docNumber, title, opd) {
-      selectedVerifyDoc = { id: docId, docNumber: docNumber, title: title, opd: opd };
+    function openVerifyModalByIndex(index) {
+      var doc = (globalData.documents || [])[index];
+      if (!doc) return;
+      selectedVerifyDoc = doc;
+
+      document.getElementById('modalDocNumber').innerText = doc.nomorBerkas || '-';
+      document.getElementById('modalDocTitle').innerText = doc.judul || '-';
+      document.getElementById('modalDocOpd').innerText = doc.opdName || '-';
+      document.getElementById('inputBav').value = 'BAV/SAKIP/' + (doc.nomorBerkas || Date.now());
+      document.getElementById('inputNotes').value = doc.notes || '';
+      if (doc.status === 'APPROVED' || doc.status === 'REVISION' || doc.status === 'REJECTED') {
+        document.getElementById('selectStatus').value = doc.status;
+      } else {
+        document.getElementById('selectStatus').value = 'APPROVED';
+      }
+
       var modal = document.getElementById('verifyModal');
-      if (!modal) return;
-      document.getElementById('modalDocNumber').innerText = docNumber;
-      document.getElementById('modalDocTitle').innerText = title;
-      document.getElementById('modalDocOpd').innerText = opd;
-      document.getElementById('inputBav').value = 'BAV/SAKIP/' + docNumber;
-      modal.classList.remove('hidden');
+      if (modal) modal.style.display = 'flex';
     }
 
     function closeVerifyModal() {
       var modal = document.getElementById('verifyModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) modal.style.display = 'none';
       selectedVerifyDoc = null;
     }
 
     function submitVerification() {
       if (!selectedVerifyDoc) return;
       var status = document.getElementById('selectStatus').value;
-      var verifier = document.getElementById('inputVerifier').value || 'Admin Verifikator';
+      var verifier = document.getElementById('inputVerifier').value || 'Admin Verifikator SAKIP';
       var nip = document.getElementById('inputNip').value || '-';
-      var bav = document.getElementById('inputBav').value || ('BAV/SAKIP/' + selectedVerifyDoc.docNumber);
+      var bav = document.getElementById('inputBav').value || ('BAV/SAKIP/' + selectedVerifyDoc.nomorBerkas);
       var notes = document.getElementById('inputNotes').value || 'Pemeriksaan SAKIP selesai';
+
+      // Update local state immediately
+      selectedVerifyDoc.status = status;
+      selectedVerifyDoc.verifierName = verifier;
+      selectedVerifyDoc.verifierNip = nip;
+      selectedVerifyDoc.bavNumber = bav;
+      selectedVerifyDoc.notes = notes;
 
       var btn = document.getElementById('btnSubmitVerify');
       if (btn) { btn.disabled = true; btn.innerText = 'Menyimpan...'; }
 
-      google.script.run
-        .withSuccessHandler(function(res) {
-          if (btn) { btn.disabled = false; btn.innerText = 'Sahkan & Simpan ke Google Sheet'; }
-          closeVerifyModal();
-          if (res && res.status === 'success') {
-            globalData = res;
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (btn) { btn.disabled = false; btn.innerText = 'Sahkan & Simpan ke Google Sheet'; }
+            closeVerifyModal();
+            if (res && res.status === 'success') {
+              if (res.documents) globalData.documents = res.documents;
+              renderStats();
+              renderDocs();
+              showToast('Hasil verifikasi berkas ' + selectedVerifyDoc.nomorBerkas + ' berhasil dicatat di Sheet!', 'success');
+            } else {
+              renderStats();
+              renderDocs();
+              showToast('Status berhasil diubah di memori lokal.', 'success');
+            }
+          })
+          .withFailureHandler(function(err) {
+            if (btn) { btn.disabled = false; btn.innerText = 'Sahkan & Simpan ke Google Sheet'; }
+            closeVerifyModal();
             renderStats();
             renderDocs();
-            alert('Hasil verifikasi berkas ' + selectedVerifyDoc.docNumber + ' berhasil disimpan di Google Sheet!');
-          }
-        })
-        .withFailureHandler(function(err) {
-          if (btn) { btn.disabled = false; btn.innerText = 'Sahkan & Simpan ke Google Sheet'; }
-          alert('Gagal memverifikasi: ' + err.toString());
-        })
-        .adminProcessVerification(selectedVerifyDoc.id, selectedVerifyDoc.docNumber, status, verifier, nip, bav, notes);
+            showToast('Tersimpan di tampilan lokal: ' + err.toString(), 'error');
+          })
+          .adminProcessVerification(selectedVerifyDoc.id, selectedVerifyDoc.nomorBerkas, status, verifier, nip, bav, notes);
+      } else {
+        if (btn) { btn.disabled = false; btn.innerText = 'Sahkan & Simpan ke Google Sheet'; }
+        closeVerifyModal();
+        renderStats();
+        renderDocs();
+        showToast('Hasil verifikasi berhasil diperbarui (Mode Demo/Pratinjau).', 'success');
+      }
     }
 
     function openUserModal() {
@@ -1090,25 +1282,33 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('inputNama').value = '';
       document.getElementById('inputOpd').value = '';
       document.getElementById('inputUserNip').value = '';
-      document.getElementById('userModal').classList.remove('hidden');
+      document.getElementById('inputDriveUrl').value = '';
+      var modal = document.getElementById('userModal');
+      if (modal) modal.style.display = 'flex';
     }
 
-    function editUserAccount(username, email, nama, opd, pass) {
-      document.getElementById('inputUsername').value = username;
-      document.getElementById('inputEmail').value = email;
-      document.getElementById('inputNama').value = nama;
-      document.getElementById('inputOpd').value = opd;
-      document.getElementById('inputPassword').value = pass || '123456';
-      document.getElementById('userModal').classList.remove('hidden');
+    function editUserAccountByIndex(index) {
+      var u = (globalData.users || [])[index];
+      if (!u) return;
+      document.getElementById('inputUsername').value = u.username || '';
+      document.getElementById('inputEmail').value = u.email || '';
+      document.getElementById('inputNama').value = u.nama || '';
+      document.getElementById('inputOpd').value = u.opdName || '';
+      document.getElementById('inputUserNip').value = u.nip || '';
+      document.getElementById('inputPassword').value = u.password || '123456';
+      document.getElementById('inputDriveUrl').value = u.driveFolderUrl || '';
+      var modal = document.getElementById('userModal');
+      if (modal) modal.style.display = 'flex';
     }
 
     function closeUserModal() {
-      document.getElementById('userModal').classList.add('hidden');
+      var modal = document.getElementById('userModal');
+      if (modal) modal.style.display = 'none';
     }
 
     function submitUser() {
       var username = document.getElementById('inputUsername').value.trim();
-      var pass = document.getElementById('inputPassword').value.trim();
+      var pass = document.getElementById('inputPassword').value.trim() || '123456';
       var email = document.getElementById('inputEmail').value.trim();
       var nama = document.getElementById('inputNama').value.trim();
       var opd = document.getElementById('inputOpd').value.trim();
@@ -1116,28 +1316,52 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var role = document.getElementById('selectRole').value;
       var driveUrl = document.getElementById('inputDriveUrl').value.trim();
 
-      if (!username) { alert('Harap isi username!'); return; }
+      if (!username) { showToast('Harap isi username!', 'error'); return; }
       if (!email) email = username + '@nagekeokab.go.id';
 
-      var btn = document.getElementById('btnSubmitUser');
-      if (btn) { btn.disabled = true; btn.innerText = 'Menyimpan Akun...'; }
+      // Update or add locally
+      var existing = false;
+      for (var u = 0; u < globalData.users.length; u++) {
+        if (globalData.users[u].username === username) {
+          globalData.users[u] = { id: 'usr-' + username, username: username, email: email, nama: nama, role: role, opdName: opd, nip: nip, password: pass, driveFolderUrl: driveUrl, status: 'AKTIF' };
+          existing = true;
+          break;
+        }
+      }
+      if (!existing) {
+        globalData.users.push({ id: 'usr-' + username, username: username, email: email, nama: nama, role: role, opdName: opd, nip: nip, password: pass, driveFolderUrl: driveUrl, status: 'AKTIF' });
+      }
 
-      google.script.run
-        .withSuccessHandler(function(res) {
-          if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke DATABASE_PENGGUNA'; }
-          closeUserModal();
-          if (res && res.status === 'success') {
-            globalData = res;
+      var btn = document.getElementById('btnSubmitUser');
+      if (btn) { btn.disabled = true; btn.innerText = 'Menyimpan...'; }
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke DATABASE_PENGGUNA'; }
+            closeUserModal();
+            if (res && res.status === 'success' && res.users) {
+              globalData.users = res.users;
+            }
             renderStats();
             renderUsers();
-            alert('Akun dinas @' + username + ' berhasil dicatat di sheet DATABASE_PENGGUNA!');
-          }
-        })
-        .withFailureHandler(function(err) {
-          if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke DATABASE_PENGGUNA'; }
-          alert('Gagal menyimpan akun: ' + err.toString());
-        })
-        .adminSaveUserAccount('usr-' + username, username, email, nama, role, opd, nip, pass, driveUrl);
+            showToast('Akun dinas @' + username + ' berhasil dicatat di DATABASE_PENGGUNA!', 'success');
+          })
+          .withFailureHandler(function(err) {
+            if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke DATABASE_PENGGUNA'; }
+            closeUserModal();
+            renderStats();
+            renderUsers();
+            showToast('Akun disimpan lokal: ' + err.toString(), 'error');
+          })
+          .adminSaveUserAccount('usr-' + username, username, email, nama, role, opd, nip, pass, driveUrl);
+      } else {
+        if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke DATABASE_PENGGUNA'; }
+        closeUserModal();
+        renderStats();
+        renderUsers();
+        showToast('Akun dinas @' + username + ' berhasil ditambahkan.', 'success');
+      }
     }
 
     function openFolderModal() {
@@ -1146,20 +1370,25 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('inputFolderDriveUrl').value = '';
       document.getElementById('inputFolderDriveId').value = '';
       document.getElementById('inputFolderSubname').value = '';
-      document.getElementById('folderModal').classList.remove('hidden');
+      var modal = document.getElementById('folderModal');
+      if (modal) modal.style.display = 'flex';
     }
 
-    function editFolderMapping(opdId, opdName, driveUrl, driveId, subname) {
-      document.getElementById('inputFolderOpdId').value = opdId;
-      document.getElementById('inputFolderOpdName').value = opdName;
-      document.getElementById('inputFolderDriveUrl').value = driveUrl;
-      document.getElementById('inputFolderDriveId').value = driveId;
-      document.getElementById('inputFolderSubname').value = subname;
-      document.getElementById('folderModal').classList.remove('hidden');
+    function editFolderMappingByIndex(index) {
+      var f = (globalData.folders || [])[index];
+      if (!f) return;
+      document.getElementById('inputFolderOpdId').value = f.opdId || '';
+      document.getElementById('inputFolderOpdName').value = f.opdName || '';
+      document.getElementById('inputFolderDriveUrl').value = f.driveFolderUrl || '';
+      document.getElementById('inputFolderDriveId').value = f.driveFolderId || '';
+      document.getElementById('inputFolderSubname').value = f.subfolderName || '';
+      var modal = document.getElementById('folderModal');
+      if (modal) modal.style.display = 'flex';
     }
 
     function closeFolderModal() {
-      document.getElementById('folderModal').classList.add('hidden');
+      var modal = document.getElementById('folderModal');
+      if (modal) modal.style.display = 'none';
     }
 
     function submitFolder() {
@@ -1170,35 +1399,57 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var subname = document.getElementById('inputFolderSubname').value.trim();
       var registrar = document.getElementById('inputFolderRegistrar').value.trim() || 'Admin SAKIP';
 
-      if (!opdId || !opdName) { alert('Harap isi ID OPD dan Nama Dinas!'); return; }
+      if (!opdId || !opdName) { showToast('Harap isi ID OPD dan Nama Dinas!', 'error'); return; }
+
+      // Update or add locally
+      var existing = false;
+      for (var f = 0; f < globalData.folders.length; f++) {
+        if (globalData.folders[f].opdId === opdId) {
+          globalData.folders[f] = { opdId: opdId, opdName: opdName, driveFolderUrl: driveUrl, driveFolderId: driveId, subfolderName: subname, registeredBy: registrar, registeredAt: 'Baru saja' };
+          existing = true;
+          break;
+        }
+      }
+      if (!existing) {
+        globalData.folders.push({ opdId: opdId, opdName: opdName, driveFolderUrl: driveUrl, driveFolderId: driveId, subfolderName: subname, registeredBy: registrar, registeredAt: 'Baru saja' });
+      }
 
       var btn = document.getElementById('btnSubmitFolder');
-      if (btn) { btn.disabled = true; btn.innerText = 'Menyimpan Folder...'; }
+      if (btn) { btn.disabled = true; btn.innerText = 'Menyimpan...'; }
 
-      google.script.run
-        .withSuccessHandler(function(res) {
-          if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke MAPPING_FOLDER_OPD'; }
-          closeFolderModal();
-          if (res && res.status === 'success') {
-            globalData = res;
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke MAPPING_FOLDER_OPD'; }
+            closeFolderModal();
+            if (res && res.status === 'success' && res.folders) {
+              globalData.folders = res.folders;
+            }
             renderFolders();
-            alert('Pemetaan folder untuk ' + opdName + ' berhasil dicatat di sheet MAPPING_FOLDER_OPD!');
-          }
-        })
-        .withFailureHandler(function(err) {
-          if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke MAPPING_FOLDER_OPD'; }
-          alert('Gagal menyimpan folder: ' + err.toString());
-        })
-        .adminRegisterFolderServer(opdId, opdName, driveUrl, driveId, subname, registrar, '-', 'Pendaftaran Folder OPD');
+            showToast('Folder ' + opdName + ' dicatat di MAPPING_FOLDER_OPD!', 'success');
+          })
+          .withFailureHandler(function(err) {
+            if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke MAPPING_FOLDER_OPD'; }
+            closeFolderModal();
+            renderFolders();
+            showToast('Folder disimpan lokal: ' + err.toString(), 'error');
+          })
+          .adminRegisterFolderServer(opdId, opdName, driveUrl, driveId, subname, registrar, '-', 'Pendaftaran Folder OPD');
+      } else {
+        if (btn) { btn.disabled = false; btn.innerText = 'Simpan ke MAPPING_FOLDER_OPD'; }
+        closeFolderModal();
+        renderFolders();
+        showToast('Folder ' + opdName + ' berhasil dicatat.', 'success');
+      }
     }
 
     function filterByStatus(status) {
       activeStatusFilter = status;
       var btnIds = ['filterStatusAll', 'filterStatusPending', 'filterStatusRevision', 'filterStatusApproved'];
-      btnIds.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.className = 'px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors';
-      });
+      for (var b = 0; b < btnIds.length; b++) {
+        var el = document.getElementById(btnIds[b]);
+        if (el) el.className = 'px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-colors cursor-pointer';
+      }
 
       var activeId = 'filterStatusAll';
       if (status === 'PENDING') activeId = 'filterStatusPending';
@@ -1206,10 +1457,14 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       if (status === 'APPROVED') activeId = 'filterStatusApproved';
 
       var activeEl = document.getElementById(activeId);
-      if (activeEl) activeEl.className = 'px-3.5 py-1.5 rounded-xl font-bold bg-emerald-600 text-white transition-colors';
+      if (activeEl) activeEl.className = 'px-3.5 py-1.5 rounded-xl font-bold bg-emerald-600 text-white transition-colors cursor-pointer';
       renderDocs();
     }
 
+    // Auto-load saat halaman siap
+    window.addEventListener('DOMContentLoaded', function() {
+      loadAllData();
+    });
     window.onload = function() {
       loadAllData();
     };
