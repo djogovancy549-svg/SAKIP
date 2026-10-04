@@ -12,7 +12,7 @@ import {
   Mail,
   Database,
 } from 'lucide-react';
-import { DocumentFormat, DocumentItem, OPD, GoogleDriveStorageInfo, UserAccount } from '../types';
+import { DocumentFormat, DocumentItem, OPD, GoogleDriveStorageInfo, UserAccount, OpdFolderRegistration } from '../types';
 import {
   getGoogleDriveFolderId,
   createGoogleDriveStorageInfo,
@@ -24,6 +24,7 @@ interface UploadDocumentModalProps {
   onClose: () => void;
   activeOpd: OPD;
   currentUser?: UserAccount;
+  folderRegistrations?: Record<string, OpdFolderRegistration>;
   onAddDocument: (doc: DocumentItem) => void;
 }
 
@@ -32,6 +33,7 @@ export function UploadDocumentModal({
   onClose,
   activeOpd,
   currentUser,
+  folderRegistrations = {},
   onAddDocument,
 }: UploadDocumentModalProps) {
   const [format, setFormat] = useState<DocumentFormat>('PDF');
@@ -121,11 +123,20 @@ Dokumen ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan secara fisik di
       fileBase64 ||
       btoa(unescape(encodeURIComponent(defaultDocumentText)));
 
+    // Check if OPD has registered a specific Google Drive folder URL
+    const regFolder = folderRegistrations[activeOpd.id];
+    const targetFolderId = regFolder?.driveFolderId || activeOpd.driveFolderId || getGoogleDriveFolderId();
+    const targetFolderName = regFolder?.driveFolderName || `${DEFAULT_GOOGLE_DRIVE_MASTER_NAME} / ${activeOpd.name}`;
+    const targetFolderUrl = regFolder?.driveFolderUrl;
+
     // Create Google Drive server storage metadata
     const googleDriveInfo: GoogleDriveStorageInfo = createGoogleDriveStorageInfo(
       newId,
       activeOpd.name,
-      effectiveFileName
+      effectiveFileName,
+      targetFolderId,
+      targetFolderName,
+      targetFolderUrl
     );
 
     const newDoc: DocumentItem = {

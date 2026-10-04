@@ -11,16 +11,18 @@ import {
   Mail,
   CheckCircle2,
 } from 'lucide-react';
-import { DocumentItem, DocumentVersion, GoogleDriveStorageInfo } from '../types';
+import { DocumentItem, DocumentVersion, GoogleDriveStorageInfo, OpdFolderRegistration } from '../types';
 import {
   getGoogleDriveFolderId,
   createGoogleDriveStorageInfo,
+  DEFAULT_GOOGLE_DRIVE_MASTER_NAME,
 } from '../services/googleSheetsWebhook';
 
 interface UploadRevisionModalProps {
   isOpen: boolean;
   onClose: () => void;
   document: DocumentItem | null;
+  folderRegistrations?: Record<string, OpdFolderRegistration>;
   onUploadRevision: (
     docId: string,
     newVersion: DocumentVersion,
@@ -32,6 +34,7 @@ export function UploadRevisionModal({
   isOpen,
   onClose,
   document,
+  folderRegistrations = {},
   onUploadRevision,
 }: UploadRevisionModalProps) {
   const [newFileName, setNewFileName] = useState<string>('');
@@ -98,11 +101,19 @@ Dokumen revisi ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan di Folde
       fileBase64 ||
       btoa(unescape(encodeURIComponent(defaultRevisionText)));
 
+    const regFolder = folderRegistrations[document.opdId];
+    const targetFolderId = regFolder?.driveFolderId || getGoogleDriveFolderId();
+    const targetFolderName = regFolder?.driveFolderName || `${DEFAULT_GOOGLE_DRIVE_MASTER_NAME} / ${document.opdName}`;
+    const targetFolderUrl = regFolder?.driveFolderUrl;
+
     // Create updated Google Drive storage reference for revised version
     const googleDriveInfo: GoogleDriveStorageInfo = createGoogleDriveStorageInfo(
       document.id,
       document.opdName,
-      effectiveFileName
+      effectiveFileName,
+      targetFolderId,
+      targetFolderName,
+      targetFolderUrl
     );
 
     const newVersion: DocumentVersion = {

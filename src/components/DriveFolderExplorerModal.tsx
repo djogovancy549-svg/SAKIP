@@ -355,7 +355,12 @@ export function DriveFolderExplorerModal({
                     return (
                       <div
                         key={doc.id}
-                        className="p-3.5 bg-white border border-blue-200 rounded-xl space-y-2.5 hover:border-blue-400 hover:shadow-md transition-all shadow-xs"
+                        onClick={() => {
+                          onSelectDocument(doc);
+                          onClose();
+                        }}
+                        className="p-3.5 bg-white border border-blue-200 rounded-xl space-y-2.5 hover:border-blue-500 hover:shadow-md transition-all shadow-xs cursor-pointer group"
+                        title="Klik untuk membuka dokumen ini"
                       >
                         {/* Folder Breadcrumb */}
                         <div className="flex items-center justify-between gap-2 text-[10px] font-mono text-slate-600 bg-blue-50/80 p-1.5 rounded border border-blue-100">

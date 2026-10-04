@@ -1198,6 +1198,7 @@ export default function App() {
         onClose={() => setIsUploadOpen(false)}
         activeOpd={activeOpd}
         currentUser={currentUser}
+        folderRegistrations={folderRegistrations}
         onAddDocument={handleAddDocument}
       />
 
@@ -1205,6 +1206,7 @@ export default function App() {
         isOpen={isRevisionOpen}
         onClose={() => setIsRevisionOpen(false)}
         document={selectedDocument}
+        folderRegistrations={folderRegistrations}
         onUploadRevision={handleUploadRevision}
       />
 

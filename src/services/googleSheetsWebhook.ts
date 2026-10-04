@@ -315,19 +315,22 @@ export interface VerificationWebhookPayload {
 }
 
 export function createGoogleDriveStorageInfo(
+  docId: string,
   opdName: string,
   fileName: string,
-  customFolderId?: string
+  customFolderId?: string,
+  customFolderName?: string,
+  customFolderUrl?: string
 ): GoogleDriveStorageInfo {
   const masterFolderId = customFolderId || getGoogleDriveFolderId();
-  const fileUniqueId = `DRV-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  const driveViewUrl = `https://drive.google.com/file/d/${fileUniqueId}/view`;
+  const fileUniqueId = `DRV-${docId}-${Date.now().toString().slice(-4)}`;
+  const driveViewUrl = customFolderUrl ? `${customFolderUrl}/${fileName}` : `https://drive.google.com/file/d/${fileUniqueId}/view`;
   const driveDownloadUrl = `https://drive.google.com/uc?export=download&id=${fileUniqueId}`;
 
   return {
     fileId: fileUniqueId,
     folderId: masterFolderId,
-    folderName: `${DEFAULT_GOOGLE_DRIVE_MASTER_NAME} / ${opdName}`,
+    folderName: customFolderName || `${DEFAULT_GOOGLE_DRIVE_MASTER_NAME} / ${opdName}`,
     viewUrl: driveViewUrl,
     downloadUrl: driveDownloadUrl,
     serverMasterFolder: DEFAULT_GOOGLE_DRIVE_MASTER_NAME,
