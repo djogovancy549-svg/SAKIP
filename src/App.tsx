@@ -144,6 +144,44 @@ export default function App() {
     return INITIAL_OPD_FOLDER_REGISTRATIONS;
   });
 
+  // Auto-sync folder registrations to user accounts & current user session
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_FOLDER_REGISTRATIONS, JSON.stringify(folderRegistrations));
+      setUserAccounts((prevUsers) =>
+        prevUsers.map((u) => {
+          const reg = folderRegistrations[u.opdId];
+          if (reg && reg.driveFolderUrl) {
+            return {
+              ...u,
+              driveFolderUrl: reg.driveFolderUrl,
+              driveFolderId: reg.driveFolderId,
+              driveFolderName: reg.driveFolderName,
+            };
+          }
+          return u;
+        })
+      );
+      if (currentUser) {
+        const reg = folderRegistrations[currentUser.opdId];
+        if (reg && reg.driveFolderUrl) {
+          setCurrentUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  driveFolderUrl: reg.driveFolderUrl,
+                  driveFolderId: reg.driveFolderId,
+                  driveFolderName: reg.driveFolderName,
+                }
+              : null
+          );
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync folder registrations', e);
+    }
+  }, [folderRegistrations]);
+
   // User Accounts State (Stored in localStorage, with passwords that can be changed)
   const [userAccounts, setUserAccounts] = useState<UserAccount[]>(() => {
     if (typeof window === 'undefined') return INITIAL_USER_ACCOUNTS;
