@@ -46,6 +46,7 @@ import { Header } from './components/Header';
 import { RunningTicker } from './components/RunningTicker';
 import { DocumentList } from './components/DocumentList';
 import { DocumentViewer } from './components/DocumentViewer';
+import { VerificationForm } from './components/VerificationForm';
 import { GoogleSheetModal } from './components/GoogleSheetModal';
 import { UploadDocumentModal } from './components/UploadDocumentModal';
 import { UploadRevisionModal } from './components/UploadRevisionModal';
@@ -243,8 +244,15 @@ export default function App() {
 
   // Active View Tab when in 'SINGLE' mode: 'LIST' | 'VIEWER' | 'FORM'
   const [activeView, setActiveView] = useState<'LIST' | 'VIEWER' | 'FORM'>('LIST');
+  const [splitRightTab, setSplitRightTab] = useState<'VIEWER' | 'FORM'>('VIEWER');
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState<boolean>(false);
   const viewDropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleOpenVerificationForm = (doc?: DocumentItem) => {
+    if (doc) setSelectedDocument(doc);
+    setActiveView('FORM');
+    setSplitRightTab('FORM');
+  };
 
   // Close view dropdown when clicking outside
   useEffect(() => {
@@ -1114,11 +1122,12 @@ export default function App() {
                   onOpenUploadModal={() => setIsUploadOpen(true)}
                   onOpenEditModal={handleOpenEditModal}
                   onDeleteDocument={handleDeleteDocument}
+                  onOpenVerificationForm={handleOpenVerificationForm}
                 />
               </div>
             )}
 
-            {/* VIEW 2: PENAMPIL DOKUMEN & DETAIL STATUS (BESAR & LEBAR) */}
+            {/* VIEW 2: PENAMPIL DOKUMEN (BESAR & LEBAR) */}
             {activeView === 'VIEWER' && (
               <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150 space-y-2">
                 {selectedDocument ? (
@@ -1129,13 +1138,27 @@ export default function App() {
 
                     {/* Quick Navigation Bar */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-sm">
-                      <button
-                        onClick={() => setActiveView('LIST')}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                      >
-                        <ArrowLeft className="w-4 h-4 text-slate-500" />
-                        <span>Kembali ke Daftar Berkas &amp; Status</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setActiveView('LIST')}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                        >
+                          <ArrowLeft className="w-4 h-4 text-slate-500" />
+                          <span>Daftar Berkas</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleOpenVerificationForm(selectedDocument)}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-700 to-sky-600 hover:from-blue-800 hover:to-sky-700 text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer"
+                        >
+                          <ShieldCheck className="w-4 h-4 text-sky-200" />
+                          <span>
+                            {currentUser.role === 'VERIFIKATOR'
+                              ? '🛡️ Lembar Verifikasi & Decision (Setujui / Revisi)'
+                              : '📋 Informasi Status & Catatan Verifikasi'}
+                          </span>
+                        </button>
+                      </div>
 
                       <div className="text-xs text-center hidden md:block">
                         <span className="text-slate-500">Berkas: </span>
@@ -1146,7 +1169,7 @@ export default function App() {
                       {selectedDocument.status === 'REVISION' && (
                         <button
                           onClick={() => setIsRevisionOpen(true)}
-                          className="flex items-center gap-2 px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-colors shadow-md cursor-pointer"
+                          className="flex items-center gap-2 px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-colors shadow-md cursor-pointer animate-pulse"
                         >
                           <PlusCircle className="w-4 h-4" />
                           <span>Upload Berkas Perbaikan (Revisi)</span>
@@ -1173,9 +1196,41 @@ export default function App() {
                 )}
               </div>
             )}
+
+            {/* VIEW 3: FORMULIR & LEMBAR VERIFIKASI / PENGESAHAN */}
+            {activeView === 'FORM' && (
+              <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150">
+                {selectedDocument ? (
+                  <VerificationForm
+                    document={selectedDocument}
+                    verifier={verifier}
+                    appRole={currentUser.role}
+                    onUpdateDocument={handleUpdateDocument}
+                    onOpenGoogleSheetModal={() => setIsGoogleSheetOpen(true)}
+                    onOpenRevisionModal={() => setIsRevisionOpen(true)}
+                  />
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500 shadow-sm min-h-[450px]">
+                    <FileCheck className="w-14 h-14 mb-3 text-blue-500/50" />
+                    <h3 className="text-base font-bold text-slate-800 mb-1">
+                      Tidak Ada Dokumen Dipilih untuk Verifikasi
+                    </h3>
+                    <p className="text-xs text-slate-500 max-w-sm mb-4">
+                      Silakan pilih dokumen dari antrean {activeOpd.name} pada tab Daftar Berkas.
+                    </p>
+                    <button
+                      onClick={() => setActiveView('LIST')}
+                      className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md cursor-pointer"
+                    >
+                      Buka Daftar Berkas
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
-          /* MODE 2: SPLIT VIEW (2 KOLOM: DAFTAR BERKAS & PENAMPIL DETAIL) */
+          /* MODE 2: SPLIT VIEW (2 KOLOM: DAFTAR BERKAS & PENAMPIL DETAIL / VERIFIKASI) */
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 items-start">
             {/* COLUMN 1: OPD Documents List */}
             <div className="lg:col-span-5 h-[calc(100vh-190px)] sticky top-28 flex flex-col">
@@ -1190,13 +1245,62 @@ export default function App() {
                 onOpenUploadModal={() => setIsUploadOpen(true)}
                 onOpenEditModal={handleOpenEditModal}
                 onDeleteDocument={handleDeleteDocument}
+                onOpenVerificationForm={handleOpenVerificationForm}
               />
             </div>
 
-            {/* COLUMN 2: Multi-format Document Viewer & Status Details */}
-            <div className="lg:col-span-7 h-[calc(100vh-190px)] flex flex-col">
+            {/* COLUMN 2: Multi-format Document Viewer & Verification Decision Panel */}
+            <div className="lg:col-span-7 h-[calc(100vh-190px)] flex flex-col space-y-2">
               {selectedDocument ? (
-                <DocumentViewer document={selectedDocument} />
+                <>
+                  {/* Split Right Panel Tab Selector */}
+                  <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-300 rounded-xl shadow-xs text-xs font-bold shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setSplitRightTab('VIEWER')}
+                      className={`flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        splitRightTab === 'VIEWER'
+                          ? 'bg-blue-600 text-white shadow-xs font-black'
+                          : 'text-slate-700 hover:bg-slate-100 font-semibold'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>1. Penampil Berkas Asli</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSplitRightTab('FORM')}
+                      className={`flex-1 py-1.5 px-3 rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        splitRightTab === 'FORM'
+                          ? 'bg-gradient-to-r from-blue-700 to-sky-600 text-white shadow-xs font-black'
+                          : 'text-slate-700 hover:bg-slate-100 font-semibold'
+                      }`}
+                    >
+                      <ShieldCheck className="w-4 h-4 text-amber-300" />
+                      <span>
+                        {currentUser.role === 'VERIFIKATOR'
+                          ? '2. Lembar Verifikasi & Keputusan (Setujui/Revisi/Tolak)'
+                          : '2. Status & Catatan Verifikasi'}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="flex-1 min-h-0">
+                    {splitRightTab === 'VIEWER' ? (
+                      <DocumentViewer document={selectedDocument} />
+                    ) : (
+                      <VerificationForm
+                        document={selectedDocument}
+                        verifier={verifier}
+                        appRole={currentUser.role}
+                        onUpdateDocument={handleUpdateDocument}
+                        onOpenGoogleSheetModal={() => setIsGoogleSheetOpen(true)}
+                        onOpenRevisionModal={() => setIsRevisionOpen(true)}
+                      />
+                    )}
+                  </div>
+                </>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500 shadow-sm">
                   <FileText className="w-12 h-12 mb-3 opacity-40 text-blue-500" />

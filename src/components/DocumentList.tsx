@@ -34,6 +34,7 @@ interface DocumentListProps {
   onOpenUploadModal?: () => void;
   onOpenEditModal?: (doc: DocumentItem) => void;
   onDeleteDocument?: (docId: string) => void;
+  onOpenVerificationForm?: (doc: DocumentItem) => void;
 }
 
 export function DocumentList({
@@ -47,6 +48,7 @@ export function DocumentList({
   onOpenUploadModal,
   onOpenEditModal,
   onDeleteDocument,
+  onOpenVerificationForm,
 }: DocumentListProps) {
   const isVerifier = appRole === 'VERIFIKATOR';
   const [opdScope, setOpdScope] = useState<'ALL' | 'SINGLE'>(isVerifier ? 'ALL' : 'SINGLE');
@@ -367,20 +369,56 @@ export function DocumentList({
                   </div>
                 )}
 
-                {/* Pemohon, Tanggal & Tombol Aksi Edit & Hapus */}
-                <div className="flex items-center justify-between text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 mt-2 font-medium gap-2">
+                {/* Pemohon, Tanggal & Tombol Aksi Verifikasi, Edit & Hapus */}
+                <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 mt-2 font-medium gap-2">
                   <span className="truncate max-w-[120px] text-slate-900 font-bold">
                     {doc.pemohon.nama}
                   </span>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                    {/* Primary Verification Action Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectDocument(doc);
+                        if (onOpenVerificationForm) {
+                          onOpenVerificationForm(doc);
+                        }
+                      }}
+                      className="px-2.5 py-0.5 bg-gradient-to-r from-blue-700 to-sky-600 hover:from-blue-800 hover:to-sky-700 text-white font-bold rounded-md text-[10px] inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                      title="Buka Lembar Verifikasi & Keputusan (Setujui / Revisi / Tolak)"
+                    >
+                      <ShieldCheck className="w-3 h-3 text-sky-200" />
+                      <span>{isVerifier ? 'Verifikasi' : 'Status'}</span>
+                    </button>
+
+                    {/* Upload Revision Button for Dinas if doc status is REVISION */}
+                    {!isVerifier && doc.status === 'REVISION' && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectDocument(doc);
+                          if (onOpenRevisionModalForDoc) {
+                            onOpenRevisionModalForDoc(doc);
+                          }
+                        }}
+                        className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-md text-[10px] inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs animate-pulse"
+                        title="Upload Berkas Perbaikan"
+                      >
+                        <UploadCloud className="w-3 h-3" />
+                        <span>Upload Revisi</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (onOpenEditModal) onOpenEditModal(doc);
                       }}
-                      className="px-2 py-0.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold rounded-md border border-blue-200 text-[10px] inline-flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-md border border-slate-300 text-[10px] inline-flex items-center gap-1 transition-colors cursor-pointer"
                       title="Edit Data Berkas"
                     >
                       <Edit3 className="w-3 h-3" />
@@ -397,7 +435,7 @@ export function DocumentList({
                           }
                         }
                       }}
-                      className="px-2 py-0.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 font-bold rounded-md border border-rose-200 text-[10px] inline-flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                      className="px-2 py-0.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 font-bold rounded-md border border-rose-200 text-[10px] inline-flex items-center gap-1 transition-colors cursor-pointer"
                       title="Hapus Berkas Ini"
                     >
                       <Trash2 className="w-3 h-3" />
