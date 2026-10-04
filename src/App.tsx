@@ -748,6 +748,8 @@ export default function App() {
 
   const currentOpdDocsCount = documents.filter((d) => d.opdId === activeOpd.id).length;
 
+  const isDinas = currentUser.role === 'DINAS_PEMOHON';
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950 flex flex-col font-sans selection:bg-blue-500/20 font-medium">
       {/* Top Bar with User Info, Password Trigger, and Logout */}
@@ -1027,15 +1029,17 @@ export default function App() {
                 <span>Buka Drive</span>
               </a>
 
-              <button
-                type="button"
-                onClick={() => setIsGoogleSheetOpen(true)}
-                className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer text-xs"
-                title="Buka Pusat Pemeriksaan & Diagnostik Mandiri"
-              >
-                <Activity className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Uji Mandiri</span>
-              </button>
+              {!isDinas && (
+                <button
+                  type="button"
+                  onClick={() => setIsGoogleSheetOpen(true)}
+                  className="px-3 py-1.5 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer text-xs"
+                  title="Buka Pusat Pemeriksaan & Diagnostik Mandiri"
+                >
+                  <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Uji Mandiri</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -1166,10 +1170,12 @@ export default function App() {
       </main>
 
       {/* Modals */}
-      <GoogleSheetModal
-        isOpen={isGoogleSheetOpen}
-        onClose={() => setIsGoogleSheetOpen(false)}
-      />
+      {!isDinas && (
+        <GoogleSheetModal
+          isOpen={isGoogleSheetOpen}
+          onClose={() => setIsGoogleSheetOpen(false)}
+        />
+      )}
 
       <UploadDocumentModal
         isOpen={isUploadOpen}
