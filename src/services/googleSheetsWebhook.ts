@@ -39,7 +39,7 @@ import {
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
-  'https://script.google.com/macros/s/AKfycbznXpFIL805i7u9lF7khBk8TPEiW2Y9dFM9pDZJzBsnDNuZ1WZOapnZryn8GixWPiQhYg/exec';
+  'https://script.google.com/macros/s/AKfycbxfXMWep5W8GbCp8N6d9s54ORYt39wot1yOy9i2pVU4Rl--4ZdATgwtU_FEI3VXM0eIKw/exec';
 
 // Embedded Google Drive Induk Server Folder ID & URL
 export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
