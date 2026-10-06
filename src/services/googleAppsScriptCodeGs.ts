@@ -312,31 +312,6 @@ function cleanObsoleteLegacySheetsAndFix(ss) {
         }
       }
     }
-
-    // 3. Perbaiki baris-baris pada DOKUMEN_PROSES & DOKUMEN_SAH_TERVERIFIKASI jika ada fileId bernilai "dsadasd" atau salah letak
-    var targetSheets = ["DOKUMEN_PROSES", "DOKUMEN_SAH_TERVERIFIKASI"];
-    for (var t = 0; t < targetSheets.length; t++) {
-      var cur = ss.getSheetByName(targetSheets[t]);
-      if (cur && cur.getLastRow() > 1) {
-        var vals = cur.getDataRange().getValues();
-        for (var r = 1; r < vals.length; r++) {
-          var row = vals[r];
-          var curFileId = String(row[14] || "").trim();
-          if (!curFileId || curFileId.length < 15 || curFileId === "dsadasd" || curFileId.indexOf("DRV-") !== -1) {
-            var rowText = row.join(" ");
-            var m = rowText.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
-            if (m) {
-              var recovered = m[1];
-              cur.getRange(r + 1, 14).setValue("https://drive.google.com/file/d/" + recovered + "/view");
-              cur.getRange(r + 1, 15).setValue(recovered);
-              try {
-                DriveApp.getFileById(recovered).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-              } catch (e) {}
-            }
-          }
-        }
-      }
-    }
   } catch (err) {
     console.error("Clean legacy note:", err);
   }
@@ -590,6 +565,9 @@ function doPost(e) {
     if (data.action === "REGISTER_USER_ACCOUNT" || data.action === "UPDATE_USER_PASSWORD" || data.action === "UPDATE_PASSWORD") {
       return ContentService.createTextOutput(JSON.stringify(adminSaveUserAccount(data.userId, data.username, data.email, data.pemohonName || data.nama, data.role, data.opdName, data.verifierNip || data.nip, data.newPassword, data.driveFolderUrl))).setMimeType(ContentService.MimeType.JSON);
     }
+    if (data.action === "REGISTER_OPD_FOLDER" || data.action === "SAVE_OPD_FOLDER") {
+      return ContentService.createTextOutput(JSON.stringify(adminRegisterFolderServer(data.opdId, data.opdName, data.driveFolderUrl || data.driveUrl, data.driveFolderId || data.folderId, data.driveFolderName || data.subfolderName, data.registrar || data.pemohonName, data.nip, data.notes))).setMimeType(ContentService.MimeType.JSON);
+    }
     if (data.action === "VERIFY_DOCUMENT" || data.action === "UPDATE_STATUS") {
       return ContentService.createTextOutput(JSON.stringify(adminProcessVerification(data))).setMimeType(ContentService.MimeType.JSON);
     }
@@ -675,116 +653,132 @@ function doPost(e) {
 }
 
 function adminProcessVerification(data) {
-  var ss = getActiveSpreadsheetSafely();
-  if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan." };
-  initDefaultDataIfEmpty(ss);
+  try {
+    var ss = getActiveSpreadsheetSafely();
+    if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan." };
+    initDefaultDataIfEmpty(ss);
 
-  var docId = String(data.docId || "").trim();
-  var docNumber = String(data.docNumber || "").trim();
-  var status = String(data.status || "APPROVED").trim().toUpperCase();
-  var verifier = data.verifierName || "Admin Verifikator SAKIP";
-  var nip = data.verifierNip || "19850101 201001 1 002";
-  var bav = data.bavNumber || ("BAV/SAKIP/" + (docNumber || "001"));
-  var notes = data.notes || "Verifikasi selesai";
-  var nowStr = data.timestamp || new Date().toLocaleString("id-ID");
-  var sealHash = data.digitalSealHash || ("SHA256-" + Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyyMMddHHmmss") + "-" + (docId || "DOC"));
+    var docId = String(data.docId || "").trim();
+    var docNumber = String(data.docNumber || "").trim();
+    var status = String(data.status || "APPROVED").trim().toUpperCase();
+    var verifier = data.verifierName || "Admin Verifikator SAKIP";
+    var nip = data.verifierNip || "19850101 201001 1 002";
+    var bav = data.bavNumber || ("BAV/SAKIP/" + (docNumber || "001"));
+    var notes = String(data.notes || "Verifikasi selesai").trim();
+    var nowStr = data.timestamp || new Date().toLocaleString("id-ID");
+    var sealHash = data.digitalSealHash || ("SHA256-" + Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyyMMddHHmmss") + "-" + (docId || "DOC"));
 
-  var prosesSheet = ss.getSheetByName("DOKUMEN_PROSES");
-  var sahSheet = ss.getSheetByName("DOKUMEN_SAH_TERVERIFIKASI");
-  var summarySheet = ss.getSheetByName("SUMMARY_RIWAYAT_REVISI");
+    var prosesSheet = getOrCreateSheet(ss, "DOKUMEN_PROSES");
+    var sahSheet = getOrCreateSheet(ss, "DOKUMEN_SAH_TERVERIFIKASI");
+    var summarySheet = getOrCreateSheet(ss, "SUMMARY_RIWAYAT_REVISI");
 
-  var foundPRow = -1;
-  var existingRowData = null;
-  if (prosesSheet && prosesSheet.getLastRow() > 1) {
-    var pVals = prosesSheet.getDataRange().getValues();
-    for (var p = 1; p < pVals.length; p++) {
-      var rowId = String(pVals[p][1] || "").trim().toLowerCase();
-      var rowNo = String(pVals[p][2] || "").trim().toLowerCase();
-      if ((docId && rowId === docId.toLowerCase()) || (docNumber && (rowNo === docNumber.toLowerCase() || rowNo.indexOf(docNumber.toLowerCase()) !== -1))) {
-        foundPRow = p + 1;
-        existingRowData = pVals[p];
-        break;
+    var foundPRow = -1;
+    var existingRowData = null;
+    if (prosesSheet && prosesSheet.getLastRow() > 1) {
+      var pVals = prosesSheet.getDataRange().getValues();
+      for (var p = 1; p < pVals.length; p++) {
+        var rowId = String(pVals[p][1] || "").trim().toLowerCase();
+        var rowNo = String(pVals[p][2] || "").trim().toLowerCase();
+        if ((docId && rowId === docId.toLowerCase()) || (docNumber && (rowNo === docNumber.toLowerCase() || rowNo.indexOf(docNumber.toLowerCase()) !== -1))) {
+          foundPRow = p + 1;
+          existingRowData = pVals[p];
+          break;
+        }
       }
     }
-  }
 
-  var fileUrl = data.downloadUrl || (existingRowData ? String(existingRowData[13] || existingRowData[14] || "") : "");
-  var fileId = (existingRowData ? String(existingRowData[14] || existingRowData[15] || "") : "");
-  var opd = data.opdName || (existingRowData ? String(existingRowData[4] || "") : "OPD");
-  var title = data.title || (existingRowData ? String(existingRowData[3] || "") : "Dokumen SAKIP");
-  var format = data.format || (existingRowData ? String(existingRowData[6] || "") : "PDF");
-  var pemohonName = data.pemohonName || (existingRowData ? String(existingRowData[7] || "") : "Pemohon");
-  var pemohonEmail = data.email || data.pemohonEmail || (existingRowData ? String(existingRowData[8] || "") : "-");
-  var version = data.versionNumber || (existingRowData ? Number(String(existingRowData[5] || "1").replace("v", "")) : 1);
+    var fileUrl = data.downloadUrl || (existingRowData ? String(existingRowData[13] || existingRowData[14] || "") : "");
+    var fileId = (existingRowData ? String(existingRowData[14] || existingRowData[15] || "") : "");
+    var opd = data.opdName || (existingRowData ? String(existingRowData[4] || "") : "OPD");
+    var title = data.title || (existingRowData ? String(existingRowData[3] || "") : "Dokumen SAKIP");
+    var format = data.format || (existingRowData ? String(existingRowData[6] || "") : "PDF");
+    var pemohonName = data.pemohonName || (existingRowData ? String(existingRowData[7] || "") : "Pemohon");
+    var pemohonEmail = data.email || data.pemohonEmail || (existingRowData ? String(existingRowData[8] || "") : "-");
+    var version = data.versionNumber || (existingRowData ? Number(String(existingRowData[5] || "1").replace("v", "")) : 1);
 
-  if (status === "APPROVED") {
-    // Berkas tetap berada di folder tunggal dinas (tidak dipindah-pindah antar folder)
-    if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1 && fileId !== "dsadasd") {
-      try {
-        var driveFile = DriveApp.getFileById(fileId);
-        driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        fileUrl = "https://drive.google.com/file/d/" + fileId + "/view";
-      } catch (se) {}
-    } else {
-      var opdF = getSingleOpdFolder(opd, data.opdId);
-      if (!fileUrl) fileUrl = opdF.getUrl();
-    }
+    if (status === "APPROVED") {
+      // Berkas tetap berada di folder tunggal dinas
+      if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1 && fileId !== "dsadasd") {
+        try {
+          var driveFile = DriveApp.getFileById(fileId);
+          driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+          fileUrl = "https://drive.google.com/file/d/" + fileId + "/view";
+        } catch (se) {}
+      } else if (!fileUrl) {
+        try {
+          var opdF = getSingleOpdFolder(opd, data.opdId);
+          fileUrl = opdF.getUrl();
+        } catch (ef) {}
+      }
 
-    var expiry5Y = new Date();
-    expiry5Y.setFullYear(expiry5Y.getFullYear() + 5);
+      var expiry5Y = new Date();
+      expiry5Y.setFullYear(expiry5Y.getFullYear() + 5);
 
-    sahSheet.appendRow([
-      nowStr, docId, docNumber, title, opd, "v" + version, format,
-      pemohonName, pemohonEmail, "APPROVED", verifier, nip, bav,
-      fileUrl, fileId, notes, sealHash, expiry5Y.toLocaleDateString("id-ID"), RETENTION_APPROVED_DAYS
-    ]);
-
-    summarySheet.appendRow([
-      nowStr, docId, docNumber, title, opd, "v" + version,
-      "PENGESAHAN_FINAL", "Dokumen Disahkan & Terbit BAV Resmi", notes,
-      verifier, fileUrl, fileId, "Disimpan Sah 5 Tahun", "-", "SAH_FINAL"
-    ]);
-
-    if (foundPRow > 0 && prosesSheet) {
-      prosesSheet.deleteRow(foundPRow);
-    }
-    cleanLegacyDoc(ss, docId, docNumber);
-
-    return {
-      status: "success",
-      message: "Dokumen (" + docNumber + ") berhasil DISAHKAN! Data dicatat di DOKUMEN_SAH_TERVERIFIKASI (retensi 5 tahun) dan otomatis terhapus dari DOKUMEN_PROSES.",
-      docId: docId,
-      docNumber: docNumber,
-      bavNumber: bav
-    };
-
-  } else {
-    if (foundPRow > 0 && prosesSheet) {
-      prosesSheet.getRange(foundPRow, 11).setValue(status);
-      prosesSheet.getRange(foundPRow, 12).setValue(verifier);
-      prosesSheet.getRange(foundPRow, 13).setValue(nip);
-      prosesSheet.getRange(foundPRow, 16).setValue(notes);
-    } else if (prosesSheet) {
-      prosesSheet.appendRow([
+      sahSheet.appendRow([
         nowStr, docId, docNumber, title, opd, "v" + version, format,
-        pemohonName, pemohonEmail, opd, status, verifier, nip, fileUrl, fileId, notes, "01_DOKUMEN_PROSES"
+        pemohonName, pemohonEmail, "APPROVED", verifier, nip, bav,
+        fileUrl, fileId, notes, sealHash, expiry5Y.toLocaleDateString("id-ID"), RETENTION_APPROVED_DAYS
       ]);
+
+      summarySheet.appendRow([
+        nowStr, docId, docNumber, title, opd, "v" + version,
+        "PENGESAHAN_FINAL", "Dokumen Disahkan & Terbit BAV Resmi", notes,
+        verifier, fileUrl, fileId, "Disimpan Sah 5 Tahun", "-", "SAH_FINAL"
+      ]);
+
+      if (foundPRow > 0 && prosesSheet && prosesSheet.getLastRow() >= foundPRow) {
+        try { prosesSheet.deleteRow(foundPRow); } catch (dp) {}
+      }
+      cleanLegacyDoc(ss, docId, docNumber);
+
+      return {
+        status: "success",
+        message: "Dokumen (" + (docNumber || title) + ") berhasil DISAHKAN! Berkas dicatat di DOKUMEN_SAH_TERVERIFIKASI dan otomatis terhapus dari DOKUMEN_PROSES.",
+        docId: docId,
+        docNumber: docNumber,
+        bavNumber: bav
+      };
+
+    } else {
+      // Status REVISION atau REJECTED
+      if (foundPRow > 0 && prosesSheet) {
+        try {
+          prosesSheet.getRange(foundPRow, 11).setValue(status);
+          prosesSheet.getRange(foundPRow, 12).setValue(verifier);
+          prosesSheet.getRange(foundPRow, 13).setValue(nip);
+          prosesSheet.getRange(foundPRow, 16).setValue(notes);
+        } catch (up) {}
+      } else if (prosesSheet) {
+        prosesSheet.appendRow([
+          nowStr, docId, docNumber, title, opd, "v" + version, format,
+          pemohonName, pemohonEmail, opd, status, verifier, nip, fileUrl, fileId, notes, "01_DOKUMEN_PROSES"
+        ]);
+      }
+
+      var expiry3M = new Date();
+      expiry3M.setDate(expiry3M.getDate() + 90);
+
+      var shortNote = notes.length > 80 ? notes.substring(0, 80) + "..." : notes;
+
+      summarySheet.appendRow([
+        nowStr, docId, docNumber, title, opd, "v" + version,
+        status === "REVISION" ? "CATATAN_PERBAIKAN" : "PENOLAKAN",
+        shortNote, notes, verifier, fileUrl, fileId,
+        expiry3M.toLocaleDateString("id-ID"), RETENTION_REVISION_DAYS, "AKTIF_3_BULAN"
+      ]);
+
+      return {
+        status: "success",
+        message: "Status " + status + " (" + (docNumber || title) + ") berhasil dicatat ke DOKUMEN_PROSES dan ringkasan dicatat ke SUMMARY_RIWAYAT_REVISI.",
+        docId: docId,
+        docNumber: docNumber
+      };
     }
-
-    var expiry3M = new Date();
-    expiry3M.setDate(expiry3M.getDate() + 90);
-
-    summarySheet.appendRow([
-      nowStr, docId, docNumber, title, opd, "v" + version,
-      status === "REVISION" ? "CATATAN_PERBAIKAN" : "PENOLAKAN",
-      notes.slice(0, 80), notes, verifier, fileUrl, fileId,
-      expiry3M.toLocaleDateString("id-ID"), RETENTION_REVISION_DAYS, "AKTIF_3_BULAN"
-    ]);
-
+  } catch (err) {
+    console.error("adminProcessVerification error:", err);
     return {
-      status: "success",
-      message: "Status " + status + " dicatat di DOKUMEN_PROSES dan ringkasan perbaikan dicatat di SUMMARY_RIWAYAT_REVISI (aktif 3 bulan).",
-      docId: docId
+      status: "error",
+      message: "Gagal memproses verifikasi: " + err.toString()
     };
   }
 }
@@ -1039,66 +1033,88 @@ function adminGetDashboardData() {
 }
 
 function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip, password, driveFolderUrl) {
-  var ss = getActiveSpreadsheetSafely();
-  if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan" };
-  var userSheet = getOrCreateSheet(ss, "DATABASE_PENGGUNA");
+  try {
+    var ss = getActiveSpreadsheetSafely();
+    if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan" };
+    initDefaultDataIfEmpty(ss);
+    var userSheet = getOrCreateSheet(ss, "DATABASE_PENGGUNA");
 
-  var foundUserRow = -1;
-  var uVals = userSheet.getDataRange().getValues();
-  for (var u = 1; u < uVals.length; u++) {
-    if (String(uVals[u][2]) === String(username) || String(uVals[u][3]) === String(email) || String(uVals[u][1]) === String(userId)) {
-      foundUserRow = u + 1; break;
+    var foundUserRow = -1;
+    var uVals = userSheet.getDataRange().getValues();
+    for (var u = 1; u < uVals.length; u++) {
+      if (String(uVals[u][2]) === String(username) || String(uVals[u][3]) === String(email) || String(uVals[u][1]) === String(userId)) {
+        foundUserRow = u + 1; break;
+      }
     }
-  }
 
-  var effectiveEmail = email || (username + "@nagekeokab.go.id");
-  var now = new Date().toLocaleString("id-ID");
+    var effectiveEmail = email || (username + "@nagekeokab.go.id");
+    var now = new Date().toLocaleString("id-ID");
 
-  if (foundUserRow > 0) {
-    userSheet.getRange(foundUserRow, 1).setValue(now);
-    userSheet.getRange(foundUserRow, 4).setValue(effectiveEmail);
-    userSheet.getRange(foundUserRow, 5).setValue(nama || "-");
-    userSheet.getRange(foundUserRow, 6).setValue(role || "DINAS_PEMOHON");
-    userSheet.getRange(foundUserRow, 7).setValue(opdName || "-");
-    userSheet.getRange(foundUserRow, 8).setValue(nip || "-");
-    userSheet.getRange(foundUserRow, 9).setValue(driveFolderUrl || "-");
-    if (password) userSheet.getRange(foundUserRow, 10).setValue(password);
-  } else {
-    userSheet.appendRow([
-      now, userId || ("usr-" + username), username, effectiveEmail, nama || "-",
-      role || "DINAS_PEMOHON", opdName || "-", nip || "-", driveFolderUrl || "-",
-      password || "123456", "AKTIF"
-    ]);
+    if (foundUserRow > 0) {
+      userSheet.getRange(foundUserRow, 1).setValue(now);
+      userSheet.getRange(foundUserRow, 4).setValue(effectiveEmail);
+      userSheet.getRange(foundUserRow, 5).setValue(nama || "-");
+      userSheet.getRange(foundUserRow, 6).setValue(role || "DINAS_PEMOHON");
+      userSheet.getRange(foundUserRow, 7).setValue(opdName || "-");
+      userSheet.getRange(foundUserRow, 8).setValue(nip || "-");
+      userSheet.getRange(foundUserRow, 9).setValue(driveFolderUrl || "-");
+      if (password) userSheet.getRange(foundUserRow, 10).setValue(password);
+    } else {
+      userSheet.appendRow([
+        now, userId || ("usr-" + username), username, effectiveEmail, nama || "-",
+        role || "DINAS_PEMOHON", opdName || "-", nip || "-", driveFolderUrl || "-",
+        password || "123456", "AKTIF"
+      ]);
+    }
+    return adminGetDashboardData();
+  } catch (err) {
+    console.error("adminSaveUserAccount error:", err);
+    return { status: "error", message: "Gagal menyimpan akun: " + err.toString() };
   }
-  return adminGetDashboardData();
 }
 
 function adminRegisterFolderServer(opdId, opdName, driveUrl, folderId, subfolderName, registrar, nip, notes) {
-  var ss = getActiveSpreadsheetSafely();
-  if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan" };
-  var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
+  try {
+    var ss = getActiveSpreadsheetSafely();
+    if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan" };
+    initDefaultDataIfEmpty(ss);
+    var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
 
-  var now = new Date().toLocaleString("id-ID");
-  var foundFolderRow = -1;
-  var fVals = folderSheet.getDataRange().getValues();
-  for (var f = 1; f < fVals.length; f++) {
-    if (String(fVals[f][1]) === String(opdId) || String(fVals[f][2]) === String(opdName)) {
-      foundFolderRow = f + 1; break;
+    var now = new Date().toLocaleString("id-ID");
+    var foundFolderRow = -1;
+    var fVals = folderSheet.getDataRange().getValues();
+    for (var f = 1; f < fVals.length; f++) {
+      if (String(fVals[f][1]) === String(opdId) || String(fVals[f][2]) === String(opdName)) {
+        foundFolderRow = f + 1; break;
+      }
     }
-  }
 
-  var validUrl = driveUrl || getMasterFolder().getUrl();
-  if (foundFolderRow > 0) {
-    folderSheet.getRange(foundFolderRow, 1).setValue(now);
-    folderSheet.getRange(foundFolderRow, 4).setValue(validUrl);
-    folderSheet.getRange(foundFolderRow, 7).setValue(registrar || "Admin SAKIP");
-    folderSheet.getRange(foundFolderRow, 8).setValue(nip || "-");
-    folderSheet.getRange(foundFolderRow, 9).setValue(notes || "Pembaruan Folder OPD");
-  } else {
-    folderSheet.appendRow([
-      now, opdId, opdName, validUrl, validUrl, validUrl, registrar || "Admin SAKIP", nip || "-", notes || "Pendaftaran Folder OPD"
-    ]);
+    var validUrl = driveUrl || getMasterFolder().getUrl();
+    var effectiveFolderId = folderId || "";
+    if (!effectiveFolderId && validUrl.indexOf("folders/") !== -1) {
+      var m = validUrl.match(/folders\/([a-zA-Z0-9_-]+)/);
+      if (m) effectiveFolderId = m[1];
+    }
+    var effectiveSubfolderName = subfolderName || ("Folder " + (opdName || "OPD"));
+
+    if (foundFolderRow > 0) {
+      folderSheet.getRange(foundFolderRow, 1).setValue(now);
+      folderSheet.getRange(foundFolderRow, 3).setValue(opdName || "-");
+      folderSheet.getRange(foundFolderRow, 4).setValue(validUrl);
+      folderSheet.getRange(foundFolderRow, 5).setValue(effectiveFolderId);
+      folderSheet.getRange(foundFolderRow, 6).setValue(effectiveSubfolderName);
+      folderSheet.getRange(foundFolderRow, 7).setValue(registrar || "Admin SAKIP");
+      folderSheet.getRange(foundFolderRow, 8).setValue(nip || "-");
+      folderSheet.getRange(foundFolderRow, 9).setValue(notes || "Pembaruan Folder OPD");
+    } else {
+      folderSheet.appendRow([
+        now, opdId, opdName, validUrl, effectiveFolderId, effectiveSubfolderName, registrar || "Admin SAKIP", nip || "-", notes || "Pendaftaran Folder OPD"
+      ]);
+    }
+    return adminGetDashboardData();
+  } catch (err) {
+    console.error("adminRegisterFolderServer error:", err);
+    return { status: "error", message: "Gagal menyimpan folder: " + err.toString() };
   }
-  return adminGetDashboardData();
 }
 `;

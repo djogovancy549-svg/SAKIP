@@ -394,7 +394,7 @@ export default function App() {
     try {
       const data = await fetchDatabaseFromGoogleSheet();
       if (data) {
-        if (data.documents) {
+        if (data.documents && data.documents.length > 0) {
           setDocuments((prevDocs) => {
             // Keep fresh local documents that were just added locally and not yet synced, unless deleted
             const localOnlyDocs = prevDocs.filter((p) => {
@@ -404,7 +404,7 @@ export default function App() {
                   r.id === p.id ||
                   (r.nomorBerkas && p.nomorBerkas && r.nomorBerkas.trim().toLowerCase() === p.nomorBerkas.trim().toLowerCase())
               );
-              return !inRemote && p.id.startsWith('DOC-');
+              return !inRemote;
             });
 
             // Filter out any documents that were deleted in the current session
@@ -487,6 +487,9 @@ export default function App() {
             }
             return data.documents.length > 0 ? data.documents[0] : null;
           });
+        } else if (data.documents && data.documents.length === 0) {
+          // If remote spreadsheet has 0 documents, preserve current local documents
+          setDocuments((prevDocs) => prevDocs.filter((p) => !deletedDocIdsRef.current.has(p.id)));
         }
         if (Array.isArray(data.users)) {
           setUserAccounts(data.users);
