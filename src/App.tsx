@@ -399,7 +399,11 @@ export default function App() {
                         jabatan: remoteDoc.verification.jabatan || merged[idx]?.verification?.jabatan || 'Verifikator SAKIP',
                         status: remoteDoc.status,
                         checklist: remoteDoc.verification.checklist || merged[idx]?.verification?.checklist || {},
-                        notes: remoteDoc.verification.notes || merged[idx]?.verification?.notes || '',
+                        notes: (remoteDoc.verification?.notes && remoteDoc.verification.notes.trim() !== '') 
+                          ? remoteDoc.verification.notes 
+                          : (remoteDoc.perihal && remoteDoc.perihal.trim() !== '')
+                          ? remoteDoc.perihal
+                          : merged[idx]?.verification?.notes || '',
                         qrCodeUrl: remoteDoc.verification.qrCodeUrl || merged[idx]?.verification?.qrCodeUrl || '',
                         digitalSealHash: remoteDoc.verification.digitalSealHash || merged[idx]?.verification?.digitalSealHash || '',
                         bavNumber: remoteDoc.verification.bavNumber || merged[idx]?.verification?.bavNumber || '',

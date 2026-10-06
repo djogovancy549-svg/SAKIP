@@ -44,6 +44,7 @@ import {
   getSyncLogs,
   sendTestPingToWebhook,
   sendSampleTestDocument,
+  triggerAutoCleanOnSheet,
 } from '../services/googleSheetsWebhook';
 import { APPS_SCRIPT_CODE_GS, APPS_SCRIPT_INDEX_HTML } from '../services/googleAppsScriptFiles';
 import { WebhookSyncLog } from '../types';
@@ -67,6 +68,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
   // Test states
   const [isTestingPing, setIsTestingPing] = useState<boolean>(false);
   const [isSendingTestDoc, setIsSendingTestDoc] = useState<boolean>(false);
+  const [isTestingClean, setIsTestingClean] = useState<boolean>(false);
   const [testResult, setTestResult] = useState<{
     success: boolean;
     message: string;
@@ -76,6 +78,11 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
   const [sampleDocSent, setSampleDocSent] = useState<{
     success: boolean;
     docNumber: string;
+    message: string;
+    timestamp: string;
+  } | null>(null);
+  const [cleanResult, setCleanResult] = useState<{
+    success: boolean;
     message: string;
     timestamp: string;
   } | null>(null);
@@ -155,6 +162,18 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
       setSyncLogs(getSyncLogs());
     } finally {
       setIsSendingTestDoc(false);
+    }
+  };
+
+  const handleTestAutoClean = async () => {
+    setIsTestingClean(true);
+    setCleanResult(null);
+    try {
+      const res = await triggerAutoCleanOnSheet();
+      setCleanResult(res);
+      setSyncLogs(getSyncLogs());
+    } finally {
+      setIsTestingClean(false);
     }
   };
 
@@ -279,6 +298,54 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
           {activeTab === 'SCRIPT_FILES' && (
             <div className="space-y-4">
               
+              {/* Arsitektur Mutakhir: 3 Worksheet & 3 Folder Lifecycle */}
+              <div className="p-4 bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 rounded-2xl text-white space-y-3 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-xs text-sky-400">
+                    <Database className="w-4 h-4 text-emerald-400" />
+                    <span>STRUKTUR 3 WORKSHEET &amp; 3 FOLDER TERPISAH (AUTO-CLEAN 3 BULAN &amp; RETENSI 5 TAHUN)</span>
+                  </div>
+                  <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                    OTOMATIS APPS SCRIPT
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px]">
+                  <div className="p-2.5 bg-slate-900/90 rounded-xl border border-sky-500/30 space-y-1">
+                    <div className="font-bold text-sky-400 flex items-center gap-1.5">
+                      <Folder className="w-3.5 h-3.5" />
+                      <span>1. DOKUMEN_PROSES</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">Folder: 01_DOKUMEN_PROSES</div>
+                    <p className="text-slate-300 leading-tight">
+                      Berkas usulan awal &amp; verifikasi. <strong>Saat disahkan (APPROVED), baris otomatis terhapus dari proses ini</strong> dan berpindah ke sheet Sah.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-900/90 rounded-xl border border-emerald-500/30 space-y-1">
+                    <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>2. DOKUMEN_SAH (5 Tahun)</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">Folder: 02_DOKUMEN_SAH_FINAL_5_TAHUN</div>
+                    <p className="text-slate-300 leading-tight">
+                      Berkas resmi sah &amp; nomor BAV. <strong>Tersimpan aman selama 5 TAHUN</strong> lalu dibersihkan otomatis dari sistem.
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 bg-slate-900/90 rounded-xl border border-amber-500/30 space-y-1">
+                    <div className="font-bold text-amber-400 flex items-center gap-1.5">
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>3. SUMMARY_REVISI (3 Bulan)</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono">Folder: 03_DRAF_REVISI_SUMMARY_3_BULAN</div>
+                    <p className="text-slate-300 leading-tight">
+                      Catatan ringkasan &amp; draf perbaikan. <strong>OTOMATIS DIBERSIHKAN DALAM 3 BULAN (90 HARI)</strong> langsung di Apps Script.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Instruksi Singkat */}
               <div className="p-4 bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-200 rounded-2xl flex flex-wrap items-center justify-between gap-3">
                 <div className="space-y-1 max-w-xl">
@@ -527,7 +594,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 flex flex-col justify-between">
                   <div className="space-y-1">
                     <div className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -546,7 +613,7 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-98 text-white rounded-xl font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm shadow-blue-500/20"
                   >
                     <Play className={`w-3.5 h-3.5 ${isTestingPing ? 'animate-spin' : ''}`} />
-                    <span>{isTestingPing ? 'Menguji Koneksi...' : 'Uji Ping Webhook Sekarang'}</span>
+                    <span>{isTestingPing ? 'Menguji Koneksi...' : 'Uji Ping Webhook'}</span>
                   </button>
                 </div>
 
@@ -554,10 +621,10 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                   <div className="space-y-1">
                     <div className="font-bold text-emerald-950 flex items-center gap-1.5">
                       <FileCheck className="w-4 h-4 text-emerald-600" />
-                      <span>2. Kirim Dokumen Uji Coba</span>
+                      <span>2. Kirim Sampel Dokumen</span>
                     </div>
                     <p className="text-[11px] text-emerald-800">
-                      Kirim 1 baris sampel ke sheet DATA_VERIFIKASI_DOKUMEN untuk melihat baris baru muncul di Google Sheet.
+                      Kirim 1 baris sampel ke sheet DOKUMEN_PROSES untuk menguji penulisan data.
                     </p>
                   </div>
 
@@ -568,7 +635,29 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-xl font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm shadow-emerald-500/20"
                   >
                     <FileSpreadsheet className={`w-3.5 h-3.5 ${isSendingTestDoc ? 'animate-pulse' : ''}`} />
-                    <span>{isSendingTestDoc ? 'Mengirim Data...' : 'Kirim 1 Baris Sampel ke Sheet'}</span>
+                    <span>{isSendingTestDoc ? 'Mengirim...' : 'Kirim Sampel ke Sheet'}</span>
+                  </button>
+                </div>
+
+                <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3 flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <div className="font-bold text-amber-950 flex items-center gap-1.5">
+                      <RotateCcw className="w-4 h-4 text-amber-600" />
+                      <span>3. Uji Pembersihan (Auto-Clean)</span>
+                    </div>
+                    <p className="text-[11px] text-amber-900">
+                      Uji routine pembersihan data revisi &gt;3 bulan dan arsip sah &gt;5 tahun di Apps Script.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleTestAutoClean}
+                    disabled={isTestingClean}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 active:scale-98 text-white rounded-xl font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm shadow-amber-500/20"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${isTestingClean ? 'animate-spin' : ''}`} />
+                    <span>{isTestingClean ? 'Membersihkan...' : 'Jalankan Pembersihan'}</span>
                   </button>
                 </div>
               </div>
@@ -615,6 +704,23 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                       <span>Buka Google Sheet Sekarang</span>
                     </a>
                   </div>
+                </div>
+              )}
+
+              {cleanResult && (
+                <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-2xl space-y-2 text-xs text-amber-950 animate-in zoom-in-95 duration-200 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold flex items-center gap-1.5 text-amber-800">
+                      <CheckCircle2 className="w-4 h-4 text-amber-600" />
+                      <span>Pembersihan Otomatis Berhasil Dijalankan!</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-amber-700 font-bold bg-white px-2 py-0.5 rounded-full border border-amber-200">
+                      {cleanResult.timestamp}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
+                    {cleanResult.message}
+                  </p>
                 </div>
               )}
             </div>

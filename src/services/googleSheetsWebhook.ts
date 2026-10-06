@@ -993,6 +993,47 @@ export async function sendSampleTestDocument(
   }
 }
 
+export async function triggerAutoCleanOnSheet(): Promise<{
+  success: boolean;
+  message: string;
+  timestamp: string;
+}> {
+  const targetUrl = getGoogleSheetsWebhookUrl();
+  const timestamp = new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  });
+
+  const payload = {
+    action: 'TRIGGER_AUTO_CLEAN',
+    timestamp,
+  };
+
+  try {
+    await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+      mode: 'no-cors',
+    });
+
+    return {
+      success: true,
+      message: 'Perintah pembersihan otomatis berkas revisi >3 bulan & arsip sah >5 tahun berhasil dieksekusi di Apps Script!',
+      timestamp,
+    };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      message: `Gagal menjalankan pembersihan: ${err instanceof Error ? err.message : 'Koneksi bermasalah'}`,
+      timestamp,
+    };
+  }
+}
+
 export const GOOGLE_APPS_SCRIPT_TEMPLATE = G_TEMPLATE;
 export const GOOGLE_APPS_SCRIPT_CODE_GS = APPS_SCRIPT_CODE_GS;
 export const GOOGLE_APPS_SCRIPT_INDEX_HTML = APPS_SCRIPT_INDEX_HTML;
