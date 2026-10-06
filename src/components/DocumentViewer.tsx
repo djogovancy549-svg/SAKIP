@@ -67,7 +67,26 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
     document.googleDrive?.viewUrl || document.googleDrive?.downloadUrl || getGoogleDriveFolderUrl()
   );
 
-  // Robust Google Drive File ID resolution: avoids "dsadasd" or fake IDs
+  // Known Folder IDs that must never be treated as file IDs
+  const isDriveFolderId = (idStr?: string) => {
+    if (!idStr) return false;
+    const s = idStr.trim();
+    return (
+      s.includes('folders/') ||
+      s.includes('folder') ||
+      s === '1oeL5XXQlG2Z2KkF06tVqPZq_w8f2M-F7' ||
+      s.startsWith('1p8_bav_demo') ||
+      s === '1hC5x1mP2qL4vK7j8n9w0e1r2t3y4u5i' ||
+      s === '1jD6y2nP3rM5wL8k9o0x1f2s3u4v5w6x' ||
+      s === '1kE7z3oQ4sN6xM9l0p1y2g3t4v5w6x7y' ||
+      s === '1lF8a4pR5tO7yN0m1q2z3h4u5w6x7y8z' ||
+      s === '1mG9b5qS6uP8zO1n2r3a4i5v6x7y8z9a' ||
+      s === '1nH0c6rT7vQ9aP2o3s4b5j6w7y8z9a0b' ||
+      s === '1oI1d7sU8wR0bQ3p4t5c6k7x8z9a0b1c'
+    );
+  };
+
+  // Robust Google Drive File ID resolution: avoids folder IDs, "dsadasd", or fake IDs
   const getCleanDriveFileId = (): string => {
     const rawCandidates = [
       document.googleDrive?.fileId,
@@ -80,12 +99,21 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
     for (const cand of rawCandidates) {
       if (!cand || typeof cand !== 'string') continue;
       const str = cand.trim();
-      if (str === 'dsadasd' || str.startsWith('DRV-') || str.startsWith('DOC-')) continue;
+      if (str === 'dsadasd' || str.startsWith('DRV-') || str.startsWith('DOC-') || isDriveFolderId(str)) continue;
       const urlMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
-      if (urlMatch) return urlMatch[1];
+      if (urlMatch && !isDriveFolderId(urlMatch[1])) return urlMatch[1];
       const idMatch = str.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
-      if (idMatch) return idMatch[1];
-      if (str.length >= 25 && str.length <= 45 && !str.includes('/') && !str.includes(' ') && !str.includes('SHA256') && !str.includes('BAV') && !str.includes('REG')) {
+      if (idMatch && !isDriveFolderId(idMatch[1])) return idMatch[1];
+      if (
+        str.length >= 25 &&
+        str.length <= 45 &&
+        !str.includes('/') &&
+        !str.includes(' ') &&
+        !str.includes('SHA256') &&
+        !str.includes('BAV') &&
+        !str.includes('REG') &&
+        !isDriveFolderId(str)
+      ) {
         return str;
       }
     }
@@ -316,8 +344,8 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
         {/* TAB 1: PRATINJAU BERKAS ASLI (PDF / EMBED / GAMBAR) */}
         {activeTab === 'ORIGINAL_FILE' && (
           <div className="w-full max-w-5xl space-y-4">
-            {/* If there's an actual user file blob or base64 */}
-            {document.fileBlobUrl || document.fileBase64 ? (
+            {/* If there's an actual user file base64 or valid blob */}
+            {document.fileBase64 ? (
               <div className="bg-white border border-slate-300 rounded-2xl p-4 shadow-md space-y-3">
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200">
                   <div className="flex items-center gap-2">
@@ -337,7 +365,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
 
                 {document.format === 'PDF' && (
                   <iframe
-                    src={document.fileBlobUrl || `data:application/pdf;base64,${document.fileBase64}`}
+                    src={`data:application/pdf;base64,${document.fileBase64}`}
                     title={document.fileName}
                     className="w-full h-[620px] rounded-xl border border-slate-200 bg-slate-50 shadow-inner"
                   />
@@ -346,7 +374,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                 {document.format === 'IMAGE' && (
                   <div className="flex justify-center p-4 bg-slate-900 rounded-xl overflow-hidden">
                     <img
-                      src={document.fileBlobUrl || `data:image/png;base64,${document.fileBase64}`}
+                      src={`data:image/png;base64,${document.fileBase64}`}
                       alt={document.fileName}
                       className="max-h-[600px] object-contain rounded-lg shadow-lg"
                     />

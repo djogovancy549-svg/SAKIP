@@ -827,9 +827,17 @@ function adminGetDashboardData() {
       if (master) masterUrl = master.getUrl();
     } catch (me) {}
 
+    function isFolder(str) {
+      if (!str) return false;
+      var s = String(str).trim();
+      return s.indexOf("folders/") !== -1 || s.indexOf("folder") !== -1 || s === "1oeL5XXQlG2Z2KkF06tVqPZq_w8f2M-F7" || s.indexOf("1p8_bav_demo") === 0;
+    }
+
     function sanitizeDriveUrls(rawUrl, rawFileId, rowData) {
       var fileId = String(rawFileId || "").trim();
       var url = String(rawUrl || "").trim();
+
+      if (isFolder(fileId)) fileId = "";
 
       if (fileId.indexOf("/file/d/") !== -1) {
         var match = fileId.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -839,30 +847,26 @@ function adminGetDashboardData() {
         fileId = fileId.split("?")[0];
       }
 
-      if (!fileId || fileId.length < 15 || fileId === "dsadasd" || fileId.indexOf("DRV-") !== -1) {
+      if (!fileId || fileId.length < 15 || fileId === "dsadasd" || fileId.indexOf("DRV-") !== -1 || isFolder(fileId)) {
+        fileId = "";
         var haystack = (url + " " + (rowData ? rowData.join(" ") : "")).trim();
         var m1 = haystack.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
-        if (m1) {
+        if (m1 && !isFolder(m1[1])) {
           fileId = m1[1];
         } else {
           var m2 = haystack.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
-          if (m2) {
+          if (m2 && !isFolder(m2[1])) {
             fileId = m2[1];
-          } else {
-            var m3 = haystack.match(/\b([a-zA-Z0-9_-]{25,45})\b/);
-            if (m3 && m3[1].indexOf("SHA256") === -1 && m3[1].indexOf("DOC-") === -1 && m3[1].indexOf("BAV") === -1 && m3[1].indexOf("REG") === -1) {
-              fileId = m3[1];
-            }
           }
         }
       }
 
-      var cleanViewUrl = (fileId && fileId.length > 15) ? ("https://drive.google.com/file/d/" + fileId + "/view") : (url || masterUrl);
-      var downloadUrl = (fileId && fileId.length > 15) ? ("https://drive.google.com/uc?export=download&id=" + fileId) : cleanViewUrl;
-      var previewUrl = (fileId && fileId.length > 15) ? ("https://drive.google.com/file/d/" + fileId + "/preview") : cleanViewUrl;
+      var cleanViewUrl = (fileId && fileId.length > 15 && !isFolder(fileId)) ? ("https://drive.google.com/file/d/" + fileId + "/view") : (url || masterUrl);
+      var downloadUrl = (fileId && fileId.length > 15 && !isFolder(fileId)) ? ("https://drive.google.com/uc?export=download&id=" + fileId) : cleanViewUrl;
+      var previewUrl = (fileId && fileId.length > 15 && !isFolder(fileId)) ? ("https://drive.google.com/file/d/" + fileId + "/preview") : cleanViewUrl;
 
       return {
-        fileId: fileId || "",
+        fileId: isFolder(fileId) ? "" : fileId,
         viewUrl: cleanViewUrl,
         downloadUrl: downloadUrl,
         previewUrl: previewUrl

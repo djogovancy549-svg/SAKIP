@@ -171,24 +171,48 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
         let cleanViewUrl = d.googleDrive?.viewUrl || '';
         let cleanDownloadUrl = d.googleDrive?.downloadUrl || '';
 
+        // Known folder IDs and patterns that should NOT be treated as file IDs
+        const isFolderId = (idStr: string) => {
+          if (!idStr) return false;
+          const s = idStr.trim();
+          return (
+            s.includes('folders/') ||
+            s.includes('folder') ||
+            s === '1oeL5XXQlG2Z2KkF06tVqPZq_w8f2M-F7' ||
+            s.startsWith('1p8_bav_demo') ||
+            s === '1hC5x1mP2qL4vK7j8n9w0e1r2t3y4u5i' ||
+            s === '1jD6y2nP3rM5wL8k9o0x1f2s3u4v5w6x' ||
+            s === '1kE7z3oQ4sN6xM9l0p1y2g3t4v5w6x7y' ||
+            s === '1lF8a4pR5tO7yN0m1q2z3h4u5w6x7y8z' ||
+            s === '1mG9b5qS6uP8zO1n2r3a4i5v6x7y8z9a' ||
+            s === '1nH0c6rT7vQ9aP2o3s4b5j6w7y8z9a0b' ||
+            s === '1oI1d7sU8wR0bQ3p4t5c6k7x8z9a0b1c'
+          );
+        };
+
+        if (isFolderId(cleanFileId)) {
+          cleanFileId = '';
+        }
+
         // Check if fileId is invalid or a text word like "dsadasd"
         const isInvalidId = !cleanFileId || cleanFileId.length < 15 || cleanFileId === 'dsadasd' || cleanFileId.indexOf('DRV-') !== -1;
         if (isInvalidId) {
           const searchHaystack = `${cleanViewUrl} ${cleanDownloadUrl} ${d.bavNumber || ''} ${d.fileUrl || ''} ${d.downloadUrl || ''} ${d.notes || ''}`;
           const urlMatch = searchHaystack.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
-          if (urlMatch) {
+          if (urlMatch && !isFolderId(urlMatch[1])) {
             cleanFileId = urlMatch[1];
-          } else {
-            const rawIdMatch = searchHaystack.match(/\b([a-zA-Z0-9_-]{25,45})\b/);
-            if (rawIdMatch && !rawIdMatch[1].startsWith('SHA256') && !rawIdMatch[1].startsWith('DOC-')) {
-              cleanFileId = rawIdMatch[1];
-            }
           }
         }
 
-        if (cleanFileId && cleanFileId.length > 15) {
+        if (cleanFileId && cleanFileId.length > 15 && !isFolderId(cleanFileId)) {
           cleanViewUrl = `https://drive.google.com/file/d/${cleanFileId}/view`;
           cleanDownloadUrl = `https://drive.google.com/uc?export=download&id=${cleanFileId}`;
+        } else {
+          // It's a folder URL
+          cleanFileId = '';
+          if (!cleanViewUrl || cleanViewUrl.includes('/file/d/')) {
+            cleanViewUrl = `https://drive.google.com/drive/folders/${DEFAULT_GOOGLE_DRIVE_FOLDER_ID}`;
+          }
         }
 
         const resolvedDrive = {
