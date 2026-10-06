@@ -56,6 +56,13 @@ function getMasterFolder() {
       return DriveApp.getFolderById(MASTER_FOLDER_ID);
     }
   } catch (e) {}
+  try {
+    var foundMasters = DriveApp.getFoldersByName("DATABASE_SIMVERIF_SAKIP_NAGEKEO");
+    if (foundMasters.hasNext()) return foundMasters.next();
+    var createdMaster = DriveApp.createFolder("DATABASE_SIMVERIF_SAKIP_NAGEKEO");
+    try { createdMaster.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+    return createdMaster;
+  } catch (e2) {}
   return DriveApp.getRootFolder();
 }
 
@@ -63,17 +70,42 @@ function getMasterFolder() {
  * =========================================================================
  * FOLDER TUNGGAL PER OPD (1 DINAS = 1 FOLDER GOOGLE DRIVE)
  * Memastikan semua berkas (baru, revisi, maupun disahkan) milik satu dinas
- * masuk secara otomatis ke SATU folder Google Drive saja. Tidak membuat folder duplikat.
+ * masuk secara otomatis ke SATU folder Google Drive saja.
+ * Sangat ketat memeriksa pendaftaran agar TIDAK MEMBUAT FOLDER GANDA.
  * =========================================================================
  */
-function getSingleOpdFolder(opdName, opdId) {
-  var master = getMasterFolder();
+function getSingleOpdFolder(opdName, opdId, customFolderId, customFolderUrl) {
   var rawName = String(opdName || opdId || "UMUM_OPD").trim();
-  var cleanName = rawName.replace(/^SAKIP\s*[-_:]\s*/i, "").trim();
+  var cleanName = rawName.replace(/^SAKIP\s*[-_:]\s*/i, "").replace(/^Folder\s*/i, "").trim();
   if (!cleanName) cleanName = "UMUM_OPD";
   var folderDisplayName = "SAKIP - " + cleanName;
 
-  // 1. Cek folder yang sudah terdaftar di sheet MAPPING_FOLDER_OPD
+  function extractFolderId(candidate) {
+    if (!candidate || typeof candidate !== "string") return "";
+    var s = candidate.trim();
+    if (s.indexOf("folders/") !== -1) {
+      var m = s.match(/folders\/([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+    }
+    if (s.length >= 20 && s.length <= 50 && s.indexOf("http") === -1 && s.indexOf(" ") === -1 && s.indexOf("/") === -1) {
+      return s;
+    }
+    return "";
+  }
+
+  // 1. Cek parameter customFolderId / customFolderUrl yang dikirim dari aplikasi
+  var directId = extractFolderId(customFolderId) || extractFolderId(customFolderUrl);
+  if (directId) {
+    try {
+      var fDirect = DriveApp.getFolderById(directId);
+      if (fDirect) {
+        try { fDirect.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+        return fDirect;
+      }
+    } catch (e) {}
+  }
+
+  // 2. Cek sheet MAPPING_FOLDER_OPD & DATABASE_PENGGUNA
   try {
     var ss = getActiveSpreadsheetSafely();
     if (ss) {
@@ -87,26 +119,45 @@ function getSingleOpdFolder(opdName, opdId) {
           var targetName = cleanName.toLowerCase();
 
           if ((targetId && mId === targetId) || (targetName && (mName === targetName || mName.indexOf(targetName) !== -1 || targetName.indexOf(mName) !== -1))) {
-            var urlCol = String(mVals[m][3] || mVals[m][4] || "").trim();
-            var idCol = String(mVals[m][4] || "").trim();
-            var matchedFolderId = idCol;
-            if (!matchedFolderId && urlCol.indexOf("folders/") !== -1) {
-              var matchUrl = urlCol.match(/folders\/([a-zA-Z0-9_-]+)/);
-              if (matchUrl) matchedFolderId = matchUrl[1];
-            }
-            if (matchedFolderId && matchedFolderId.length > 15) {
+            var rowText = mVals[m].join(" ");
+            var fid = extractFolderId(rowText);
+            if (fid) {
               try {
-                var foundFolder = DriveApp.getFolderById(matchedFolderId);
-                if (foundFolder) return foundFolder;
-              } catch (eF) {}
+                var fMap = DriveApp.getFolderById(fid);
+                if (fMap) {
+                  try { fMap.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+                  return fMap;
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      }
+
+      var uSheet = ss.getSheetByName("DATABASE_PENGGUNA");
+      if (uSheet && uSheet.getLastRow() > 1) {
+        var uVals = uSheet.getDataRange().getValues();
+        for (var u = 1; u < uVals.length; u++) {
+          var uOpd = String(uVals[u][6] || "").trim().toLowerCase();
+          if (cleanName.toLowerCase() === uOpd || cleanName.toLowerCase().indexOf(uOpd) !== -1 || uOpd.indexOf(cleanName.toLowerCase()) !== -1) {
+            var uFid = extractFolderId(String(uVals[u][8] || ""));
+            if (uFid) {
+              try {
+                var fUser = DriveApp.getFolderById(uFid);
+                if (fUser) {
+                  try { fUser.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+                  return fUser;
+                }
+              } catch (e) {}
             }
           }
         }
       }
     }
-  } catch (errMap) {}
+  } catch (errDb) {}
 
-  // 2. Cek apakah folder dinas tersebut sudah ada di folder Master Google Drive
+  // 3. Cari di dalam folder Master Google Drive
+  var master = getMasterFolder();
   var exactFolders = master.getFoldersByName(folderDisplayName);
   if (exactFolders.hasNext()) return exactFolders.next();
 
@@ -115,21 +166,31 @@ function getSingleOpdFolder(opdName, opdId) {
 
   var allSubFolders = master.getFolders();
   while (allSubFolders.hasNext()) {
-    var fItem = allSubFolders.next();
-    var fName = fItem.getName().toLowerCase();
-    if (fName.indexOf(cleanName.toLowerCase()) !== -1 || (opdId && fName.indexOf(String(opdId).toLowerCase()) !== -1)) {
-      return fItem;
+    var subF = allSubFolders.next();
+    var subName = subF.getName().toLowerCase();
+    if (subName.indexOf(cleanName.toLowerCase()) !== -1 || (opdId && subName.indexOf(String(opdId).toLowerCase()) !== -1)) {
+      return subF;
     }
   }
 
-  // 3. Jika belum ada, buat 1 folder baru di Master & buka akses viewer link
+  // 4. Cari di seluruh Google Drive sebelum membuat folder baru
+  try {
+    var globalF = DriveApp.getFoldersByName(folderDisplayName);
+    if (globalF.hasNext()) return globalF.next();
+    var globalF2 = DriveApp.getFoldersByName("Folder " + cleanName);
+    if (globalF2.hasNext()) return globalF2.next();
+    var globalF3 = DriveApp.getFoldersByName(cleanName);
+    if (globalF3.hasNext()) return globalF3.next();
+  } catch (eG) {}
+
+  // 5. Hanya jika benar-benar belum ada folder sama sekali, buat 1 folder di master
   try {
     var newFolder = master.createFolder(folderDisplayName);
     try {
       newFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     } catch (eShare) {}
 
-    // Daftarkan ke MAPPING_FOLDER_OPD agar selamanya dipakai ulang
+    // Daftarkan ke MAPPING_FOLDER_OPD
     try {
       var ss2 = getActiveSpreadsheetSafely();
       if (ss2) {
@@ -220,12 +281,13 @@ function initDefaultDataIfEmpty(ss) {
 
 /**
  * Membersihkan sheet-sheet usang di luar struktur baru yang telah ditetapkan,
+ * menghapus baris duplikat di MAPPING_FOLDER_OPD,
  * dan memulihkan baris dokumen yang kolom ID file-nya rusak atau bergeser.
  */
 function cleanObsoleteLegacySheetsAndFix(ss) {
   if (!ss) return;
   try {
-    // 1. Hapus sheet lama yang tidak terpakai agar tidak memicu kebingungan pembacaan
+    // 1. Hapus sheet lama yang tidak terpakai
     var obsoleteNames = ["DATA_VERIFIKASI_DOKUMEN", "Sheet1", "Sheet 1", "DOKUMEN_SAKIP"];
     for (var l = 0; l < obsoleteNames.length; l++) {
       var ls = ss.getSheetByName(obsoleteNames[l]);
@@ -234,7 +296,24 @@ function cleanObsoleteLegacySheetsAndFix(ss) {
       }
     }
 
-    // 2. Perbaiki baris-baris pada DOKUMEN_PROSES & DOKUMEN_SAH_TERVERIFIKASI jika ada fileId bernilai "dsadasd" atau salah letak
+    // 2. Bersihkan duplikat pada MAPPING_FOLDER_OPD
+    var mapSheet = ss.getSheetByName("MAPPING_FOLDER_OPD");
+    if (mapSheet && mapSheet.getLastRow() > 1) {
+      var mVals = mapSheet.getDataRange().getValues();
+      var seenOpds = {};
+      for (var mr = mVals.length - 1; mr >= 1; mr--) {
+        var opdKey = (String(mVals[mr][1] || "") + "_" + String(mVals[mr][2] || "")).trim().toLowerCase();
+        if (opdKey && opdKey !== "_") {
+          if (seenOpds[opdKey]) {
+            mapSheet.deleteRow(mr + 1);
+          } else {
+            seenOpds[opdKey] = true;
+          }
+        }
+      }
+    }
+
+    // 3. Perbaiki baris-baris pada DOKUMEN_PROSES & DOKUMEN_SAH_TERVERIFIKASI jika ada fileId bernilai "dsadasd" atau salah letak
     var targetSheets = ["DOKUMEN_PROSES", "DOKUMEN_SAH_TERVERIFIKASI"];
     for (var t = 0; t < targetSheets.length; t++) {
       var cur = ss.getSheetByName(targetSheets[t]);
@@ -510,7 +589,7 @@ function doPost(e) {
 
     var isRevisionUpload = (data.action === "UPLOAD_REVISION" || data.action === "REVISE_DOCUMENT");
     // Gunakan folder tunggal OPD
-    var targetOpdFolder = getSingleOpdFolder(data.opdName, data.opdId);
+    var targetOpdFolder = getSingleOpdFolder(data.opdName, data.opdId, data.driveMasterFolderId || data.folderId, data.driveFolderUrl);
     var targetFolderName = targetOpdFolder.getName();
     var driveFileUrl = targetOpdFolder.getUrl();
     var driveFileId = "";

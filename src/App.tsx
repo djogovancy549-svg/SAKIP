@@ -473,8 +473,19 @@ export default function App() {
                     : prev.verification,
                 };
               }
+              return prev;
             }
-            return prev;
+            if (currentUser && currentUser.role !== 'VERIFIKATOR') {
+              const matching = data.documents.find(
+                (d) =>
+                  d.opdId === activeOpd.id ||
+                  (currentUser.opdId && d.opdId === currentUser.opdId) ||
+                  (currentUser.opdName && d.opdName?.toLowerCase() === currentUser.opdName.toLowerCase()) ||
+                  (currentUser.email && d.pemohon?.email?.toLowerCase() === currentUser.email.toLowerCase())
+              );
+              if (matching) return matching;
+            }
+            return data.documents.length > 0 ? data.documents[0] : null;
           });
         }
         if (Array.isArray(data.users)) {
