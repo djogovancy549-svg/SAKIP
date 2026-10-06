@@ -868,97 +868,165 @@ function adminGetDashboardData() {
     }
 
   var prosesDocs = [];
+  var sahDocs = [];
+  var summaryDocs = [];
+  var seenDocIds = {};
+
   if (prosesSheet && prosesSheet.getLastRow() > 1) {
     var pV = prosesSheet.getDataRange().getValues();
     for (var i = 1; i < pV.length; i++) {
-      var urls = sanitizeDriveUrls(pV[i][13], pV[i][14], pV[i]);
+      var rowP = pV[i];
+      if (!rowP[1] && !rowP[2] && !rowP[3]) continue;
+      var docId = String(rowP[1] || ("DOC-P-" + i));
+      seenDocIds[docId.toLowerCase()] = true;
+      var urls = sanitizeDriveUrls(rowP[13], rowP[14], rowP);
 
       prosesDocs.push({
-        tanggalMasuk: String(pV[i][0] || ""),
-        id: String(pV[i][1] || "DOC-P-" + i),
-        nomorBerkas: String(pV[i][2] || ""),
-        judul: String(pV[i][3] || ""),
-        opdName: String(pV[i][4] || ""),
-        opdId: String(pV[i][4] || ""),
-        currentVersion: Number(String(pV[i][5] || "1").replace("v", "")) || 1,
-        format: String(pV[i][6] || "PDF"),
-        pemohon: { nama: String(pV[i][7] || "Pemohon"), email: String(pV[i][8] || ""), instansi: String(pV[i][9] || "") },
-        status: String(pV[i][10] || "PENDING"),
-        verifierName: String(pV[i][11] || "-"),
-        verifierNip: String(pV[i][12] || "-"),
+        tanggalMasuk: String(rowP[0] || ""),
+        id: docId,
+        nomorBerkas: String(rowP[2] || "-"),
+        judul: String(rowP[3] || "Dokumen SAKIP"),
+        opdName: String(rowP[4] || "-"),
+        opdId: String(rowP[9] || rowP[4] || "OPD"),
+        currentVersion: Number(String(rowP[5] || "1").replace("v", "")) || 1,
+        format: String(rowP[6] || "PDF"),
+        pemohon: { nama: String(rowP[7] || "Pemohon"), email: String(rowP[8] || ""), instansi: String(rowP[9] || rowP[4] || "") },
+        status: String(rowP[10] || "PENDING"),
+        verifierName: String(rowP[11] || "-"),
+        verifierNip: String(rowP[12] || "-"),
         googleDrive: {
           viewUrl: urls.viewUrl,
           downloadUrl: urls.downloadUrl,
           previewUrl: urls.previewUrl,
           fileId: urls.fileId
         },
-        notes: String(pV[i][15] || ""),
+        notes: String(rowP[15] || ""),
         sourceSheet: "DOKUMEN_PROSES",
-        verification: { status: String(pV[i][10] || "PENDING"), verifiedBy: String(pV[i][11] || "Admin Verifikator"), nip: String(pV[i][12] || "-"), notes: String(pV[i][15] || "") }
+        verification: { status: String(rowP[10] || "PENDING"), verifiedBy: String(rowP[11] || "Admin Verifikator"), nip: String(rowP[12] || "-"), notes: String(rowP[15] || "") }
       });
     }
   }
 
-  var sahDocs = [];
   if (sahSheet && sahSheet.getLastRow() > 1) {
     var sV = sahSheet.getDataRange().getValues();
     for (var j = 1; j < sV.length; j++) {
-      var sUrls = sanitizeDriveUrls(sV[j][13], sV[j][14], sV[j]);
+      var rowS = sV[j];
+      if (!rowS[1] && !rowS[2] && !rowS[3]) continue;
+      var sDocId = String(rowS[1] || ("DOC-S-" + j));
+      seenDocIds[sDocId.toLowerCase()] = true;
+      var sUrls = sanitizeDriveUrls(rowS[13], rowS[14], rowS);
 
       sahDocs.push({
-        tanggalMasuk: String(sV[j][0] || ""),
-        id: String(sV[j][1] || "DOC-S-" + j),
-        nomorBerkas: String(sV[j][2] || ""),
-        judul: String(sV[j][3] || ""),
-        opdName: String(sV[j][4] || ""),
-        opdId: String(sV[j][4] || ""),
-        currentVersion: Number(String(sV[j][5] || "1").replace("v", "")) || 1,
-        format: String(sV[j][6] || "PDF"),
-        pemohon: { nama: String(sV[j][7] || "Pemohon"), email: String(sV[j][8] || ""), instansi: String(sV[j][4] || "") },
+        tanggalMasuk: String(rowS[0] || ""),
+        id: sDocId,
+        nomorBerkas: String(rowS[2] || "-"),
+        judul: String(rowS[3] || "Dokumen SAKIP"),
+        opdName: String(rowS[4] || "-"),
+        opdId: String(rowS[4] || ""),
+        currentVersion: Number(String(rowS[5] || "1").replace("v", "")) || 1,
+        format: String(rowS[6] || "PDF"),
+        pemohon: { nama: String(rowS[7] || "Pemohon"), email: String(rowS[8] || ""), instansi: String(rowS[4] || "") },
         status: "APPROVED",
-        verifierName: String(sV[j][10] || "Admin Verifikator SAKIP"),
-        verifierNip: String(sV[j][11] || "-"),
-        bavNumber: String(sV[j][12] || ""),
+        verifierName: String(rowS[10] || "Admin Verifikator SAKIP"),
+        verifierNip: String(rowS[11] || "-"),
+        bavNumber: String(rowS[12] || ""),
         googleDrive: {
           viewUrl: sUrls.viewUrl,
           downloadUrl: sUrls.downloadUrl,
           previewUrl: sUrls.previewUrl,
           fileId: sUrls.fileId
         },
-        notes: String(sV[j][15] || ""),
-        digitalSealHash: String(sV[j][16] || ""),
-        retentionExpiry: String(sV[j][17] || "5 Tahun"),
+        notes: String(rowS[15] || ""),
+        digitalSealHash: String(rowS[16] || ""),
+        retentionExpiry: String(rowS[17] || "5 Tahun"),
         sourceSheet: "DOKUMEN_SAH_TERVERIFIKASI",
         isLocked: true,
-        verification: { status: "APPROVED", verifiedBy: String(sV[j][10] || "Admin Verifikator SAKIP"), nip: String(sV[j][11] || "-"), bavNumber: String(sV[j][12] || ""), notes: String(sV[j][15] || ""), digitalSealHash: String(sV[j][16] || "") }
+        verification: { status: "APPROVED", verifiedBy: String(rowS[10] || "Admin Verifikator SAKIP"), nip: String(rowS[11] || "-"), bavNumber: String(rowS[12] || ""), notes: String(rowS[15] || ""), digitalSealHash: String(rowS[16] || "") }
       });
     }
   }
 
-  var summaryDocs = [];
   if (summarySheet && summarySheet.getLastRow() > 1) {
     var smV = summarySheet.getDataRange().getValues();
     for (var k = 1; k < smV.length; k++) {
-      var smUrls = sanitizeDriveUrls(smV[k][10], smV[k][11], smV[k]);
+      var rowSm = smV[k];
+      if (!rowSm[1] && !rowSm[2] && !rowSm[3]) continue;
+      var smUrls = sanitizeDriveUrls(rowSm[10], rowSm[11], rowSm);
 
       summaryDocs.push({
-        tanggalMasuk: String(smV[k][0] || ""),
-        id: String(smV[k][1] || "REV-" + k),
-        nomorBerkas: String(smV[k][2] || ""),
-        judul: String(smV[k][3] || ""),
-        opdName: String(smV[k][4] || ""),
-        versionNumber: Number(String(smV[k][5] || "1").replace("v", "")) || 1,
-        jenisCatatan: String(smV[k][6] || "REVISI"),
-        summaryPetunjuk: String(smV[k][7] || ""),
-        detailEvaluasi: String(smV[k][8] || ""),
-        petugas: String(smV[k][9] || ""),
+        tanggalMasuk: String(rowSm[0] || ""),
+        id: String(rowSm[1] || "REV-" + k),
+        nomorBerkas: String(rowSm[2] || "-"),
+        judul: String(rowSm[3] || "-"),
+        opdName: String(rowSm[4] || "-"),
+        versionNumber: Number(String(rowSm[5] || "1").replace("v", "")) || 1,
+        jenisCatatan: String(rowSm[6] || "REVISI"),
+        summaryPetunjuk: String(rowSm[7] || ""),
+        detailEvaluasi: String(rowSm[8] || ""),
+        petugas: String(rowSm[9] || ""),
         fileUrl: smUrls.viewUrl,
         downloadUrl: smUrls.downloadUrl,
         previewUrl: smUrls.previewUrl,
         fileId: smUrls.fileId,
-        batasSimpan3Bln: String(smV[k][12] || "90 Hari"),
-        statusBersih: String(smV[k][14] || "AKTIF_3_BULAN")
+        batasSimpan3Bln: String(rowSm[12] || "90 Hari"),
+        statusBersih: String(rowSm[14] || "AKTIF_3_BULAN")
       });
+    }
+  }
+
+  // Auto-scan seluruh sheet lainnya jika ada data lama
+  var allSheets = ss.getSheets();
+  for (var shIdx = 0; shIdx < allSheets.length; shIdx++) {
+    var curSh = allSheets[shIdx];
+    var sName = curSh.getName();
+    if (sName === "DOKUMEN_PROSES" || sName === "DOKUMEN_SAH_TERVERIFIKASI" || sName === "SUMMARY_RIWAYAT_REVISI" || sName === "DATABASE_PENGGUNA" || sName === "MAPPING_FOLDER_OPD") {
+      continue;
+    }
+    if (curSh.getLastRow() > 1) {
+      var legacyVals = curSh.getDataRange().getValues();
+      for (var lr = 1; lr < legacyVals.length; lr++) {
+        var lRow = legacyVals[lr];
+        var lId = String(lRow[1] || lRow[0] || ("LEG-" + lr)).trim();
+        var lTitle = String(lRow[3] || lRow[2] || lRow[1] || "").trim();
+        var lOpd = String(lRow[4] || lRow[3] || lRow[2] || "").trim();
+        if (!lTitle && !lOpd) continue;
+        if (seenDocIds[lId.toLowerCase()]) continue;
+
+        seenDocIds[lId.toLowerCase()] = true;
+        var lStatus = String(lRow[10] || lRow[9] || lRow[8] || "PENDING").trim().toUpperCase();
+        var lUrls = sanitizeDriveUrls(lRow[13] || lRow[12] || lRow[10], lRow[14] || lRow[13] || lRow[11], lRow);
+
+        var legacyDocItem = {
+          tanggalMasuk: String(lRow[0] || ""),
+          id: lId,
+          nomorBerkas: String(lRow[2] || lRow[1] || "-"),
+          judul: lTitle || "Dokumen SAKIP",
+          opdName: lOpd || "OPD",
+          opdId: lOpd || "OPD",
+          currentVersion: Number(String(lRow[5] || "1").replace("v", "")) || 1,
+          format: String(lRow[6] || "PDF"),
+          pemohon: { nama: String(lRow[7] || "Pemohon"), email: String(lRow[8] || ""), instansi: lOpd || "" },
+          status: lStatus.indexOf("APPROV") !== -1 || lStatus.indexOf("SAH") !== -1 ? "APPROVED" : (lStatus.indexOf("REV") !== -1 ? "REVISION" : "PENDING"),
+          verifierName: String(lRow[11] || "-"),
+          verifierNip: String(lRow[12] || "-"),
+          bavNumber: String(lRow[12] || ""),
+          googleDrive: {
+            viewUrl: lUrls.viewUrl,
+            downloadUrl: lUrls.downloadUrl,
+            previewUrl: lUrls.previewUrl,
+            fileId: lUrls.fileId
+          },
+          notes: String(lRow[15] || lRow[14] || ""),
+          sourceSheet: sName,
+          verification: { status: lStatus, verifiedBy: String(lRow[11] || "Admin Verifikator"), nip: String(lRow[12] || "-"), notes: String(lRow[15] || "") }
+        };
+
+        if (legacyDocItem.status === "APPROVED") {
+          sahDocs.push(legacyDocItem);
+        } else {
+          prosesDocs.push(legacyDocItem);
+        }
+      }
     }
   }
 
@@ -968,17 +1036,19 @@ function adminGetDashboardData() {
   if (userSheet && userSheet.getLastRow() > 1) {
     var uV = userSheet.getDataRange().getValues();
     for (var u = 1; u < uV.length; u++) {
+      var uRow = uV[u];
+      if (!uRow[1] && !uRow[2]) continue;
       users.push({
-        id: String(uV[u][1] || "USR-" + u),
-        username: String(uV[u][2] || ""),
-        email: String(uV[u][3] || ""),
-        nama: String(uV[u][4] || ""),
-        role: String(uV[u][5] || "DINAS_PEMOHON"),
-        opdName: String(uV[u][6] || ""),
-        nip: String(uV[u][7] || ""),
-        driveFolderUrl: String(uV[u][8] || ""),
-        password: String(uV[u][9] || "123456"),
-        status: String(uV[u][10] || "AKTIF")
+        id: String(uRow[1] || "USR-" + u),
+        username: String(uRow[2] || ""),
+        email: String(uRow[3] || ""),
+        nama: String(uRow[4] || ""),
+        role: String(uRow[5] || "DINAS_PEMOHON"),
+        opdName: String(uRow[6] || ""),
+        nip: String(uRow[7] || ""),
+        driveFolderUrl: String(uRow[8] || ""),
+        password: String(uRow[9] || "123456"),
+        status: String(uRow[10] || "AKTIF")
       });
     }
   }
@@ -987,15 +1057,18 @@ function adminGetDashboardData() {
   if (folderSheet && folderSheet.getLastRow() > 1) {
     var fV = folderSheet.getDataRange().getValues();
     for (var f = 1; f < fV.length; f++) {
+      var fRow = fV[f];
+      if (!fRow[1] && !fRow[2]) continue;
       folders.push({
-        registeredAt: String(fV[f][0] || ""),
-        opdId: String(fV[f][1] || ""),
-        opdName: String(fV[f][2] || ""),
-        driveFolderUrl: String(fV[f][3] || ""),
-        driveFolderId: String(fV[f][4] || ""),
-        registeredBy: String(fV[f][6] || ""),
-        nip: String(fV[f][7] || ""),
-        notes: String(fV[f][8] || "")
+        registeredAt: String(fRow[0] || ""),
+        opdId: String(fRow[1] || ""),
+        opdName: String(fRow[2] || ""),
+        driveFolderUrl: String(fRow[3] || ""),
+        driveFolderId: String(fRow[4] || ""),
+        driveFolderName: String(fRow[5] || ""),
+        registeredBy: String(fRow[6] || ""),
+        nip: String(fRow[7] || ""),
+        notes: String(fRow[8] || "")
       });
     }
   }
@@ -1018,6 +1091,7 @@ function adminGetDashboardData() {
     }
   };
   } catch (err) {
+    console.error("adminGetDashboardData error:", err);
     return {
       status: "error",
       message: err.toString(),
