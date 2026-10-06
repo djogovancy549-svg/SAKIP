@@ -163,10 +163,17 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
         const sealHash = d.digitalSealHash || (isApproved ? `SHA256-${docId}-${Date.now().toString().slice(-4)}` : '');
         const verifierName = d.verifierName || 'Admin Verifikator SAKIP';
         const verifierNip = d.verifierNip || '19850101 201001 1 002';
-        const rawNotes = d.notes || d.verification?.notes || d.detailEvaluasi || '';
+
+        const matchingSummary = (data.summaryDocs || []).find((sm: any) =>
+          (sm.id && sm.id.toLowerCase() === docId.toLowerCase()) ||
+          (sm.nomorBerkas && d.nomorBerkas && sm.nomorBerkas.trim().toLowerCase() === d.nomorBerkas.trim().toLowerCase())
+        );
+        const summaryNotes = matchingSummary?.detailEvaluasi || matchingSummary?.summaryPetunjuk || '';
+
+        const rawNotes = d.notes || d.verification?.notes || summaryNotes || '';
         const noteContent = (rawNotes && rawNotes.trim() !== '' && rawNotes.trim() !== '-')
           ? rawNotes
-          : (isApproved ? 'Seluruh instrumen kelengkapan berkas dan syarat teknis telah dipenuhi dan dinyatakan sah.' : 'Dokumen diajukan untuk verifikasi.');
+          : (isApproved ? 'Seluruh instrumen kelengkapan berkas dan syarat teknis telah dipenuhi dan dinyatakan sah.' : (currentStatus === 'REVISION' ? 'Harap lakukan perbaikan sesuai catatan verifikator.' : 'Dokumen diajukan untuk verifikasi.'));
 
         // Robust Google Drive File ID & URL resolution:
         // Scans drive properties & raw text to ensure shifted columns never cause missing/broken file links
