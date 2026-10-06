@@ -508,7 +508,7 @@ export async function sendUploadToGoogleDriveAndSheet(
     });
 
     isSuccess = true;
-    responseText = `Berkas disimpan di Google Drive / Folder [${doc.opdName}] & dicatat di sheet DATA_VERIFIKASI_DOKUMEN.`;
+    responseText = `Berkas disimpan di Google Drive / Folder [${doc.opdName}] & dicatat di worksheet DOKUMEN_PROSES.`;
   } catch (err: unknown) {
     responseText = `Penyimpanan gagal: ${err instanceof Error ? err.message : 'Koneksi bermasalah'}`;
   }
@@ -600,7 +600,7 @@ export async function sendVerificationToGoogleSheet(
     });
 
     isSuccess = true;
-    responseText = `Status verifikasi [${effectiveStatus}] dicatat di sheet DATA_VERIFIKASI_DOKUMEN.`;
+    responseText = `Status verifikasi [${effectiveStatus}] dicatat di sheet ${effectiveStatus === 'APPROVED' ? 'DOKUMEN_SAH_TERVERIFIKASI' : 'DOKUMEN_PROSES'} & SUMMARY_RIWAYAT_REVISI.`;
   } catch (err: unknown) {
     responseText = `Pencatatan gagal: ${err instanceof Error ? err.message : 'Koneksi bermasalah'}`;
   }

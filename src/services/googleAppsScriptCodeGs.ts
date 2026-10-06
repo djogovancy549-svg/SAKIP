@@ -20,6 +20,7 @@ export const APPS_SCRIPT_CODE_GS = `/**
  * =========================================================================
  * GOOGLE APPS SCRIPT: Code.gs (Backend 3-Worksheet & 3-Folder Lifecycle Engine)
  * SAKIP NAGEKEO - PEMBERSIHAN OTOMATIS 3 BULAN (REVISI) & 5 TAHUN (SAH)
+ * DILENGKAPI FITUR AUTO-MIGRASI DATA YANG SUDAH ADA DI SHEET LAMA
  * =========================================================================
  */
 
@@ -156,6 +157,128 @@ function initDefaultDataIfEmpty(ss) {
     ]);
     folderSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#134e4a").setFontColor("#2dd4bf");
   }
+
+  // Lakukan migrasi data dari sheet lama (seperti DATA_VERIFIKASI_DOKUMEN atau Sheet1) agar tidak hilang
+  migrateLegacyData(ss);
+}
+
+/**
+ * =========================================================================
+ * AUTO-MIGRASI DATA LAMA (Mencegah Berkas Hilang Saat Ganti Struktur Sheet)
+ * Mengimpor berkas dari DATA_VERIFIKASI_DOKUMEN, Sheet1, dsb. ke DOKUMEN_PROSES / DOKUMEN_SAH
+ * =========================================================================
+ */
+function migrateLegacyData(ss) {
+  try {
+    var prosesSheet = getOrCreateSheet(ss, "DOKUMEN_PROSES");
+    var sahSheet = getOrCreateSheet(ss, "DOKUMEN_SAH_TERVERIFIKASI");
+    var summarySheet = getOrCreateSheet(ss, "SUMMARY_RIWAYAT_REVISI");
+
+    var existingMap = {};
+
+    // Kumpulkan dokumen yang sudah tercatat di DOKUMEN_PROSES
+    if (prosesSheet.getLastRow() > 1) {
+      var pData = prosesSheet.getDataRange().getValues();
+      for (var p = 1; p < pData.length; p++) {
+        var idStr = String(pData[p][1] || "").trim().toLowerCase();
+        var noStr = String(pData[p][2] || "").trim().toLowerCase();
+        if (idStr) existingMap[idStr] = true;
+        if (noStr) existingMap[noStr] = true;
+      }
+    }
+
+    // Kumpulkan dokumen yang sudah tercatat di DOKUMEN_SAH_TERVERIFIKASI
+    if (sahSheet.getLastRow() > 1) {
+      var sData = sahSheet.getDataRange().getValues();
+      for (var s = 1; s < sData.length; s++) {
+        var sIdStr = String(sData[s][1] || "").trim().toLowerCase();
+        var sNoStr = String(sData[s][2] || "").trim().toLowerCase();
+        if (sIdStr) existingMap[sIdStr] = true;
+        if (sNoStr) existingMap[sNoStr] = true;
+      }
+    }
+
+    // Periksa seluruh sheet legacy
+    var allSheets = ss.getSheets();
+    var reserved = [
+      "DOKUMEN_PROSES", "DOKUMEN_SAH_TERVERIFIKASI", "SUMMARY_RIWAYAT_REVISI",
+      "DATABASE_PENGGUNA", "MAPPING_FOLDER_OPD"
+    ];
+
+    for (var i = 0; i < allSheets.length; i++) {
+      var curSheet = allSheets[i];
+      var name = curSheet.getName();
+      if (reserved.indexOf(name) !== -1) continue;
+
+      if (curSheet.getLastRow() > 1) {
+        var rows = curSheet.getDataRange().getValues();
+        for (var r = 1; r < rows.length; r++) {
+          var row = rows[r];
+          var tanggal = String(row[0] || new Date().toLocaleString("id-ID"));
+          var docId = String(row[1] || ("DOC-" + r)).trim();
+          var docNo = String(row[2] || "-").trim();
+          var judul = String(row[3] || "Dokumen SAKIP");
+          var opd = String(row[4] || "OPD");
+          var versi = String(row[5] || "v1");
+          var format = String(row[6] || "PDF");
+          var pemohonNama = String(row[7] || "Pemohon");
+          var pemohonEmail = String(row[8] || "-");
+          var instansi = String(row[9] || opd);
+          var status = String(row[10] || "PENDING").trim().toUpperCase();
+          var verifier = String(row[11] || "-");
+          var nip = String(row[12] || "-");
+          var fileUrl = String(row[13] || row[14] || "");
+          var fileId = String(row[14] || row[15] || "");
+          var notes = String(row[15] || row[16] || "Dokumen migrasi");
+
+          var checkId = docId.toLowerCase();
+          var checkNo = docNo.toLowerCase();
+
+          // Jika sudah ada, lewati
+          if (existingMap[checkId] || existingMap[checkNo]) {
+            continue;
+          }
+
+          if (status === "APPROVED" || status === "DISETUJUI" || status === "SAH") {
+            var exp5 = new Date();
+            exp5.setFullYear(exp5.getFullYear() + 5);
+            var exp5Str = exp5.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+            sahSheet.appendRow([
+              tanggal, docId, docNo, judul, opd, versi, format,
+              pemohonNama, pemohonEmail, "APPROVED", verifier, nip,
+              "BAV/SAKIP/" + (docNo || "001"), fileUrl, fileId, notes,
+              "SHA256-MIGRATED-" + docId, exp5Str, RETENTION_APPROVED_DAYS
+            ]);
+            existingMap[checkId] = true;
+            existingMap[checkNo] = true;
+          } else {
+            // Berkas belum sah -> masukkan ke DOKUMEN_PROSES
+            var cleanSt = (status === "REVISION" || status === "REVISI") ? "REVISION" : (status === "REJECTED" ? "REJECTED" : "PENDING");
+            prosesSheet.appendRow([
+              tanggal, docId, docNo, judul, opd, versi, format,
+              pemohonNama, pemohonEmail, instansi, cleanSt, verifier, nip,
+              fileUrl, fileId, notes, "01_DOKUMEN_PROSES"
+            ]);
+            existingMap[checkId] = true;
+            existingMap[checkNo] = true;
+
+            if (cleanSt === "REVISION") {
+              var exp3 = new Date();
+              exp3.setDate(exp3.getDate() + 90);
+              var exp3Str = exp3.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+              summarySheet.appendRow([
+                tanggal, docId, docNo, judul, opd, versi, "CATATAN_PERBAIKAN",
+                notes.slice(0, 80), notes, verifier, fileUrl, fileId,
+                exp3Str, RETENTION_REVISION_DAYS, "AKTIF_3_BULAN"
+              ]);
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Migration note:", err);
+  }
 }
 
 /**
@@ -179,7 +302,6 @@ function autoCleanExpiredData() {
   // 1. Bersihkan SUMMARY_RIWAYAT_REVISI > 90 Hari (3 Bulan)
   if (summarySheet && summarySheet.getLastRow() > 1) {
     var sVals = summarySheet.getDataRange().getValues();
-    // Loop mundur dari bawah ke atas agar indeks baris tetap valid saat deleteRow
     for (var r = sVals.length - 1; r >= 1; r--) {
       var dateStr = String(sVals[r][0] || "");
       var fileId = String(sVals[r][11] || "");
@@ -187,7 +309,6 @@ function autoCleanExpiredData() {
       if (!isNaN(rowTime)) {
         var ageDays = (now - rowTime) / (1000 * 60 * 60 * 24);
         if (ageDays >= RETENTION_REVISION_DAYS) {
-          // Hapus file fisik draf lama dari Google Drive jika ada
           if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1) {
             try {
               DriveApp.getFileById(fileId).setTrashed(true);
@@ -335,178 +456,24 @@ function doPost(e) {
       )).setMimeType(ContentService.MimeType.JSON);
     }
 
+    // AKSI: KEPUTUSAN VERIFIKASI (APPROVE -> PINDAH KE SAH & HAPUS DARI PROSES)
+    if (data.action === "VERIFY_DOCUMENT" || data.action === "UPDATE_STATUS") {
+      return ContentService.createTextOutput(JSON.stringify(adminProcessVerification(data)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     var prosesSheet = ss.getSheetByName("DOKUMEN_PROSES");
-    var sahSheet = ss.getSheetByName("DOKUMEN_SAH_TERVERIFIKASI");
     var summarySheet = ss.getSheetByName("SUMMARY_RIWAYAT_REVISI");
     var nowStr = data.timestamp || new Date().toLocaleString("id-ID");
 
-    // =========================================================================
-    // AKSI: KEPUTUSAN VERIFIKASI (APPROVE -> PINDAH KE SAH & HAPUS DARI PROSES)
-    // =========================================================================
-    if (data.action === "VERIFY_DOCUMENT") {
-      var docId = String(data.docId || "").trim();
-      var docNumber = String(data.docNumber || "").trim();
-      var status = data.status || "APPROVED";
-      var verifier = data.verifierName || "Admin Verifikator SAKIP";
-      var nip = data.verifierNip || "19850101 201001 1 002";
-      var bav = data.bavNumber || ("BAV/SAKIP/" + docNumber);
-      var notes = data.notes || "Verifikasi selesai";
-      var sealHash = data.digitalSealHash || ("SHA256-" + Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyyMMddHHmmss") + "-" + docId);
-
-      // Cari baris di DOKUMEN_PROSES
-      var pVals = prosesSheet.getDataRange().getValues();
-      var foundPRow = -1;
-      var existingRowData = null;
-
-      for (var p = 1; p < pVals.length; p++) {
-        var rowId = String(pVals[p][1] || "").trim().toLowerCase();
-        var rowNo = String(pVals[p][2] || "").trim().toLowerCase();
-        if ((docId && rowId === docId.toLowerCase()) || (docNumber && (rowNo === docNumber.toLowerCase() || rowNo.indexOf(docNumber.toLowerCase()) !== -1))) {
-          foundPRow = p + 1;
-          existingRowData = pVals[p];
-          break;
-        }
-      }
-
-      var fileUrl = data.downloadUrl || (existingRowData ? String(existingRowData[13] || "") : "");
-      var fileId = (existingRowData ? String(existingRowData[14] || "") : "");
-      var opd = data.opdName || (existingRowData ? String(existingRowData[4] || "") : "OPD");
-      var title = data.title || (existingRowData ? String(existingRowData[3] || "") : "Dokumen SAKIP");
-      var format = data.format || (existingRowData ? String(existingRowData[6] || "") : "PDF");
-      var pemohonName = data.pemohonName || (existingRowData ? String(existingRowData[7] || "") : "Pemohon");
-      var pemohonEmail = data.email || data.pemohonEmail || (existingRowData ? String(existingRowData[8] || "") : "-");
-      var version = data.versionNumber || (existingRowData ? Number(String(existingRowData[5] || "1").replace("v", "")) : 1);
-
-      if (status === "APPROVED") {
-        // 1. PINDAHKAN FILE FISIK KE FOLDER DOKUMEN SAH (02_DOKUMEN_SAH_FINAL_5_TAHUN)
-        var sahFolder = getOpdTargetFolder("02_DOKUMEN_SAH_FINAL_5_TAHUN", opd);
-        if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1) {
-          try {
-            var driveFile = DriveApp.getFileById(fileId);
-            driveFile.moveTo(sahFolder);
-            fileUrl = driveFile.getUrl();
-          } catch (mErr) {
-            fileUrl = sahFolder.getUrl();
-          }
-        } else if (!fileUrl || fileUrl.indexOf("DRV-") !== -1) {
-          fileUrl = sahFolder.getUrl();
-        }
-
-        // 2. HITUNG TANGGAL KEDALUWARSA RETENSI 5 TAHUN
-        var expiry5Y = new Date();
-        expiry5Y.setFullYear(expiry5Y.getFullYear() + 5);
-        var expiry5YStr = expiry5Y.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-
-        // 3. MASUKKAN KE SHEET DOKUMEN_SAH_TERVERIFIKASI
-        sahSheet.appendRow([
-          nowStr,
-          docId,
-          docNumber,
-          title,
-          opd,
-          "v" + version,
-          format,
-          pemohonName,
-          pemohonEmail,
-          "APPROVED",
-          verifier,
-          nip,
-          bav,
-          fileUrl,
-          fileId,
-          notes,
-          sealHash,
-          expiry5YStr,
-          RETENTION_APPROVED_DAYS
-        ]);
-
-        // 4. CATAT RINGKASAN KE SHEET SUMMARY_RIWAYAT_REVISI
-        summarySheet.appendRow([
-          nowStr,
-          docId,
-          docNumber,
-          title,
-          opd,
-          "v" + version,
-          "PENGESAHAN_FINAL",
-          "Dokumen Disahkan & Terbit BAV Resmi",
-          notes,
-          verifier,
-          fileUrl,
-          fileId,
-          "Disimpan Sah 5 Tahun",
-          "-",
-          "SAH_FINAL"
-        ]);
-
-        // 5. HAPUS BARIS DARI SHEET DOKUMEN_PROSES KARENA SUDAH SELESAI
-        if (foundPRow > 0) {
-          prosesSheet.deleteRow(foundPRow);
-        }
-
-        return ContentService.createTextOutput(JSON.stringify({
-          status: "success",
-          message: "Dokumen berhasil DISAHKAN! Data dipindahkan ke DOKUMEN_SAH_TERVERIFIKASI (retensi 5 tahun) dan otomatis terhapus dari DOKUMEN_PROSES.",
-          docId: docId,
-          docNumber: docNumber,
-          bavNumber: bav
-        })).setMimeType(ContentService.MimeType.JSON);
-
-      } else {
-        // STATUS: REVISION / REJECTED -> PERBARUI DI DOKUMEN_PROSES & CATAT SUMMARY REVISI (3 BULAN)
-        if (foundPRow > 0) {
-          prosesSheet.getRange(foundPRow, 11).setValue(status);
-          prosesSheet.getRange(foundPRow, 12).setValue(verifier);
-          prosesSheet.getRange(foundPRow, 13).setValue(nip);
-          prosesSheet.getRange(foundPRow, 16).setValue(notes);
-        } else {
-          prosesSheet.appendRow([
-            nowStr, docId, docNumber, title, opd, "v" + version, format,
-            pemohonName, pemohonEmail, opd, status, verifier, nip, fileUrl, fileId, notes, "01_DOKUMEN_PROSES"
-          ]);
-        }
-
-        // Catat ke SUMMARY_RIWAYAT_REVISI dengan batas 3 bulan (90 hari)
-        var expiry3M = new Date();
-        expiry3M.setDate(expiry3M.getDate() + 90);
-        var expiry3MStr = expiry3M.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-
-        summarySheet.appendRow([
-          nowStr,
-          docId,
-          docNumber,
-          title,
-          opd,
-          "v" + version,
-          status === "REVISION" ? "CATATAN_PERBAIKAN" : "PENOLAKAN",
-          notes.slice(0, 80),
-          notes,
-          verifier,
-          fileUrl,
-          fileId,
-          expiry3MStr,
-          RETENTION_REVISION_DAYS,
-          "AKTIF_3_BULAN"
-        ]);
-
-        return ContentService.createTextOutput(JSON.stringify({
-          status: "success",
-          message: "Status " + status + " dicatat di DOKUMEN_PROSES dan ringkasan perbaikan dicatat di SUMMARY_RIWAYAT_REVISI (aktif 3 bulan).",
-          docId: docId
-        })).setMimeType(ContentService.MimeType.JSON);
-      }
-    }
-
-    // =========================================================================
     // AKSI: UNGGAH DOKUMEN BARU / DRAF REVISI
-    // =========================================================================
-    var isRevisionUpload = (data.action === "UPLOAD_REVISION");
+    var isRevisionUpload = (data.action === "UPLOAD_REVISION" || data.action === "REVISE_DOCUMENT");
     var targetFolderName = isRevisionUpload ? "03_DRAF_REVISI_SUMMARY_3_BULAN" : "01_DOKUMEN_PROSES";
     var targetOpdFolder = getOpdTargetFolder(targetFolderName, data.opdName);
     var driveFileUrl = targetOpdFolder.getUrl();
     var driveFileId = "";
 
-    // Simpan file fisik ke subfolder terkait
+    // Simpan file fisik ke Google Drive subfolder
     if (data.fileBase64 && data.fileBase64.length > 30) {
       try {
         var decoded = Utilities.base64Decode(data.fileBase64);
@@ -604,7 +571,7 @@ function doPost(e) {
 
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
-        message: "Dokumen baru berhasil disimpan ke folder [" + targetOpdFolder.getName() + "] dan dicatat di worksheet DOKUMEN_PROSES.",
+        message: "Dokumen baru (" + (data.docNumber || "") + ") berhasil disimpan ke folder [" + targetOpdFolder.getName() + "] dan dicatat di worksheet DOKUMEN_PROSES.",
         fileUrl: driveFileUrl,
         fileId: driveFileId
       })).setMimeType(ContentService.MimeType.JSON);
@@ -620,7 +587,218 @@ function doPost(e) {
 
 /**
  * =========================================================================
- * 3. Helper Pengambil Seluruh Data (Dashboard & API) dari 3 Worksheet
+ * 3. Eksekusi Verifikasi Berkas (Bisa dipanggil google.script.run & doPost)
+ * =========================================================================
+ */
+function adminProcessVerification(data) {
+  var ss = getActiveSpreadsheetSafely();
+  if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan." };
+  initDefaultDataIfEmpty(ss);
+
+  var docId = String(data.docId || "").trim();
+  var docNumber = String(data.docNumber || "").trim();
+  var status = String(data.status || "APPROVED").trim().toUpperCase();
+  var verifier = data.verifierName || "Admin Verifikator SAKIP";
+  var nip = data.verifierNip || "19850101 201001 1 002";
+  var bav = data.bavNumber || ("BAV/SAKIP/" + (docNumber || "001"));
+  var notes = data.notes || "Verifikasi selesai";
+  var nowStr = data.timestamp || new Date().toLocaleString("id-ID");
+  var sealHash = data.digitalSealHash || ("SHA256-" + Utilities.formatDate(new Date(), "Asia/Jakarta", "yyyyMMddHHmmss") + "-" + (docId || "DOC"));
+
+  var prosesSheet = ss.getSheetByName("DOKUMEN_PROSES");
+  var sahSheet = ss.getSheetByName("DOKUMEN_SAH_TERVERIFIKASI");
+  var summarySheet = ss.getSheetByName("SUMMARY_RIWAYAT_REVISI");
+
+  // Cari baris di DOKUMEN_PROSES
+  var foundPRow = -1;
+  var existingRowData = null;
+  if (prosesSheet && prosesSheet.getLastRow() > 1) {
+    var pVals = prosesSheet.getDataRange().getValues();
+    for (var p = 1; p < pVals.length; p++) {
+      var rowId = String(pVals[p][1] || "").trim().toLowerCase();
+      var rowNo = String(pVals[p][2] || "").trim().toLowerCase();
+      if ((docId && rowId === docId.toLowerCase()) || (docNumber && (rowNo === docNumber.toLowerCase() || rowNo.indexOf(docNumber.toLowerCase()) !== -1))) {
+        foundPRow = p + 1;
+        existingRowData = pVals[p];
+        break;
+      }
+    }
+  }
+
+  // Jika belum ada di DOKUMEN_PROSES, cari di legacy sheet
+  if (foundPRow === -1) {
+    var legNames = ["DATA_VERIFIKASI_DOKUMEN", "Sheet1", "Sheet 1", "DOKUMEN_SAKIP"];
+    for (var l = 0; l < legNames.length; l++) {
+      var lSheet = ss.getSheetByName(legNames[l]);
+      if (lSheet && lSheet.getLastRow() > 1) {
+        var lVals = lSheet.getDataRange().getValues();
+        for (var lp = 1; lp < lVals.length; lp++) {
+          var lRowId = String(lVals[lp][1] || "").trim().toLowerCase();
+          var lRowNo = String(lVals[lp][2] || "").trim().toLowerCase();
+          if ((docId && lRowId === docId.toLowerCase()) || (docNumber && (lRowNo === docNumber.toLowerCase() || lRowNo.indexOf(docNumber.toLowerCase()) !== -1))) {
+            existingRowData = lVals[lp];
+            break;
+          }
+        }
+      }
+      if (existingRowData) break;
+    }
+  }
+
+  var fileUrl = data.downloadUrl || (existingRowData ? String(existingRowData[13] || existingRowData[14] || "") : "");
+  var fileId = (existingRowData ? String(existingRowData[14] || existingRowData[15] || "") : "");
+  var opd = data.opdName || (existingRowData ? String(existingRowData[4] || "") : "OPD");
+  var title = data.title || (existingRowData ? String(existingRowData[3] || "") : "Dokumen SAKIP");
+  var format = data.format || (existingRowData ? String(existingRowData[6] || "") : "PDF");
+  var pemohonName = data.pemohonName || (existingRowData ? String(existingRowData[7] || "") : "Pemohon");
+  var pemohonEmail = data.email || data.pemohonEmail || (existingRowData ? String(existingRowData[8] || "") : "-");
+  var version = data.versionNumber || (existingRowData ? Number(String(existingRowData[5] || "1").replace("v", "")) : 1);
+
+  if (status === "APPROVED") {
+    // 1. PINDAHKAN FILE KE FOLDER SAH 5 TAHUN
+    try {
+      var sahFolder = getOpdTargetFolder("02_DOKUMEN_SAH_FINAL_5_TAHUN", opd);
+      if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1) {
+        var driveFile = DriveApp.getFileById(fileId);
+        driveFile.moveTo(sahFolder);
+        fileUrl = driveFile.getUrl();
+      } else if (!fileUrl || fileUrl.indexOf("DRV-") !== -1) {
+        fileUrl = sahFolder.getUrl();
+      }
+    } catch (mErr) {
+      fileUrl = sahFolder ? sahFolder.getUrl() : "";
+    }
+
+    // 2. HITUNG RETENSI 5 TAHUN
+    var expiry5Y = new Date();
+    expiry5Y.setFullYear(expiry5Y.getFullYear() + 5);
+    var expiry5YStr = expiry5Y.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+
+    // 3. MASUKKAN KE SHEET DOKUMEN_SAH_TERVERIFIKASI
+    sahSheet.appendRow([
+      nowStr,
+      docId,
+      docNumber,
+      title,
+      opd,
+      "v" + version,
+      format,
+      pemohonName,
+      pemohonEmail,
+      "APPROVED",
+      verifier,
+      nip,
+      bav,
+      fileUrl,
+      fileId,
+      notes,
+      sealHash,
+      expiry5YStr,
+      RETENTION_APPROVED_DAYS
+    ]);
+
+    // 4. CATAT RINGKASAN KE SHEET SUMMARY_RIWAYAT_REVISI
+    summarySheet.appendRow([
+      nowStr,
+      docId,
+      docNumber,
+      title,
+      opd,
+      "v" + version,
+      "PENGESAHAN_FINAL",
+      "Dokumen Disahkan & Terbit BAV Resmi",
+      notes,
+      verifier,
+      fileUrl,
+      fileId,
+      "Disimpan Sah 5 Tahun",
+      "-",
+      "SAH_FINAL"
+    ]);
+
+    // 5. HAPUS BARIS DARI SHEET DOKUMEN_PROSES
+    if (foundPRow > 0 && prosesSheet) {
+      prosesSheet.deleteRow(foundPRow);
+    }
+
+    // Bersihkan juga dari sheet legacy jika ada
+    cleanLegacyDoc(ss, docId, docNumber);
+
+    return {
+      status: "success",
+      message: "Dokumen (" + docNumber + ") berhasil DISAHKAN! Data dicatat di DOKUMEN_SAH_TERVERIFIKASI (retensi 5 tahun) dan otomatis terhapus dari DOKUMEN_PROSES.",
+      docId: docId,
+      docNumber: docNumber,
+      bavNumber: bav
+    };
+
+  } else {
+    // STATUS: REVISION / REJECTED
+    if (foundPRow > 0 && prosesSheet) {
+      prosesSheet.getRange(foundPRow, 11).setValue(status);
+      prosesSheet.getRange(foundPRow, 12).setValue(verifier);
+      prosesSheet.getRange(foundPRow, 13).setValue(nip);
+      prosesSheet.getRange(foundPRow, 16).setValue(notes);
+    } else if (prosesSheet) {
+      prosesSheet.appendRow([
+        nowStr, docId, docNumber, title, opd, "v" + version, format,
+        pemohonName, pemohonEmail, opd, status, verifier, nip, fileUrl, fileId, notes, "01_DOKUMEN_PROSES"
+      ]);
+    }
+
+    // Catat ke SUMMARY_RIWAYAT_REVISI (aktif 3 bulan)
+    var expiry3M = new Date();
+    expiry3M.setDate(expiry3M.getDate() + 90);
+    var expiry3MStr = expiry3M.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+
+    summarySheet.appendRow([
+      nowStr,
+      docId,
+      docNumber,
+      title,
+      opd,
+      "v" + version,
+      status === "REVISION" ? "CATATAN_PERBAIKAN" : "PENOLAKAN",
+      notes.slice(0, 80),
+      notes,
+      verifier,
+      fileUrl,
+      fileId,
+      expiry3MStr,
+      RETENTION_REVISION_DAYS,
+      "AKTIF_3_BULAN"
+    ]);
+
+    return {
+      status: "success",
+      message: "Status " + status + " dicatat di DOKUMEN_PROSES dan ringkasan perbaikan dicatat di SUMMARY_RIWAYAT_REVISI (aktif 3 bulan).",
+      docId: docId
+    };
+  }
+}
+
+function cleanLegacyDoc(ss, docId, docNumber) {
+  try {
+    var legacySheets = ["DATA_VERIFIKASI_DOKUMEN", "Sheet1", "Sheet 1", "DOKUMEN_SAKIP"];
+    for (var l = 0; l < legacySheets.length; l++) {
+      var sheet = ss.getSheetByName(legacySheets[l]);
+      if (sheet && sheet.getLastRow() > 1) {
+        var vals = sheet.getDataRange().getValues();
+        for (var r = vals.length - 1; r >= 1; r--) {
+          var rowId = String(vals[r][1] || "").trim().toLowerCase();
+          var rowNo = String(vals[r][2] || "").trim().toLowerCase();
+          if ((docId && rowId === docId.toLowerCase()) || (docNumber && (rowNo === docNumber.toLowerCase() || rowNo.indexOf(docNumber.toLowerCase()) !== -1))) {
+            sheet.deleteRow(r + 1);
+          }
+        }
+      }
+    }
+  } catch (e) {}
+}
+
+/**
+ * =========================================================================
+ * 4. Helper Pengambil Seluruh Data (Dashboard & API) dari 3 Worksheet
  * =========================================================================
  */
 function adminGetDashboardData() {
@@ -752,7 +930,7 @@ function adminGetDashboardData() {
     }
   }
 
-  // Gabungkan seluruh dokumen aktif (Proses + Sah) untuk frontend
+  // Gabungkan seluruh dokumen aktif (Proses + Sah) untuk kompatibilitas frontend & webhook
   var allDocs = prosesDocs.concat(sahDocs);
 
   // Ambil Pengguna

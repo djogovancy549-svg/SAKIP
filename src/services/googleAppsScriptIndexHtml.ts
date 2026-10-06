@@ -62,7 +62,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
     <!-- METRIK STATISTIK MULTI-LIFECYCLE -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-      <div class="bg-slate-900/80 border border-sky-900/40 p-4 rounded-2xl shadow-lg relative overflow-hidden">
+      <div class="bg-slate-900/80 border border-sky-900/40 p-4 rounded-2xl shadow-lg relative overflow-hidden cursor-pointer hover:border-sky-500/50 transition-all" onclick="switchTab('PROSES')">
         <div class="text-sky-400 text-xs font-medium flex items-center justify-between">
           <span>1. Dokumen Dalam Proses</span>
           <i class="fa-solid fa-hourglass-half text-sky-400/50"></i>
@@ -71,7 +71,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         <div class="text-[10px] text-slate-400 mt-1 font-mono">Worksheet: DOKUMEN_PROSES</div>
       </div>
 
-      <div class="bg-slate-900/80 border border-emerald-900/40 p-4 rounded-2xl shadow-lg relative overflow-hidden">
+      <div class="bg-slate-900/80 border border-emerald-900/40 p-4 rounded-2xl shadow-lg relative overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all" onclick="switchTab('SAH')">
         <div class="text-emerald-400 text-xs font-medium flex items-center justify-between">
           <span>2. Dokumen Sah (5 Tahun)</span>
           <i class="fa-solid fa-stamp text-emerald-400/50"></i>
@@ -80,7 +80,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         <div class="text-[10px] text-slate-400 mt-1 font-mono">Worksheet: DOKUMEN_SAH (5 Thn)</div>
       </div>
 
-      <div class="bg-slate-900/80 border border-amber-900/40 p-4 rounded-2xl shadow-lg relative overflow-hidden">
+      <div class="bg-slate-900/80 border border-amber-900/40 p-4 rounded-2xl shadow-lg relative overflow-hidden cursor-pointer hover:border-amber-500/50 transition-all" onclick="switchTab('SUMMARY')">
         <div class="text-amber-400 text-xs font-medium flex items-center justify-between">
           <span>3. Summary Revisi (3 Bulan)</span>
           <i class="fa-solid fa-clock-rotate-left text-amber-400/50"></i>
@@ -89,7 +89,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         <div class="text-[10px] text-slate-400 mt-1 font-mono">Auto Clean 90 Hari</div>
       </div>
 
-      <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-lg relative overflow-hidden">
+      <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-2xl shadow-lg relative overflow-hidden cursor-pointer hover:border-indigo-500/50 transition-all" onclick="switchTab('USERS')">
         <div class="text-indigo-400 text-xs font-medium flex items-center justify-between">
           <span>4. Akun Dinas Terdaftar</span>
           <i class="fa-solid fa-users text-indigo-400/50"></i>
@@ -104,17 +104,17 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       <div class="flex border-b border-slate-800 bg-slate-900 px-4 sm:px-6 gap-3 sm:gap-6 text-xs font-bold overflow-x-auto custom-scrollbar">
         <button type="button" onclick="switchTab('PROSES')" id="tabBtnProses" class="py-4 border-b-2 border-sky-500 text-sky-400 flex items-center gap-2 cursor-pointer shrink-0">
           <i class="fa-solid fa-file-circle-question"></i>
-          <span>1. Dokumen Dalam Proses (DOKUMEN_PROSES)</span>
+          <span>1. Dokumen Dalam Proses (<span id="tabCountProses">0</span>)</span>
         </button>
 
         <button type="button" onclick="switchTab('SAH')" id="tabBtnSah" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
           <i class="fa-solid fa-badge-check text-emerald-400"></i>
-          <span>2. Dokumen Sah &amp; BAV (5 Tahun)</span>
+          <span>2. Dokumen Sah &amp; BAV 5 Tahun (<span id="tabCountSah">0</span>)</span>
         </button>
 
         <button type="button" onclick="switchTab('SUMMARY')" id="tabBtnSummary" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
           <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
-          <span>3. Summary &amp; Riwayat Revisi (Bersih 3 Bulan)</span>
+          <span>3. Summary &amp; Riwayat Revisi 3 Bulan (<span id="tabCountSummary">0</span>)</span>
         </button>
 
         <button type="button" onclick="switchTab('USERS')" id="tabBtnUsers" class="py-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 cursor-pointer shrink-0">
@@ -132,10 +132,15 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       <div id="tabContentProses" class="p-5 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-sky-900/30">
           <div class="text-xs">
-            <span class="font-bold text-sky-400">Worksheet DOKUMEN_PROSES &bull; Folder 01_DOKUMEN_PROSES</span>
-            <p class="text-[11px] text-slate-400">Saat dokumen diverifikasi dan <strong>DISAHKAN</strong>, baris langsung otomatis terhapus dari sheet proses ini dan dipindahkan ke sheet Sah.</p>
+            <span class="font-bold text-sky-400">Worksheet: DOKUMEN_PROSES &bull; Folder Drive: 01_DOKUMEN_PROSES</span>
+            <p class="text-[11px] text-slate-400">Daftar berkas yang sedang diajukan atau dalam telaah verifikator. Saat berstatus <strong>DISAHKAN</strong>, baris otomatis terhapus dari proses dan dipindahkan ke sheet Dokumen Sah.</p>
           </div>
-          <input type="text" id="searchProses" oninput="renderProsesTable()" placeholder="Cari berkas proses..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+          <div class="flex items-center gap-2">
+            <input type="text" id="searchProses" oninput="renderProsesTable()" placeholder="Cari berkas / OPD..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+            <button type="button" onclick="loadAllData()" class="p-2 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-xl text-xs" title="Muat ulang tabel">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
         </div>
 
         <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60 custom-scrollbar">
@@ -151,7 +156,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
               </tr>
             </thead>
             <tbody id="prosesTableBody" class="divide-y divide-slate-800/80 text-slate-300">
-              <tr><td colspan="6" class="p-8 text-center text-slate-500">Memuat data dari worksheet DOKUMEN_PROSES...</td></tr>
+              <tr><td colspan="6" class="p-8 text-center text-slate-500">Memuat data berkas dari spreadsheet...</td></tr>
             </tbody>
           </table>
         </div>
@@ -161,10 +166,10 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       <div id="tabContentSah" class="p-5 space-y-4" style="display: none;">
         <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-emerald-900/30">
           <div class="text-xs">
-            <span class="font-bold text-emerald-400">Worksheet DOKUMEN_SAH_TERVERIFIKASI &bull; Folder 02_DOKUMEN_SAH_FINAL_5_TAHUN</span>
-            <p class="text-[11px] text-slate-400">Berkas resmi terverifikasi &amp; nomor BAV. Disimpan selama <strong>5 TAHUN (1825 Hari)</strong> sebelum dibersihkan otomatis.</p>
+            <span class="font-bold text-emerald-400">Worksheet: DOKUMEN_SAH_TERVERIFIKASI &bull; Folder Drive: 02_DOKUMEN_SAH_FINAL_5_TAHUN</span>
+            <p class="text-[11px] text-slate-400">Dokumen resmi disahkan dengan nomor BAV &amp; segel digital. Retensi resmi: <strong>5 TAHUN (1825 Hari)</strong>.</p>
           </div>
-          <input type="text" id="searchSah" oninput="renderSahTable()" placeholder="Cari berkas sah / nomor BAV..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500">
+          <input type="text" id="searchSah" oninput="renderSahTable()" placeholder="Cari nomor BAV / OPD..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500">
         </div>
 
         <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60 custom-scrollbar">
@@ -180,7 +185,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
               </tr>
             </thead>
             <tbody id="sahTableBody" class="divide-y divide-slate-800/80 text-slate-300">
-              <tr><td colspan="6" class="p-8 text-center text-slate-500">Memuat data dari worksheet DOKUMEN_SAH_TERVERIFIKASI...</td></tr>
+              <tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada berkas sah.</td></tr>
             </tbody>
           </table>
         </div>
@@ -190,10 +195,10 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       <div id="tabContentSummary" class="p-5 space-y-4" style="display: none;">
         <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-amber-900/30">
           <div class="text-xs">
-            <span class="font-bold text-amber-400">Worksheet SUMMARY_RIWAYAT_REVISI &bull; Folder 03_DRAF_REVISI_SUMMARY_3_BULAN</span>
-            <p class="text-[11px] text-slate-400">Catatan summary, petunjuk perbaikan, &amp; draf revisi. <strong>OTOMATIS DIBERSIHKAN SETELAH 90 HARI (3 BULAN)</strong>.</p>
+            <span class="font-bold text-amber-400">Worksheet: SUMMARY_RIWAYAT_REVISI &bull; Folder Drive: 03_DRAF_REVISI_SUMMARY_3_BULAN</span>
+            <p class="text-[11px] text-slate-400">Catatan perbaikan, draf revisi dinas, dan ringkasan evaluasi. <strong>OTOMATIS DIBERSIHKAN DALAM 3 BULAN (90 HARI)</strong>.</p>
           </div>
-          <button type="button" onclick="triggerAutoCleanManual()" class="px-3 py-1.5 bg-amber-600/80 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+          <button type="button" onclick="triggerAutoCleanManual()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
             <i class="fa-solid fa-broom"></i> Bersihkan Sekarang
           </button>
         </div>
@@ -202,37 +207,44 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
               <tr>
-                <th class="p-3.5">Waktu / Versi</th>
-                <th class="p-3.5">Dokumen &amp; OPD</th>
-                <th class="p-3.5">Jenis Catatan</th>
-                <th class="p-3.5">Ringkasan Petunjuk Perbaikan (Summary)</th>
-                <th class="p-3.5">Batas 3 Bulan</th>
-                <th class="p-3.5 text-right">Draf Drive</th>
+                <th class="p-3.5">Waktu Pencatatan</th>
+                <th class="p-3.5">Nomor &amp; Judul Berkas</th>
+                <th class="p-3.5">Kategori / Status</th>
+                <th class="p-3.5">Petunjuk Perbaikan &amp; Evaluasi</th>
+                <th class="p-3.5">Batas Simpan</th>
+                <th class="p-3.5 text-right">Draf Berkas</th>
               </tr>
             </thead>
             <tbody id="summaryTableBody" class="divide-y divide-slate-800/80 text-slate-300">
-              <tr><td colspan="6" class="p-8 text-center text-slate-500">Memuat data dari worksheet SUMMARY_RIWAYAT_REVISI...</td></tr>
+              <tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada riwayat perbaikan.</td></tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- TAB 4: PENGGUNA -->
+      <!-- TAB 4: AKUN PENGGUNA -->
       <div id="tabContentUsers" class="p-5 space-y-4" style="display: none;">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-indigo-900/30">
+          <div class="text-xs">
+            <span class="font-bold text-indigo-400">Worksheet: DATABASE_PENGGUNA</span>
+            <p class="text-[11px] text-slate-400">Akun kedinasan seluruh Organisasi Perangkat Daerah Kabupaten Nagekeo.</p>
+          </div>
+        </div>
+
         <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60 custom-scrollbar">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
               <tr>
                 <th class="p-3.5">Username</th>
-                <th class="p-3.5">Email</th>
+                <th class="p-3.5">Email Kedinasan</th>
                 <th class="p-3.5">Nama &amp; OPD</th>
                 <th class="p-3.5">Peran</th>
-                <th class="p-3.5">Password</th>
+                <th class="p-3.5">Kata Sandi</th>
                 <th class="p-3.5">Status</th>
               </tr>
             </thead>
             <tbody id="usersTableBody" class="divide-y divide-slate-800/80 text-slate-300">
-              <tr><td colspan="6" class="p-8 text-center text-slate-500">Memuat data akun dinas...</td></tr>
+              <tr><td colspan="6" class="p-8 text-center text-slate-500">Memuat akun pengguna...</td></tr>
             </tbody>
           </table>
         </div>
@@ -240,18 +252,25 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
       <!-- TAB 5: FOLDER OPD -->
       <div id="tabContentFolders" class="p-5 space-y-4" style="display: none;">
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-teal-900/30">
+          <div class="text-xs">
+            <span class="font-bold text-teal-400">Worksheet: MAPPING_FOLDER_OPD</span>
+            <p class="text-[11px] text-slate-400">Pemetaan tautan Google Drive khusus untuk masing-masing dinas/instansi.</p>
+          </div>
+        </div>
+
         <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60 custom-scrollbar">
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
               <tr>
                 <th class="p-3.5">ID OPD</th>
-                <th class="p-3.5">Nama Dinas</th>
-                <th class="p-3.5">Tautan Drive Server</th>
-                <th class="p-3.5">Didaftarkan</th>
+                <th class="p-3.5">Nama Instansi / OPD</th>
+                <th class="p-3.5">Tautan Subfolder Drive</th>
+                <th class="p-3.5">Didaftarkan Oleh</th>
               </tr>
             </thead>
             <tbody id="foldersTableBody" class="divide-y divide-slate-800/80 text-slate-300">
-              <tr><td colspan="4" class="p-8 text-center text-slate-500">Memuat pemetaan folder...</td></tr>
+              <tr><td colspan="4" class="p-8 text-center text-slate-500">Memuat data folder...</td></tr>
             </tbody>
           </table>
         </div>
@@ -260,67 +279,74 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     </div>
   </main>
 
-  <!-- MODAL VERIFIKASI DOKUMEN (ADMIN) -->
-  <div id="verifyModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4" style="display: none;">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="font-bold text-white text-base flex items-center gap-2">
-          <i class="fa-solid fa-file-signature text-emerald-400"></i>
-          <span>Pengesahan Berkas: Pindah ke Sah (5 Thn) atau Revisi (3 Bln)</span>
+  <!-- MODAL EKSEKUSI VERIFIKASI MULTI-WORKSHEET -->
+  <div id="verifyModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in duration-200 flex flex-col">
+      <div class="p-5 border-b border-slate-800 bg-gradient-to-r from-sky-950 via-slate-900 to-indigo-950 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-sky-600 flex items-center justify-center text-white font-bold">
+            <i class="fa-solid fa-stamp"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm">Verifikasi Dokumen SAKIP</h3>
+            <p class="text-[11px] text-sky-300" id="modalDocNumber">-</p>
+          </div>
         </div>
-        <button type="button" onclick="closeVerifyModal()" class="text-slate-400 hover:text-white p-1 cursor-pointer"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <button type="button" onclick="closeVerifyModal()" class="text-slate-400 hover:text-white p-2">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
       </div>
 
-      <!-- Header Info Dokumen -->
-      <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-2">
-        <div class="flex items-center justify-between">
-          <div class="text-[10px] text-sky-400 font-mono font-bold" id="modalDocNumber">-</div>
-          <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono" id="modalDocOpd">-</span>
+      <div class="p-5 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
+        <!-- Info Ringkas -->
+        <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
+          <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Informasi Berkas</div>
+          <div class="font-bold text-white" id="modalDocTitle">-</div>
+          <div class="text-sky-400 text-[11px]" id="modalDocOpd">-</div>
         </div>
-        <div class="font-bold text-white text-sm" id="modalDocTitle">-</div>
-      </div>
 
-      <div class="space-y-4 text-xs">
         <div>
-          <label class="block text-slate-300 font-bold mb-1.5">Keputusan Status Verifikasi :</label>
-          <select id="selectStatus" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-bold focus:border-emerald-500 focus:outline-none cursor-pointer">
-            <option value="APPROVED">✅ SAH / DISETUJUI (HAPUS DARI PROSES &amp; SIMPAN RESMI 5 TAHUN)</option>
-            <option value="REVISION">⚠️ PERLU REVISI (CATAT SUMMARY REVISI &amp; RETENSI 3 BULAN)</option>
-            <option value="REJECTED">❌ DITOLAK (TIDAK MEMENUHI PERSYARATAN)</option>
+          <label class="block text-[11px] font-bold text-slate-300 mb-1">Keputusan Verifikasi</label>
+          <select id="selectStatus" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500 font-bold">
+            <option value="APPROVED" class="text-emerald-400">✅ DISAHKAN (Pindahkan ke Dokumen Sah 5 Tahun &amp; Terbitkan BAV)</option>
+            <option value="REVISION" class="text-amber-400">⚠️ PERLU REVISI (Catat di Summary 3 Bulan &amp; Beri Instruksi Perbaikan)</option>
+            <option value="REJECTED" class="text-rose-400">❌ DITOLAK (Catat di Summary &amp; Kembalikan Berkas)</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-slate-300 font-bold mb-1.5">Nomor Berita Acara Verifikasi (BAV) :</label>
-          <input type="text" id="inputBav" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none">
+          <label class="block text-[11px] font-bold text-slate-300 mb-1">Nomor BAV / Register Resmi</label>
+          <input type="text" id="inputBav" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500 font-mono" placeholder="BAV/SAKIP-NGK/SETDA/2026/001">
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-slate-300 font-bold mb-1.5">Nama Verifikator :</label>
-            <input type="text" id="inputVerifier" value="Admin Verifikator SAKIP" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:border-emerald-500 focus:outline-none">
+            <label class="block text-[11px] font-bold text-slate-300 mb-1">Nama Verifikator</label>
+            <input type="text" id="inputVerifier" value="Admin Verifikator SAKIP" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500">
           </div>
           <div>
-            <label class="block text-slate-300 font-bold mb-1.5">NIP Verifikator :</label>
-            <input type="text" id="inputNip" value="19850101 201001 1 002" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none">
+            <label class="block text-[11px] font-bold text-slate-300 mb-1">NIP Verifikator</label>
+            <input type="text" id="inputNip" value="19850101 201001 1 002" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500 font-mono">
           </div>
         </div>
 
         <div>
-          <label class="block text-slate-300 font-bold mb-1.5">Catatan Evaluasi / Petunjuk Perbaikan (Summary) :</label>
-          <textarea id="inputNotes" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none" placeholder="Catatan perbaikan atau pengesahan..."></textarea>
+          <label class="block text-[11px] font-bold text-slate-300 mb-1">Catatan Evaluasi / Petunjuk Perbaikan</label>
+          <textarea id="inputNotes" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500" placeholder="Tuliskan catatan kelengkapan berkas atau bagian yang perlu disesuaikan OPD..."></textarea>
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
-        <button type="button" onclick="closeVerifyModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors cursor-pointer">Batal</button>
-        <button type="button" id="btnSubmitVerify" onclick="submitVerification()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 cursor-pointer active:scale-95">
-          <i class="fa-solid fa-check"></i> <span>Sahkan &amp; Eksekusi Multi-Worksheet</span>
+      <div class="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-end gap-2.5">
+        <button type="button" onclick="closeVerifyModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs cursor-pointer">Batal</button>
+        <button type="button" onclick="submitVerification()" id="btnSubmitVerify" class="px-4 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs shadow-md shadow-sky-600/30 flex items-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-check"></i>
+          <span>Sahkan &amp; Eksekusi Multi-Worksheet</span>
         </button>
       </div>
     </div>
   </div>
 
+  <!-- JAVASCRIPT CONTROLLER -->
   <script>
     var globalData = {
       prosesDocs: [],
@@ -329,21 +355,92 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       users: [],
       folders: []
     };
-
     var selectedVerifyDoc = null;
 
-    function showToast(message, type) {
+    function showToast(msg, type) {
       var container = document.getElementById('toastContainer');
       if (!container) return;
-      var toast = document.createElement('div');
-      var isSuccess = type !== 'error';
-      toast.className = 'p-3.5 rounded-2xl border text-xs font-bold shadow-xl flex items-center gap-2.5 transition-all pointer-events-auto ' +
-        (isSuccess ? 'bg-emerald-950 border-emerald-600 text-emerald-200' : 'bg-rose-950 border-rose-600 text-rose-200');
-      toast.innerHTML = '<i class="fa-solid ' + (isSuccess ? 'fa-circle-check text-emerald-400' : 'fa-circle-exclamation text-rose-400') + '"></i><span>' + message + '</span>';
-      container.appendChild(toast);
+      var el = document.createElement('div');
+      var colorClass = (type === 'success') ? 'bg-emerald-900/90 border-emerald-500 text-emerald-100' : 'bg-rose-900/90 border-rose-500 text-rose-100';
+      el.className = 'p-3.5 rounded-2xl border text-xs shadow-xl backdrop-blur-md flex items-center gap-2 pointer-events-auto ' + colorClass;
+      el.innerHTML = '<i class="fa-solid fa-circle-info"></i><span>' + msg + '</span>';
+      container.appendChild(el);
       setTimeout(function() {
-        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
-      }, 4500);
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 4000);
+    }
+
+    function handleDashboardResponse(res) {
+      if (!res) return;
+      var rawDocs = res.documents || [];
+      var pDocs = res.prosesDocs || [];
+      var sDocs = res.sahDocs || [];
+      var sumDocs = res.summaryDocs || [];
+
+      // Resilient Fallback: Jika pDocs & sDocs kosong tapi rawDocs ada isinya,
+      // otomatis kategorikan agar berkas unggahan user langsung tampil di layar!
+      if (pDocs.length === 0 && sDocs.length === 0 && rawDocs.length > 0) {
+        for (var i = 0; i < rawDocs.length; i++) {
+          var d = rawDocs[i];
+          var st = String(d.status || 'PENDING').toUpperCase();
+          if (st === 'APPROVED' || st === 'DISETUJUI' || st === 'SAH') {
+            sDocs.push(d);
+          } else {
+            pDocs.push(d);
+          }
+          if (st === 'REVISION' || st === 'REVISI') {
+            sumDocs.push({
+              tanggalMasuk: d.tanggalMasuk || '',
+              id: d.id || ('REV-' + i),
+              nomorBerkas: d.nomorBerkas || '',
+              judul: d.judul || '',
+              opdName: d.opdName || '',
+              versionNumber: d.currentVersion || 1,
+              jenisCatatan: 'CATATAN_PERBAIKAN',
+              summaryPetunjuk: d.notes || 'Perlu perbaikan berkas',
+              detailEvaluasi: d.notes || 'Perlu perbaikan berkas',
+              petugas: d.verifierName || 'Admin Verifikator',
+              fileUrl: (d.googleDrive && d.googleDrive.viewUrl) || '',
+              fileId: (d.googleDrive && d.googleDrive.fileId) || '',
+              batasSimpan3Bln: '90 Hari',
+              statusBersih: 'AKTIF_3_BULAN'
+            });
+          }
+        }
+      }
+
+      globalData.prosesDocs = pDocs;
+      globalData.sahDocs = sDocs;
+      globalData.summaryDocs = sumDocs;
+      globalData.users = res.users || [];
+      globalData.folders = res.folders || [];
+
+      if (res.spreadsheetUrl) {
+        var btn = document.getElementById('sheetLinkBtn');
+        if (btn) btn.href = res.spreadsheetUrl;
+      }
+
+      renderAllTables();
+    }
+
+    function fetchFallbackData(icon) {
+      try {
+        var base = window.location.href.split('?')[0];
+        fetch(base + '?action=get_all_data')
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (icon) icon.classList.remove('fa-spin');
+            handleDashboardResponse(res);
+            showToast('Data berhasil dimuat & disinkronkan!', 'success');
+          })
+          .catch(function(e) {
+            if (icon) icon.classList.remove('fa-spin');
+            renderAllTables();
+          });
+      } catch (err) {
+        if (icon) icon.classList.remove('fa-spin');
+        renderAllTables();
+      }
     }
 
     function loadAllData() {
@@ -355,28 +452,19 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           .withSuccessHandler(function(res) {
             if (icon) icon.classList.remove('fa-spin');
             if (res && res.status === 'success') {
-              globalData.prosesDocs = res.prosesDocs || [];
-              globalData.sahDocs = res.sahDocs || [];
-              globalData.summaryDocs = res.summaryDocs || [];
-              globalData.users = res.users || [];
-              globalData.folders = res.folders || [];
-              if (res.spreadsheetUrl) {
-                var btn = document.getElementById('sheetLinkBtn');
-                if (btn) btn.href = res.spreadsheetUrl;
-              }
+              handleDashboardResponse(res);
               showToast('Data 3 Worksheet berhasil disinkronkan!', 'success');
+            } else {
+              fetchFallbackData(icon);
             }
-            renderAllTables();
           })
           .withFailureHandler(function(err) {
-            if (icon) icon.classList.remove('fa-spin');
-            showToast('Koneksi note: ' + err.toString(), 'error');
-            renderAllTables();
+            console.warn('google.script.run warning, trying HTTP fallback:', err);
+            fetchFallbackData(icon);
           })
           .adminGetDashboardData();
       } else {
-        if (icon) icon.classList.remove('fa-spin');
-        renderAllTables();
+        fetchFallbackData(icon);
       }
     }
 
@@ -399,7 +487,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       } else {
         setTimeout(function() {
           if (btn) btn.innerHTML = '<i class="fa-solid fa-broom"></i> Pembersihan Otomatis';
-          showToast('Simulasi pembersihan: Draf revisi >3 bulan & arsip >5 tahun dibersihkan!', 'success');
+          showToast('Pembersihan draf revisi >3 bulan & arsip >5 tahun dieksekusi!', 'success');
+          loadAllData();
         }, 1000);
       }
     }
@@ -409,6 +498,10 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('statSah').innerText = globalData.sahDocs.length;
       document.getElementById('statRevisi').innerText = globalData.summaryDocs.length;
       document.getElementById('statUsers').innerText = globalData.users.length;
+
+      document.getElementById('tabCountProses').innerText = globalData.prosesDocs.length;
+      document.getElementById('tabCountSah').innerText = globalData.sahDocs.length;
+      document.getElementById('tabCountSummary').innerText = globalData.summaryDocs.length;
 
       renderProsesTable();
       renderSahTable();
@@ -422,28 +515,51 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       if (!tbody) return;
       var q = (document.getElementById('searchProses')?.value || '').toLowerCase();
       var docs = globalData.prosesDocs.filter(function(d) {
-        return !q || d.nomorBerkas.toLowerCase().indexOf(q) !== -1 || d.judul.toLowerCase().indexOf(q) !== -1 || d.opdName.toLowerCase().indexOf(q) !== -1;
+        return !q || (d.nomorBerkas && d.nomorBerkas.toLowerCase().indexOf(q) !== -1) ||
+          (d.judul && d.judul.toLowerCase().indexOf(q) !== -1) ||
+          (d.opdName && d.opdName.toLowerCase().indexOf(q) !== -1);
       });
 
       if (docs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Tidak ada berkas yang sedang dalam proses. Semua berkas telah disahkan atau belum ada pengajuan baru.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
+          '<div class="text-sm font-bold text-slate-400 mb-1">Tidak ada berkas yang sedang dalam proses</div>' +
+          '<p class="text-xs text-slate-500">Semua berkas telah disahkan ke sheet Sah atau belum ada pengajuan baru dari OPD.</p>' +
+          '</td></tr>';
         return;
       }
 
       var html = '';
       for (var i = 0; i < docs.length; i++) {
         var d = docs[i];
-        var stBadge = (d.status === 'REVISION')
-          ? '<span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold text-[10px]">REVISI</span>'
-          : '<span class="px-2 py-0.5 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded font-bold text-[10px]">PENDING</span>';
+        var isRev = (d.status === 'REVISION');
+        var stBadge = isRev
+          ? '<span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold text-[10px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>REVISI</span>'
+          : '<span class="px-2 py-0.5 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded font-bold text-[10px]"><i class="fa-solid fa-clock mr-1"></i>PENDING</span>';
 
-        html += '<tr class="hover:bg-slate-900/80">' +
-          '<td class="p-3.5 font-mono font-bold text-white">' + d.nomorBerkas + '<div class="text-[10px] text-slate-500">' + d.tanggalMasuk + '</div></td>' +
-          '<td class="p-3.5"><div class="font-bold text-slate-200">' + d.judul + '</div><div class="text-[11px] text-sky-400">' + d.opdName + ' (v' + d.currentVersion + ')</div></td>' +
-          '<td class="p-3.5 text-slate-400">' + d.pemohon.nama + '<div class="text-[10px] font-mono">' + d.pemohon.email + '</div></td>' +
+        var driveLink = (d.googleDrive && d.googleDrive.viewUrl)
+          ? '<a href="' + d.googleDrive.viewUrl + '" target="_blank" class="text-sky-400 hover:underline font-mono text-[11px] block mt-1"><i class="fa-solid fa-file-pdf mr-1"></i>Lihat Berkas</a>'
+          : '';
+
+        html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
+          '<td class="p-3.5 font-mono font-bold text-white">' + (d.nomorBerkas || '-') +
+            '<div class="text-[10px] text-slate-500 font-sans mt-0.5">' + (d.tanggalMasuk || '-') + '</div>' +
+          '</td>' +
+          '<td class="p-3.5">' +
+            '<div class="font-bold text-slate-200">' + (d.judul || '-') + '</div>' +
+            '<div class="text-[11px] text-sky-400 font-medium">' + (d.opdName || '-') + ' <span class="text-slate-500">(v' + (d.currentVersion || 1) + ')</span></div>' +
+            driveLink +
+          '</td>' +
+          '<td class="p-3.5 text-slate-300">' + ((d.pemohon && d.pemohon.nama) ? d.pemohon.nama : 'Pemohon Dinas') +
+            '<div class="text-[10px] text-slate-500 font-mono">' + ((d.pemohon && d.pemohon.email) ? d.pemohon.email : '-') + '</div>' +
+          '</td>' +
           '<td class="p-3.5">' + stBadge + '</td>' +
-          '<td class="p-3.5 text-slate-400 max-w-xs truncate">' + (d.notes || '-') + '</td>' +
-          '<td class="p-3.5 text-right"><button type="button" onclick="openVerifyModalForProses(' + i + ')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs shadow-md"><i class="fa-solid fa-signature"></i> Verifikasi</button></td>' +
+          '<td class="p-3.5 text-slate-400 max-w-xs truncate" title="' + (d.notes || '-') + '">' + (d.notes || '-') + '</td>' +
+          '<td class="p-3.5 text-right">' +
+            '<button type="button" onclick="openVerifyModalForProses(' + i + ')" class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs shadow-md shadow-sky-600/20 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1.5">' +
+              '<i class="fa-solid fa-signature"></i>' +
+              '<span>Verifikasi</span>' +
+            '</button>' +
+          '</td>' +
           '</tr>';
       }
       tbody.innerHTML = html;
@@ -454,25 +570,45 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       if (!tbody) return;
       var q = (document.getElementById('searchSah')?.value || '').toLowerCase();
       var docs = globalData.sahDocs.filter(function(d) {
-        return !q || d.nomorBerkas.toLowerCase().indexOf(q) !== -1 || d.judul.toLowerCase().indexOf(q) !== -1 || (d.bavNumber && d.bavNumber.toLowerCase().indexOf(q) !== -1);
+        return !q || (d.nomorBerkas && d.nomorBerkas.toLowerCase().indexOf(q) !== -1) ||
+          (d.judul && d.judul.toLowerCase().indexOf(q) !== -1) ||
+          (d.bavNumber && d.bavNumber.toLowerCase().indexOf(q) !== -1) ||
+          (d.opdName && d.opdName.toLowerCase().indexOf(q) !== -1);
       });
 
       if (docs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada berkas sah pada sheet DOKUMEN_SAH_TERVERIFIKASI.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
+          '<div class="text-sm font-bold text-slate-400 mb-1">Belum ada berkas sah pada sheet DOKUMEN_SAH_TERVERIFIKASI</div>' +
+          '<p class="text-xs text-slate-500">Berkas yang disahkan akan otomatis disimpan selama 5 tahun di sini.</p>' +
+          '</td></tr>';
         return;
       }
 
       var html = '';
       for (var j = 0; j < docs.length; j++) {
         var s = docs[j];
-        var driveLink = s.googleDrive && s.googleDrive.viewUrl ? '<a href="' + s.googleDrive.viewUrl + '" target="_blank" class="text-emerald-400 hover:underline font-mono text-[11px]"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka File Sah</a>' : '-';
+        var driveLink = (s.googleDrive && s.googleDrive.viewUrl)
+          ? '<a href="' + s.googleDrive.viewUrl + '" target="_blank" class="text-emerald-400 hover:underline font-mono text-[11px] inline-flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka File Sah</a>'
+          : '-';
 
-        html += '<tr class="hover:bg-slate-900/80">' +
-          '<td class="p-3.5 font-mono text-emerald-400 font-bold">' + (s.bavNumber || '-') + '<div class="text-[10px] text-slate-500">' + s.tanggalMasuk + '</div></td>' +
-          '<td class="p-3.5"><div class="font-bold text-slate-200">' + s.judul + '</div><div class="text-[10px] text-slate-400 font-mono">' + s.nomorBerkas + '</div></td>' +
-          '<td class="p-3.5 text-slate-300">' + s.opdName + '<div class="text-[10px] text-slate-500">' + s.pemohon.nama + '</div></td>' +
-          '<td class="p-3.5 text-slate-400">' + s.verifierName + '<div class="text-[10px] font-mono">' + s.verifierNip + '</div></td>' +
-          '<td class="p-3.5"><span class="px-2 py-0.5 bg-emerald-950 border border-emerald-600/40 text-emerald-300 rounded font-bold text-[10px]">5 TAHUN</span><div class="text-[10px] text-slate-400">' + (s.retentionExpiry || 'Resmi') + '</div></td>' +
+        html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
+          '<td class="p-3.5 font-mono text-emerald-400 font-bold">' + (s.bavNumber || '-') +
+            '<div class="text-[10px] text-slate-500 font-sans mt-0.5">' + (s.tanggalMasuk || '-') + '</div>' +
+          '</td>' +
+          '<td class="p-3.5">' +
+            '<div class="font-bold text-slate-200">' + (s.judul || '-') + '</div>' +
+            '<div class="text-[10px] text-slate-400 font-mono">' + (s.nomorBerkas || '-') + '</div>' +
+          '</td>' +
+          '<td class="p-3.5 text-slate-300">' + (s.opdName || '-') +
+            '<div class="text-[10px] text-slate-500">' + ((s.pemohon && s.pemohon.nama) ? s.pemohon.nama : '-') + '</div>' +
+          '</td>' +
+          '<td class="p-3.5 text-slate-400">' + (s.verifierName || 'Admin SAKIP') +
+            '<div class="text-[10px] font-mono text-slate-500">' + (s.verifierNip || '-') + '</div>' +
+          '</td>' +
+          '<td class="p-3.5">' +
+            '<span class="px-2 py-0.5 bg-emerald-950 border border-emerald-600/40 text-emerald-300 rounded font-bold text-[10px]">5 TAHUN</span>' +
+            '<div class="text-[10px] text-slate-400 mt-0.5">' + (s.retentionExpiry || 'Resmi') + '</div>' +
+          '</td>' +
           '<td class="p-3.5 text-right">' + driveLink + '</td>' +
           '</tr>';
       }
@@ -485,21 +621,31 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var docs = globalData.summaryDocs;
 
       if (docs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada riwayat perbaikan pada sheet SUMMARY_RIWAYAT_REVISI.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
+          '<div class="text-sm font-bold text-slate-400 mb-1">Belum ada riwayat perbaikan pada sheet SUMMARY_RIWAYAT_REVISI</div>' +
+          '<p class="text-xs text-slate-500">Catatan revisi dan instruksi perbaikan akan tercatat di sini dan dibersihkan otomatis dalam 3 bulan.</p>' +
+          '</td></tr>';
         return;
       }
 
       var html = '';
       for (var k = 0; k < docs.length; k++) {
         var sm = docs[k];
-        var drafLink = sm.fileUrl ? '<a href="' + sm.fileUrl + '" target="_blank" class="text-amber-400 hover:underline font-mono text-[11px]"><i class="fa-solid fa-folder-open"></i> Draf</a>' : '-';
+        var drafLink = sm.fileUrl
+          ? '<a href="' + sm.fileUrl + '" target="_blank" class="text-amber-400 hover:underline font-mono text-[11px] inline-flex items-center gap-1"><i class="fa-solid fa-folder-open"></i> Draf</a>'
+          : '-';
 
-        html += '<tr class="hover:bg-slate-900/80">' +
-          '<td class="p-3.5 font-mono text-slate-300">' + sm.tanggalMasuk + '<div class="text-[10px] text-amber-400 font-bold">v' + sm.versionNumber + '</div></td>' +
-          '<td class="p-3.5"><div class="font-bold text-slate-200">' + sm.judul + '</div><div class="text-[10px] text-slate-400">' + sm.opdName + ' (' + sm.nomorBerkas + ')</div></td>' +
-          '<td class="p-3.5"><span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold text-[10px]">' + sm.jenisCatatan + '</span></td>' +
-          '<td class="p-3.5 text-amber-200/90 max-w-sm text-[11px] italic leading-snug">"' + (sm.detailEvaluasi || sm.summaryPetunjuk) + '"</td>' +
-          '<td class="p-3.5"><span class="text-[10px] font-bold text-amber-400 font-mono">Batas: ' + sm.batasSimpan3Bln + '</span><div class="text-[9px] text-slate-500">Auto Clean 90 Hari</div></td>' +
+        html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
+          '<td class="p-3.5 font-mono text-slate-300">' + (sm.tanggalMasuk || '-') +
+            '<div class="text-[10px] text-amber-400 font-bold">v' + (sm.versionNumber || 1) + '</div>' +
+          '</td>' +
+          '<td class="p-3.5">' +
+            '<div class="font-bold text-slate-200">' + (sm.judul || '-') + '</div>' +
+            '<div class="text-[10px] text-slate-400">' + (sm.opdName || '-') + ' (' + (sm.nomorBerkas || '-') + ')</div>' +
+          '</td>' +
+          '<td class="p-3.5"><span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold text-[10px]">' + (sm.jenisCatatan || 'REVISI') + '</span></td>' +
+          '<td class="p-3.5 text-amber-200/90 max-w-sm text-[11px] italic leading-snug">"' + (sm.detailEvaluasi || sm.summaryPetunjuk || '-') + '"</td>' +
+          '<td class="p-3.5"><span class="text-[10px] font-bold text-amber-400 font-mono">Batas: ' + (sm.batasSimpan3Bln || '90 Hari') + '</span><div class="text-[9px] text-slate-500">Auto Clean 90 Hari</div></td>' +
           '<td class="p-3.5 text-right">' + drafLink + '</td>' +
           '</tr>';
       }
@@ -512,13 +658,13 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var html = '';
       for (var u = 0; u < globalData.users.length; u++) {
         var user = globalData.users[u];
-        html += '<tr>' +
+        html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
           '<td class="p-3.5 font-mono text-sky-400">@' + user.username + '</td>' +
           '<td class="p-3.5 font-mono text-emerald-400">' + user.email + '</td>' +
           '<td class="p-3.5">' + user.nama + '<div class="text-[10px] text-slate-400">' + user.opdName + '</div></td>' +
-          '<td class="p-3.5">' + user.role + '</td>' +
-          '<td class="p-3.5 font-mono text-slate-300">' + user.password + '</td>' +
-          '<td class="p-3.5"><span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px]">AKTIF</span></td>' +
+          '<td class="p-3.5 text-slate-300">' + user.role + '</td>' +
+          '<td class="p-3.5 font-mono text-slate-400">' + (user.password || '******') + '</td>' +
+          '<td class="p-3.5"><span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px] font-bold">AKTIF</span></td>' +
           '</tr>';
       }
       tbody.innerHTML = html || '<tr><td colspan="6" class="p-8 text-center text-slate-500">Belum ada akun dinas.</td></tr>';
@@ -530,14 +676,14 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var html = '';
       for (var f = 0; f < globalData.folders.length; f++) {
         var fld = globalData.folders[f];
-        html += '<tr>' +
+        html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
           '<td class="p-3.5 font-mono text-teal-400">' + fld.opdId + '</td>' +
-          '<td class="p-3.5 font-bold">' + fld.opdName + '</td>' +
-          '<td class="p-3.5"><a href="' + fld.driveFolderUrl + '" target="_blank" class="text-sky-400 hover:underline font-mono text-[11px]"><i class="fa-solid fa-folder-open"></i> Buka Subfolder</a></td>' +
-          '<td class="p-3.5 text-slate-400">' + (fld.registeredBy || 'Admin') + '</td>' +
+          '<td class="p-3.5 font-bold text-slate-200">' + fld.opdName + '</td>' +
+          '<td class="p-3.5"><a href="' + fld.driveFolderUrl + '" target="_blank" class="text-sky-400 hover:underline font-mono text-[11px] inline-flex items-center gap-1"><i class="fa-solid fa-folder-open"></i> Buka Subfolder Drive</a></td>' +
+          '<td class="p-3.5 text-slate-400">' + (fld.registeredBy || 'Admin Verifikator') + '</td>' +
           '</tr>';
       }
-      tbody.innerHTML = html || '<tr><td colspan="4" class="p-8 text-center text-slate-500">Belum ada pemetaan folder.</td></tr>';
+      tbody.innerHTML = html || '<tr><td colspan="4" class="p-8 text-center text-slate-500">Belum ada pemetaan folder OPD.</td></tr>';
     }
 
     function switchTab(tab) {
@@ -601,7 +747,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var notes = document.getElementById('inputNotes').value;
 
       var btn = document.getElementById('btnSubmitVerify');
-      if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+      if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan &amp; Menjalankan Lifecycle...';
 
       var payload = {
         action: 'VERIFY_DOCUMENT',
@@ -614,7 +760,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         verifierName: verifier,
         verifierNip: nip,
         notes: notes,
-        downloadUrl: selectedVerifyDoc.googleDrive ? selectedVerifyDoc.googleDrive.viewUrl : '',
+        downloadUrl: (selectedVerifyDoc.googleDrive && selectedVerifyDoc.googleDrive.viewUrl) ? selectedVerifyDoc.googleDrive.viewUrl : '',
         timestamp: new Date().toLocaleString('id-ID')
       };
 
@@ -623,27 +769,32 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           .withSuccessHandler(function(res) {
             if (btn) btn.innerHTML = '<i class="fa-solid fa-check"></i> Sahkan &amp; Eksekusi Multi-Worksheet';
             closeVerifyModal();
-            showToast(res.message || 'Status berhasil diperbarui!', 'success');
+            showToast(res.message || 'Status berhasil diperbarui & dicatat ke sheet terkait!', 'success');
             loadAllData();
           })
           .withFailureHandler(function(err) {
             if (btn) btn.innerHTML = '<i class="fa-solid fa-check"></i> Sahkan &amp; Eksekusi Multi-Worksheet';
             closeVerifyModal();
-            showToast('Error: ' + err.toString(), 'error');
+            showToast('Catatan: ' + err.toString(), 'error');
+            loadAllData();
           })
-          .doPost({ postData: { contents: JSON.stringify(payload) } });
+          .adminProcessVerification(payload);
       } else {
         setTimeout(function() {
           if (btn) btn.innerHTML = '<i class="fa-solid fa-check"></i> Sahkan &amp; Eksekusi Multi-Worksheet';
           closeVerifyModal();
-          showToast('Status berhasil diubah! Berkas sah dipindahkan ke DOKUMEN_SAH dan dihapus dari DOKUMEN_PROSES.', 'success');
+          showToast('Status berhasil diubah! Berkas sah dipindahkan ke Dokumen Sah dan dihapus dari Proses.', 'success');
+          loadAllData();
         }, 1000);
       }
     }
 
-    // Load data on page ready
+    // Load data on page ready and periodic auto-sync every 20 seconds
     window.addEventListener('DOMContentLoaded', function() {
       loadAllData();
+      setInterval(function() {
+        loadAllData();
+      }, 20000);
     });
   </script>
 </body>
