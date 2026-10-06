@@ -133,7 +133,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-950/70 p-3.5 rounded-2xl border border-sky-900/30">
           <div class="text-xs">
             <span class="font-bold text-sky-400">Worksheet: DOKUMEN_PROSES &bull; Folder Drive: 01_DOKUMEN_PROSES</span>
-            <p class="text-[11px] text-slate-400">Daftar berkas yang sedang diajukan atau dalam telaah verifikator. Saat berstatus <strong>DISAHKAN</strong>, baris otomatis terhapus dari proses dan dipindahkan ke sheet Dokumen Sah.</p>
+            <p class="text-[11px] text-slate-400">Daftar berkas yang sedang diajukan atau dalam telaah verifikator. Klik <strong>Baca &amp; Buka Berkas</strong> untuk membaca isi dokumen langsung di dashboard admin tanpa harus membuka tab Google Drive yang sering terkendala akun.</p>
           </div>
           <div class="flex items-center gap-2">
             <input type="text" id="searchProses" oninput="renderProsesTable()" placeholder="Cari berkas / OPD..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
@@ -148,7 +148,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             <thead class="bg-slate-900 text-slate-400 font-bold border-b border-slate-800">
               <tr>
                 <th class="p-3.5">Waktu / No. Berkas</th>
-                <th class="p-3.5">Judul &amp; OPD</th>
+                <th class="p-3.5">Judul, OPD &amp; File Berkas</th>
                 <th class="p-3.5">Pemohon</th>
                 <th class="p-3.5">Status</th>
                 <th class="p-3.5">Catatan Pemeriksaan</th>
@@ -181,7 +181,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
                 <th class="p-3.5">OPD &amp; Pemohon</th>
                 <th class="p-3.5">Pejabat Verifikator</th>
                 <th class="p-3.5">Masa Retensi (5 Thn)</th>
-                <th class="p-3.5 text-right">File Sah Drive</th>
+                <th class="p-3.5 text-right">Baca &amp; Unduh File Sah</th>
               </tr>
             </thead>
             <tbody id="sahTableBody" class="divide-y divide-slate-800/80 text-slate-300">
@@ -198,7 +198,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             <span class="font-bold text-amber-400">Worksheet: SUMMARY_RIWAYAT_REVISI &bull; Folder Drive: 03_DRAF_REVISI_SUMMARY_3_BULAN</span>
             <p class="text-[11px] text-slate-400">Catatan perbaikan, draf revisi dinas, dan ringkasan evaluasi. <strong>OTOMATIS DIBERSIHKAN DALAM 3 BULAN (90 HARI)</strong>.</p>
           </div>
-          <button type="button" onclick="triggerAutoCleanManual()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+          <button type="button" onclick="triggerAutoCleanManual()" class="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
             <i class="fa-solid fa-broom"></i> Bersihkan Sekarang
           </button>
         </div>
@@ -279,7 +279,82 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     </div>
   </main>
 
-  <!-- MODAL EKSEKUSI VERIFIKASI MULTI-WORKSHEET -->
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: PEMBACA & PRATINJAU BERKAS (IN-DASHBOARD DOCUMENT VIEWER)    -->
+  <!-- ===================================================================== -->
+  <div id="previewModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-3 sm:p-5">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-4xl h-[92vh] overflow-hidden shadow-2xl animate-in fade-in duration-200 flex flex-col">
+      <!-- Top Bar Modal Pratinjau -->
+      <div class="p-4 border-b border-slate-800 bg-slate-950 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-sky-600/20 border border-sky-500/30 flex items-center justify-center text-sky-400 text-lg">
+            <i class="fa-solid fa-file-pdf"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-white text-sm" id="previewModalTitle">Membaca Berkas Dokumen</h3>
+              <span class="px-2 py-0.5 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded text-[10px] font-mono font-bold" id="previewModalDocNo">-</span>
+            </div>
+            <p class="text-[11px] text-slate-400" id="previewModalSubtitle">Pemerintah Kabupaten Nagekeo</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Tombol Unduh Langsung -->
+          <a id="previewDownloadBtn" href="#" target="_blank" download class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer">
+            <i class="fa-solid fa-download"></i>
+            <span>Unduh Berkas</span>
+          </a>
+
+          <!-- Tombol Buka di Tab Baru Drive -->
+          <a id="previewDriveBtn" href="#" target="_blank" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer">
+            <i class="fa-solid fa-arrow-up-right-from-square text-sky-400"></i>
+            <span>Tab Drive</span>
+          </a>
+
+          <!-- Tombol Lanjut Verifikasi -->
+          <button type="button" onclick="proceedToVerifyFromPreview()" id="previewVerifyBtn" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer">
+            <i class="fa-solid fa-stamp"></i>
+            <span>Verifikasi Berkas</span>
+          </button>
+
+          <!-- Tutup -->
+          <button type="button" onclick="closePreviewModal()" class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pilihan Mode Tampilan -->
+      <div class="bg-slate-950/90 px-4 py-2 border-b border-slate-800/80 flex items-center justify-between text-xs">
+        <div class="flex items-center gap-2">
+          <span class="text-slate-400 text-[11px]">Mode Pembaca:</span>
+          <button type="button" onclick="switchViewerMode('DRIVE')" id="btnViewerDrive" class="px-2.5 py-1 bg-sky-600 text-white rounded-lg font-bold text-[11px] cursor-pointer">Pratinjau Drive</button>
+          <button type="button" onclick="switchViewerMode('SERVER')" id="btnViewerServer" class="px-2.5 py-1 bg-slate-800 text-slate-300 rounded-lg font-bold text-[11px] cursor-pointer">Baca Server Stream (Bebas Login)</button>
+        </div>
+        <div id="previewStatusMsg" class="text-[11px] text-slate-400 font-mono">Memuat viewer...</div>
+      </div>
+
+      <!-- Area Tampilan Berkas -->
+      <div class="flex-1 bg-slate-950 p-2 relative overflow-hidden flex flex-col items-center justify-center">
+        <!-- Frame Drive -->
+        <iframe id="previewIframe" src="" class="w-full h-full rounded-2xl border border-slate-800 bg-white" style="display: block;"></iframe>
+
+        <!-- Frame Server Stream -->
+        <div id="serverStreamContainer" class="w-full h-full rounded-2xl border border-slate-800 bg-slate-900 hidden flex-col items-center justify-center p-4">
+          <div id="streamLoading" class="flex flex-col items-center gap-3 text-slate-400">
+            <i class="fa-solid fa-spinner fa-spin text-3xl text-sky-500"></i>
+            <span class="text-xs">Mengambil dokumen asli dari Google Drive Server...</span>
+          </div>
+          <iframe id="streamIframe" src="" class="w-full h-full rounded-xl bg-white hidden"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: EKSEKUSI VERIFIKASI MULTI-WORKSHEET                         -->
+  <!-- ===================================================================== -->
   <div id="verifyModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in duration-200 flex flex-col">
       <div class="p-5 border-b border-slate-800 bg-gradient-to-r from-sky-950 via-slate-900 to-indigo-950 flex items-center justify-between">
@@ -292,13 +367,12 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             <p class="text-[11px] text-sky-300" id="modalDocNumber">-</p>
           </div>
         </div>
-        <button type="button" onclick="closeVerifyModal()" class="text-slate-400 hover:text-white p-2">
+        <button type="button" onclick="closeVerifyModal()" class="text-slate-400 hover:text-white p-2 cursor-pointer">
           <i class="fa-solid fa-xmark text-base"></i>
         </button>
       </div>
 
       <div class="p-5 space-y-4 text-xs overflow-y-auto max-h-[75vh]">
-        <!-- Info Ringkas -->
         <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
           <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Informasi Berkas</div>
           <div class="font-bold text-white" id="modalDocTitle">-</div>
@@ -356,6 +430,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       folders: []
     };
     var selectedVerifyDoc = null;
+    var currentPreviewDoc = null;
 
     function showToast(msg, type) {
       var container = document.getElementById('toastContainer');
@@ -377,8 +452,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var sDocs = res.sahDocs || [];
       var sumDocs = res.summaryDocs || [];
 
-      // Resilient Fallback: Jika pDocs & sDocs kosong tapi rawDocs ada isinya,
-      // otomatis kategorikan agar berkas unggahan user langsung tampil di layar!
+      // Resilient Fallback: Jika pDocs & sDocs kosong tapi rawDocs ada isinya
       if (pDocs.length === 0 && sDocs.length === 0 && rawDocs.length > 0) {
         for (var i = 0; i < rawDocs.length; i++) {
           var d = rawDocs[i];
@@ -401,6 +475,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
               detailEvaluasi: d.notes || 'Perlu perbaikan berkas',
               petugas: d.verifierName || 'Admin Verifikator',
               fileUrl: (d.googleDrive && d.googleDrive.viewUrl) || '',
+              downloadUrl: (d.googleDrive && d.googleDrive.downloadUrl) || '',
+              previewUrl: (d.googleDrive && d.googleDrive.previewUrl) || '',
               fileId: (d.googleDrive && d.googleDrive.fileId) || '',
               batasSimpan3Bln: '90 Hari',
               statusBersih: 'AKTIF_3_BULAN'
@@ -536,9 +612,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           ? '<span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold text-[10px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>REVISI</span>'
           : '<span class="px-2 py-0.5 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded font-bold text-[10px]"><i class="fa-solid fa-clock mr-1"></i>PENDING</span>';
 
-        var driveLink = (d.googleDrive && d.googleDrive.viewUrl)
-          ? '<a href="' + d.googleDrive.viewUrl + '" target="_blank" class="text-sky-400 hover:underline font-mono text-[11px] block mt-1"><i class="fa-solid fa-file-pdf mr-1"></i>Lihat Berkas</a>'
-          : '';
+        var fileId = (d.googleDrive && d.googleDrive.fileId) ? d.googleDrive.fileId : '';
+        var downloadUrl = fileId ? ('https://drive.google.com/uc?export=download&id=' + fileId) : (d.googleDrive?.downloadUrl || '#');
 
         html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
           '<td class="p-3.5 font-mono font-bold text-white">' + (d.nomorBerkas || '-') +
@@ -546,8 +621,16 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '</td>' +
           '<td class="p-3.5">' +
             '<div class="font-bold text-slate-200">' + (d.judul || '-') + '</div>' +
-            '<div class="text-[11px] text-sky-400 font-medium">' + (d.opdName || '-') + ' <span class="text-slate-500">(v' + (d.currentVersion || 1) + ')</span></div>' +
-            driveLink +
+            '<div class="text-[11px] text-sky-400 font-medium mb-1.5">' + (d.opdName || '-') + ' <span class="text-slate-500">(v' + (d.currentVersion || 1) + ')</span></div>' +
+            '<div class="flex items-center gap-1.5 flex-wrap">' +
+              '<button type="button" onclick="openPreviewModalForProses(' + i + ')" class="px-2.5 py-1 bg-sky-950 hover:bg-sky-900 border border-sky-600/50 text-sky-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 transition-all">' +
+                '<i class="fa-solid fa-book-open-reader text-sky-400"></i>' +
+                '<span>Baca &amp; Buka Berkas</span>' +
+              '</button>' +
+              '<a href="' + downloadUrl + '" target="_blank" download class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[11px] font-medium inline-flex items-center gap-1 cursor-pointer" title="Unduh Berkas PDF">' +
+                '<i class="fa-solid fa-download text-emerald-400"></i> Unduh' +
+              '</a>' +
+            '</div>' +
           '</td>' +
           '<td class="p-3.5 text-slate-300">' + ((d.pemohon && d.pemohon.nama) ? d.pemohon.nama : 'Pemohon Dinas') +
             '<div class="text-[10px] text-slate-500 font-mono">' + ((d.pemohon && d.pemohon.email) ? d.pemohon.email : '-') + '</div>' +
@@ -587,9 +670,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var html = '';
       for (var j = 0; j < docs.length; j++) {
         var s = docs[j];
-        var driveLink = (s.googleDrive && s.googleDrive.viewUrl)
-          ? '<a href="' + s.googleDrive.viewUrl + '" target="_blank" class="text-emerald-400 hover:underline font-mono text-[11px] inline-flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka File Sah</a>'
-          : '-';
+        var sFileId = (s.googleDrive && s.googleDrive.fileId) ? s.googleDrive.fileId : '';
+        var sDownloadUrl = sFileId ? ('https://drive.google.com/uc?export=download&id=' + sFileId) : (s.googleDrive?.downloadUrl || '#');
 
         html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
           '<td class="p-3.5 font-mono text-emerald-400 font-bold">' + (s.bavNumber || '-') +
@@ -597,7 +679,15 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '</td>' +
           '<td class="p-3.5">' +
             '<div class="font-bold text-slate-200">' + (s.judul || '-') + '</div>' +
-            '<div class="text-[10px] text-slate-400 font-mono">' + (s.nomorBerkas || '-') + '</div>' +
+            '<div class="text-[10px] text-slate-400 font-mono mb-1.5">' + (s.nomorBerkas || '-') + '</div>' +
+            '<div class="flex items-center gap-1.5 flex-wrap">' +
+              '<button type="button" onclick="openPreviewModalForSah(' + j + ')" class="px-2.5 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-600/50 text-emerald-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer">' +
+                '<i class="fa-solid fa-book-open text-emerald-400"></i> Baca Berkas Sah' +
+              '</button>' +
+              '<a href="' + sDownloadUrl + '" target="_blank" download class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[11px] font-medium inline-flex items-center gap-1 cursor-pointer">' +
+                '<i class="fa-solid fa-download text-emerald-400"></i> Unduh' +
+              '</a>' +
+            '</div>' +
           '</td>' +
           '<td class="p-3.5 text-slate-300">' + (s.opdName || '-') +
             '<div class="text-[10px] text-slate-500">' + ((s.pemohon && s.pemohon.nama) ? s.pemohon.nama : '-') + '</div>' +
@@ -609,7 +699,9 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             '<span class="px-2 py-0.5 bg-emerald-950 border border-emerald-600/40 text-emerald-300 rounded font-bold text-[10px]">5 TAHUN</span>' +
             '<div class="text-[10px] text-slate-400 mt-0.5">' + (s.retentionExpiry || 'Resmi') + '</div>' +
           '</td>' +
-          '<td class="p-3.5 text-right">' + driveLink + '</td>' +
+          '<td class="p-3.5 text-right">' +
+            '<a href="' + (s.googleDrive?.viewUrl || '#') + '" target="_blank" class="text-emerald-400 hover:underline font-mono text-[11px] inline-flex items-center gap-1"><i class="fa-solid fa-arrow-up-right-from-square"></i> Tab Drive</a>' +
+          '</td>' +
           '</tr>';
       }
       tbody.innerHTML = html;
@@ -631,9 +723,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var html = '';
       for (var k = 0; k < docs.length; k++) {
         var sm = docs[k];
-        var drafLink = sm.fileUrl
-          ? '<a href="' + sm.fileUrl + '" target="_blank" class="text-amber-400 hover:underline font-mono text-[11px] inline-flex items-center gap-1"><i class="fa-solid fa-folder-open"></i> Draf</a>'
-          : '-';
+        var smFileId = sm.fileId || '';
+        var smDownloadUrl = smFileId ? ('https://drive.google.com/uc?export=download&id=' + smFileId) : (sm.downloadUrl || '#');
 
         html += '<tr class="hover:bg-slate-900/80 transition-colors">' +
           '<td class="p-3.5 font-mono text-slate-300">' + (sm.tanggalMasuk || '-') +
@@ -641,12 +732,20 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           '</td>' +
           '<td class="p-3.5">' +
             '<div class="font-bold text-slate-200">' + (sm.judul || '-') + '</div>' +
-            '<div class="text-[10px] text-slate-400">' + (sm.opdName || '-') + ' (' + (sm.nomorBerkas || '-') + ')</div>' +
+            '<div class="text-[10px] text-slate-400 mb-1">' + (sm.opdName || '-') + ' (' + (sm.nomorBerkas || '-') + ')</div>' +
+            '<div class="flex items-center gap-1.5 flex-wrap">' +
+              '<button type="button" onclick="openPreviewModalForSummary(' + k + ')" class="px-2.5 py-1 bg-amber-950 hover:bg-amber-900 border border-amber-600/50 text-amber-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer">' +
+                '<i class="fa-solid fa-folder-open text-amber-400"></i> Baca Draf' +
+              '</button>' +
+              '<a href="' + smDownloadUrl + '" target="_blank" download class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg text-[11px] font-medium inline-flex items-center gap-1 cursor-pointer">' +
+                '<i class="fa-solid fa-download text-amber-400"></i> Unduh' +
+              '</a>' +
+            '</div>' +
           '</td>' +
           '<td class="p-3.5"><span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold text-[10px]">' + (sm.jenisCatatan || 'REVISI') + '</span></td>' +
           '<td class="p-3.5 text-amber-200/90 max-w-sm text-[11px] italic leading-snug">"' + (sm.detailEvaluasi || sm.summaryPetunjuk || '-') + '"</td>' +
           '<td class="p-3.5"><span class="text-[10px] font-bold text-amber-400 font-mono">Batas: ' + (sm.batasSimpan3Bln || '90 Hari') + '</span><div class="text-[9px] text-slate-500">Auto Clean 90 Hari</div></td>' +
-          '<td class="p-3.5 text-right">' + drafLink + '</td>' +
+          '<td class="p-3.5 text-right"><a href="' + (sm.fileUrl || '#') + '" target="_blank" class="text-amber-400 hover:underline font-mono text-[11px]">Tab Drive</a></td>' +
           '</tr>';
       }
       tbody.innerHTML = html;
@@ -717,20 +816,146 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       }
     }
 
-    function openVerifyModalForProses(idx) {
-      selectedVerifyDoc = globalData.prosesDocs[idx];
-      if (!selectedVerifyDoc) return;
+    // =========================================================================
+    // FUNGSI MODAL PRATINJAU DOKUMEN (IN-APP DOCUMENT VIEWER)
+    // =========================================================================
+    function openPreviewModal(doc, category) {
+      currentPreviewDoc = doc;
+      var fileId = (doc.googleDrive && doc.googleDrive.fileId) ? doc.googleDrive.fileId : (doc.fileId || '');
 
-      document.getElementById('modalDocNumber').innerText = selectedVerifyDoc.nomorBerkas;
-      document.getElementById('modalDocOpd').innerText = selectedVerifyDoc.opdName;
-      document.getElementById('modalDocTitle').innerText = selectedVerifyDoc.judul;
+      document.getElementById('previewModalTitle').innerText = doc.judul || 'Dokumen SAKIP';
+      document.getElementById('previewModalDocNo').innerText = doc.nomorBerkas || '-';
+      document.getElementById('previewModalSubtitle').innerText = (doc.opdName || 'Dinas') + ' • Versi ' + (doc.currentVersion || doc.versionNumber || 1);
 
-      var cleanNo = (selectedVerifyDoc.nomorBerkas || '').replace(/[^a-zA-Z0-9]/g, '');
-      document.getElementById('inputBav').value = 'BAV/SAKIP-NGK/' + (selectedVerifyDoc.opdId || 'OPD') + '/' + new Date().getFullYear() + '/' + (cleanNo.slice(-4) || '001');
-      document.getElementById('inputNotes').value = selectedVerifyDoc.notes || '';
+      var downloadUrl = fileId ? ('https://drive.google.com/uc?export=download&id=' + fileId) : (doc.googleDrive?.downloadUrl || doc.downloadUrl || '#');
+      var driveViewUrl = fileId ? ('https://drive.google.com/file/d/' + fileId + '/view') : (doc.googleDrive?.viewUrl || doc.fileUrl || '#');
+      var previewUrl = fileId ? ('https://drive.google.com/file/d/' + fileId + '/preview') : driveViewUrl;
+
+      document.getElementById('previewDownloadBtn').href = downloadUrl;
+      document.getElementById('previewDriveBtn').href = driveViewUrl;
+
+      var verifyBtn = document.getElementById('previewVerifyBtn');
+      if (category === 'PROSES') {
+        verifyBtn.style.display = 'flex';
+      } else {
+        verifyBtn.style.display = 'none';
+      }
+
+      // Default buka preview frame
+      switchViewerMode('DRIVE', previewUrl, fileId);
+
+      document.getElementById('previewModal').style.display = 'flex';
+    }
+
+    function openPreviewModalForProses(idx) {
+      openPreviewModal(globalData.prosesDocs[idx], 'PROSES');
+    }
+    function openPreviewModalForSah(idx) {
+      openPreviewModal(globalData.sahDocs[idx], 'SAH');
+    }
+    function openPreviewModalForSummary(idx) {
+      openPreviewModal(globalData.summaryDocs[idx], 'SUMMARY');
+    }
+
+    function closePreviewModal() {
+      document.getElementById('previewModal').style.display = 'none';
+      document.getElementById('previewIframe').src = '';
+      document.getElementById('streamIframe').src = '';
+      currentPreviewDoc = null;
+    }
+
+    function switchViewerMode(mode, customPreviewUrl, customFileId) {
+      var doc = currentPreviewDoc;
+      if (!doc) return;
+      var fileId = customFileId || (doc.googleDrive && doc.googleDrive.fileId) || doc.fileId || '';
+      var previewUrl = customPreviewUrl || (fileId ? ('https://drive.google.com/file/d/' + fileId + '/preview') : (doc.googleDrive?.viewUrl || ''));
+
+      var btnDrive = document.getElementById('btnViewerDrive');
+      var btnServer = document.getElementById('btnViewerServer');
+      var frameDrive = document.getElementById('previewIframe');
+      var containerServer = document.getElementById('serverStreamContainer');
+      var statusMsg = document.getElementById('previewStatusMsg');
+
+      if (mode === 'DRIVE') {
+        btnDrive.className = 'px-2.5 py-1 bg-sky-600 text-white rounded-lg font-bold text-[11px] cursor-pointer';
+        btnServer.className = 'px-2.5 py-1 bg-slate-800 text-slate-300 rounded-lg font-bold text-[11px] cursor-pointer';
+        frameDrive.style.display = 'block';
+        containerServer.style.display = 'none';
+        frameDrive.src = previewUrl;
+        statusMsg.innerText = 'Pratinjau Google Drive Aktif';
+      } else {
+        btnDrive.className = 'px-2.5 py-1 bg-slate-800 text-slate-300 rounded-lg font-bold text-[11px] cursor-pointer';
+        btnServer.className = 'px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-bold text-[11px] cursor-pointer';
+        frameDrive.style.display = 'none';
+        containerServer.style.display = 'flex';
+        statusMsg.innerText = 'Mengambil file dari server script...';
+
+        var loadingEl = document.getElementById('streamLoading');
+        var streamIframe = document.getElementById('streamIframe');
+        loadingEl.style.display = 'flex';
+        streamIframe.style.display = 'none';
+
+        if (typeof google !== 'undefined' && google.script && google.script.run && fileId) {
+          google.script.run
+            .withSuccessHandler(function(res) {
+              loadingEl.style.display = 'none';
+              if (res && res.status === 'success' && res.dataUri) {
+                streamIframe.src = res.dataUri;
+                streamIframe.style.display = 'block';
+                statusMsg.innerText = 'Berkas terbaca langsung via Server (' + (res.fileSize || '') + ')';
+              } else {
+                statusMsg.innerText = 'Server: ' + (res.message || 'Gagal memuat.');
+              }
+            })
+            .withFailureHandler(function(err) {
+              loadingEl.style.display = 'none';
+              statusMsg.innerText = 'Error stream: ' + err.toString();
+            })
+            .adminGetFileBase64(fileId);
+        } else {
+          loadingEl.style.display = 'none';
+          statusMsg.innerText = 'Mode server siap digunakan saat terpasang di Google Apps Script.';
+        }
+      }
+    }
+
+    function proceedToVerifyFromPreview() {
+      var doc = currentPreviewDoc;
+      closePreviewModal();
+      if (doc) {
+        var idx = globalData.prosesDocs.findIndex(function(d) {
+          return d.id === doc.id || d.nomorBerkas === doc.nomorBerkas;
+        });
+        if (idx !== -1) {
+          openVerifyModalForProses(idx);
+        } else {
+          selectedVerifyDoc = doc;
+          openVerifyModalDirect(doc);
+        }
+      }
+    }
+
+    // =========================================================================
+    // FUNGSI MODAL VERIFIKASI DOKUMEN
+    // =========================================================================
+    function openVerifyModalDirect(doc) {
+      selectedVerifyDoc = doc;
+      document.getElementById('modalDocNumber').innerText = doc.nomorBerkas;
+      document.getElementById('modalDocOpd').innerText = doc.opdName;
+      document.getElementById('modalDocTitle').innerText = doc.judul;
+
+      var cleanNo = (doc.nomorBerkas || '').replace(/[^a-zA-Z0-9]/g, '');
+      document.getElementById('inputBav').value = 'BAV/SAKIP-NGK/' + (doc.opdId || 'OPD') + '/' + new Date().getFullYear() + '/' + (cleanNo.slice(-4) || '001');
+      document.getElementById('inputNotes').value = doc.notes || '';
       document.getElementById('selectStatus').value = 'APPROVED';
 
       document.getElementById('verifyModal').style.display = 'flex';
+    }
+
+    function openVerifyModalForProses(idx) {
+      selectedVerifyDoc = globalData.prosesDocs[idx];
+      if (!selectedVerifyDoc) return;
+      openVerifyModalDirect(selectedVerifyDoc);
     }
 
     function closeVerifyModal() {
@@ -789,7 +1014,6 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       }
     }
 
-    // Load data on page ready and periodic auto-sync every 20 seconds
     window.addEventListener('DOMContentLoaded', function() {
       loadAllData();
       setInterval(function() {
