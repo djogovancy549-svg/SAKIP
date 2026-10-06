@@ -455,7 +455,10 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     function handleDashboardResponse(res) {
-      if (!res) return;
+      if (!res) {
+        renderAllTables();
+        return;
+      }
       var rawDocs = res.documents || [];
       var pDocs = res.prosesDocs || [];
       var sDocs = res.sahDocs || [];
@@ -539,13 +542,18 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             if (res && res.status === 'success') {
               handleDashboardResponse(res);
               showToast('Data 3 Worksheet berhasil disinkronkan!', 'success');
+            } else if (res && (res.documents || res.prosesDocs)) {
+              handleDashboardResponse(res);
             } else {
-              fetchFallbackData(icon);
+              renderAllTables();
+              showToast(res && res.message ? res.message : 'Koneksi ke sheet selesai', 'info');
             }
           })
           .withFailureHandler(function(err) {
-            console.warn('google.script.run warning, trying HTTP fallback:', err);
-            fetchFallbackData(icon);
+            if (icon) icon.classList.remove('fa-spin');
+            console.warn('google.script.run notice:', err);
+            renderAllTables();
+            showToast('Catatan: ' + (err && err.message ? err.message : err.toString()), 'error');
           })
           .adminGetDashboardData();
       } else {

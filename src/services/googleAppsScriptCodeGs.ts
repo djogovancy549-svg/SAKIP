@@ -473,10 +473,21 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    return HtmlService.createTemplateFromFile("Index").evaluate()
-      .setTitle("DASHBOARD ADMIN SAKIP - KABUPATEN NAGEKEO")
-      .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    try {
+      return HtmlService.createTemplateFromFile("Index").evaluate()
+        .setTitle("DASHBOARD ADMIN SAKIP - KABUPATEN NAGEKEO")
+        .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    } catch (eIndex) {
+      try {
+        return HtmlService.createTemplateFromFile("index").evaluate()
+          .setTitle("DASHBOARD ADMIN SAKIP - KABUPATEN NAGEKEO")
+          .addMetaTag("viewport", "width=device-width, initial-scale=1.0")
+          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      } catch (eIndex2) {
+        return HtmlService.createHtmlOutput("<h1>File Index.html tidak ditemukan di proyek Apps Script</h1><p>Pastikan Anda membuat file HTML dengan nama <b>Index</b> (atau <b>Index.html</b>) di editor Google Apps Script Anda.</p>");
+      }
+    }
   } catch (error) {
     return ContentService.createTextOutput("Error: " + error.toString()).setMimeType(ContentService.MimeType.TEXT);
   }
@@ -798,69 +809,65 @@ function cleanLegacyDoc(ss, docId, docNumber) {
 }
 
 function adminGetDashboardData() {
-  var ss = getActiveSpreadsheetSafely();
-  if (!ss) return { status: "error", documents: [], prosesDocs: [], sahDocs: [], summaryDocs: [], users: [], folders: [], spreadsheetUrl: "" };
+  try {
+    var ss = getActiveSpreadsheetSafely();
+    if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan", documents: [], prosesDocs: [], sahDocs: [], summaryDocs: [], users: [], folders: [], spreadsheetUrl: "" };
 
-  initDefaultDataIfEmpty(ss);
+    initDefaultDataIfEmpty(ss);
 
-  var prosesSheet = ss.getSheetByName("DOKUMEN_PROSES");
-  var sahSheet = ss.getSheetByName("DOKUMEN_SAH_TERVERIFIKASI");
-  var summarySheet = ss.getSheetByName("SUMMARY_RIWAYAT_REVISI");
-  var userSheet = ss.getSheetByName("DATABASE_PENGGUNA");
-  var folderSheet = ss.getSheetByName("MAPPING_FOLDER_OPD");
+    var prosesSheet = ss.getSheetByName("DOKUMEN_PROSES");
+    var sahSheet = ss.getSheetByName("DOKUMEN_SAH_TERVERIFIKASI");
+    var summarySheet = ss.getSheetByName("SUMMARY_RIWAYAT_REVISI");
+    var userSheet = ss.getSheetByName("DATABASE_PENGGUNA");
+    var folderSheet = ss.getSheetByName("MAPPING_FOLDER_OPD");
 
-  var master = getMasterFolder();
-  var masterUrl = master.getUrl();
+    var masterUrl = "https://drive.google.com/";
+    try {
+      var master = getMasterFolder();
+      if (master) masterUrl = master.getUrl();
+    } catch (me) {}
 
-  function sanitizeDriveUrls(rawUrl, rawFileId, rowData) {
-    var fileId = String(rawFileId || "").trim();
-    var url = String(rawUrl || "").trim();
+    function sanitizeDriveUrls(rawUrl, rawFileId, rowData) {
+      var fileId = String(rawFileId || "").trim();
+      var url = String(rawUrl || "").trim();
 
-    if (fileId.indexOf("/file/d/") !== -1) {
-      var match = fileId.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-      if (match) fileId = match[1];
-    }
-    if (fileId.indexOf("?") !== -1) {
-      fileId = fileId.split("?")[0];
-    }
+      if (fileId.indexOf("/file/d/") !== -1) {
+        var match = fileId.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (match) fileId = match[1];
+      }
+      if (fileId.indexOf("?") !== -1) {
+        fileId = fileId.split("?")[0];
+      }
 
-    // Pemulihan otomatis jika fileId kosong, bergeser, bernilai "dsadasd", atau diawali "DRV-"
-    if (!fileId || fileId.length < 15 || fileId === "dsadasd" || fileId.indexOf("DRV-") !== -1) {
-      var haystack = (url + " " + (rowData ? rowData.join(" ") : "")).trim();
-      var m1 = haystack.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
-      if (m1) {
-        fileId = m1[1];
-      } else {
-        var m2 = haystack.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
-        if (m2) {
-          fileId = m2[1];
+      if (!fileId || fileId.length < 15 || fileId === "dsadasd" || fileId.indexOf("DRV-") !== -1) {
+        var haystack = (url + " " + (rowData ? rowData.join(" ") : "")).trim();
+        var m1 = haystack.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
+        if (m1) {
+          fileId = m1[1];
         } else {
-          var m3 = haystack.match(/\b([a-zA-Z0-9_-]{25,45})\b/);
-          if (m3 && m3[1].indexOf("SHA256") === -1 && m3[1].indexOf("DOC-") === -1 && m3[1].indexOf("BAV") === -1 && m3[1].indexOf("REG") === -1) {
-            fileId = m3[1];
+          var m2 = haystack.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+          if (m2) {
+            fileId = m2[1];
+          } else {
+            var m3 = haystack.match(/\b([a-zA-Z0-9_-]{25,45})\b/);
+            if (m3 && m3[1].indexOf("SHA256") === -1 && m3[1].indexOf("DOC-") === -1 && m3[1].indexOf("BAV") === -1 && m3[1].indexOf("REG") === -1) {
+              fileId = m3[1];
+            }
           }
         }
       }
+
+      var cleanViewUrl = (fileId && fileId.length > 15) ? ("https://drive.google.com/file/d/" + fileId + "/view") : (url || masterUrl);
+      var downloadUrl = (fileId && fileId.length > 15) ? ("https://drive.google.com/uc?export=download&id=" + fileId) : cleanViewUrl;
+      var previewUrl = (fileId && fileId.length > 15) ? ("https://drive.google.com/file/d/" + fileId + "/preview") : cleanViewUrl;
+
+      return {
+        fileId: fileId || "",
+        viewUrl: cleanViewUrl,
+        downloadUrl: downloadUrl,
+        previewUrl: previewUrl
+      };
     }
-
-    if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1 && fileId !== "dsadasd") {
-      try {
-        var df = DriveApp.getFileById(fileId);
-        df.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      } catch (errSharing) {}
-    }
-
-    var cleanViewUrl = fileId ? ("https://drive.google.com/file/d/" + fileId + "/view") : (url || masterUrl);
-    var downloadUrl = fileId ? ("https://drive.google.com/uc?export=download&id=" + fileId) : cleanViewUrl;
-    var previewUrl = fileId ? ("https://drive.google.com/file/d/" + fileId + "/preview") : cleanViewUrl;
-
-    return {
-      fileId: fileId,
-      viewUrl: cleanViewUrl,
-      downloadUrl: downloadUrl,
-      previewUrl: previewUrl
-    };
-  }
 
   var prosesDocs = [];
   if (prosesSheet && prosesSheet.getLastRow() > 1) {
@@ -1012,6 +1019,19 @@ function adminGetDashboardData() {
       retentionPolicy: { revisiDays: RETENTION_REVISION_DAYS, sahYears: 5 }
     }
   };
+  } catch (err) {
+    return {
+      status: "error",
+      message: err.toString(),
+      documents: [],
+      prosesDocs: [],
+      sahDocs: [],
+      summaryDocs: [],
+      users: [],
+      folders: [],
+      spreadsheetUrl: ""
+    };
+  }
 }
 
 function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip, password, driveFolderUrl) {
