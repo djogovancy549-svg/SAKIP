@@ -60,6 +60,7 @@ import databaseBg from './assets/images/digital_database_modern_bg_1790734176384
 import {
   sendVerificationToGoogleSheet,
   sendUploadToGoogleDriveAndSheet,
+  deleteDocumentFromGoogleSheet,
   fetchDatabaseFromGoogleSheet,
   setGlobalWebhookUrl,
   setGlobalDriveFolderId,
@@ -80,6 +81,7 @@ const STORAGE_KEY_CURRENT_USER = 'simverif_clean_session_v5';
 const STORAGE_KEY_FOLDER_REGISTRATIONS = 'simverif_clean_folder_registrations_v5';
 const STORAGE_KEY_NOTIFICATIONS = 'simverif_notifications_v1';
 const STORAGE_KEY_LAYOUT_MODE = 'simverif_layout_mode_v2';
+const STORAGE_KEY_DELETED_DOCS = 'simverif_deleted_docs_v2';
 
 export default function App() {
   // Notifications State
@@ -247,6 +249,14 @@ export default function App() {
   const [splitRightTab, setSplitRightTab] = useState<'VIEWER' | 'FORM'>('VIEWER');
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState<boolean>(false);
   const viewDropdownRef = useRef<HTMLDivElement>(null);
+  const deletedDocIdsRef = useRef<Set<string>>((() => {
+    if (typeof window === 'undefined') return new Set<string>();
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DELETED_DOCS);
+      if (saved) return new Set<string>(JSON.parse(saved));
+    } catch (e) {}
+    return new Set<string>();
+  })());
 
   const handleOpenVerificationForm = (doc?: DocumentItem) => {
     if (doc) setSelectedDocument(doc);
@@ -301,12 +311,23 @@ export default function App() {
     }
   }, [folderRegistrations]);
 
-  // Persist documents
+  // Persist documents safely without quota overflow
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY_DOCS, JSON.stringify(documents));
+      const docsToSave = documents.map((d) => {
+        if (d.fileBase64 && d.fileBase64.length > 500000) {
+          const { fileBase64, ...rest } = d;
+          return rest;
+        }
+        return d;
+      });
+      localStorage.setItem(STORAGE_KEY_DOCS, JSON.stringify(docsToSave));
     } catch (e) {
-      console.error('Failed to save documents', e);
+      console.warn('Fallback document storage:', e);
+      try {
+        const stripped = documents.map(({ fileBase64, fileBlobUrl, ...rest }) => rest);
+        localStorage.setItem(STORAGE_KEY_DOCS, JSON.stringify(stripped));
+      } catch (e2) {}
     }
   }, [documents]);
 
@@ -373,45 +394,54 @@ export default function App() {
     try {
       const data = await fetchDatabaseFromGoogleSheet();
       if (data) {
-        if (data.documents && data.documents.length > 0) {
+        if (data.documents) {
           setDocuments((prevDocs) => {
-            const merged = [...prevDocs];
-            data.documents.forEach((remoteDoc) => {
-              const idx = merged.findIndex(
+            // Keep fresh local documents that were just added locally and not yet synced, unless deleted
+            const localOnlyDocs = prevDocs.filter((p) => {
+              if (deletedDocIdsRef.current.has(p.id)) return false;
+              const inRemote = data.documents.some(
+                (r) =>
+                  r.id === p.id ||
+                  (r.nomorBerkas && p.nomorBerkas && r.nomorBerkas.trim().toLowerCase() === p.nomorBerkas.trim().toLowerCase())
+              );
+              return !inRemote && p.id.startsWith('DOC-');
+            });
+
+            // Filter out any documents that were deleted in the current session
+            const validRemoteDocs = data.documents.filter((r) => !deletedDocIdsRef.current.has(r.id));
+
+            const merged = validRemoteDocs.map((remoteDoc) => {
+              const localMatch = prevDocs.find(
                 (d) =>
                   d.id === remoteDoc.id ||
                   (d.nomorBerkas &&
                     remoteDoc.nomorBerkas &&
                     d.nomorBerkas.trim().toLowerCase() === remoteDoc.nomorBerkas.trim().toLowerCase())
               );
-              if (idx !== -1) {
-                merged[idx] = {
-                  ...merged[idx],
-                  ...remoteDoc,
-                  fileBase64: merged[idx].fileBase64 || remoteDoc.fileBase64,
-                  fileBlobUrl: merged[idx].fileBlobUrl || remoteDoc.fileBlobUrl,
-                  opdId: remoteDoc.opdId || merged[idx].opdId,
-                  verification: remoteDoc.verification
-                    ? {
-                        verifiedAt: remoteDoc.verification.verifiedAt || merged[idx]?.verification?.verifiedAt || new Date().toLocaleString('id-ID'),
-                        verifiedBy: remoteDoc.verification.verifiedBy || merged[idx]?.verification?.verifiedBy || 'Admin Verifikator',
-                        nip: remoteDoc.verification.nip || merged[idx]?.verification?.nip || '-',
-                        jabatan: remoteDoc.verification.jabatan || merged[idx]?.verification?.jabatan || 'Verifikator SAKIP',
-                        status: remoteDoc.status,
-                        checklist: remoteDoc.verification.checklist || merged[idx]?.verification?.checklist || {},
-                        notes: remoteDoc.verification.notes || merged[idx]?.verification?.notes || '',
-                        qrCodeUrl: remoteDoc.verification.qrCodeUrl || merged[idx]?.verification?.qrCodeUrl || '',
-                        digitalSealHash: remoteDoc.verification.digitalSealHash || merged[idx]?.verification?.digitalSealHash || '',
-                        bavNumber: remoteDoc.verification.bavNumber || merged[idx]?.verification?.bavNumber || '',
-                        syncedToGoogleSheet: true,
-                      }
-                    : merged[idx].verification,
-                };
-              } else {
-                merged.push(remoteDoc);
-              }
+              return {
+                ...remoteDoc,
+                fileBase64: localMatch?.fileBase64 || remoteDoc.fileBase64,
+                fileBlobUrl: localMatch?.fileBlobUrl || remoteDoc.fileBlobUrl,
+                opdId: remoteDoc.opdId || localMatch?.opdId || 'DISKOMINFO',
+                verification: remoteDoc.verification
+                  ? {
+                      verifiedAt: remoteDoc.verification.verifiedAt || localMatch?.verification?.verifiedAt || new Date().toLocaleString('id-ID'),
+                      verifiedBy: remoteDoc.verification.verifiedBy || localMatch?.verification?.verifiedBy || 'Admin Verifikator',
+                      nip: remoteDoc.verification.nip || localMatch?.verification?.nip || '-',
+                      jabatan: remoteDoc.verification.jabatan || localMatch?.verification?.jabatan || 'Verifikator SAKIP',
+                      status: remoteDoc.status,
+                      checklist: remoteDoc.verification.checklist || localMatch?.verification?.checklist || {},
+                      notes: remoteDoc.verification.notes || localMatch?.verification?.notes || '',
+                      qrCodeUrl: remoteDoc.verification.qrCodeUrl || localMatch?.verification?.qrCodeUrl || '',
+                      digitalSealHash: remoteDoc.verification.digitalSealHash || localMatch?.verification?.digitalSealHash || '',
+                      bavNumber: remoteDoc.verification.bavNumber || localMatch?.verification?.bavNumber || '',
+                      syncedToGoogleSheet: true,
+                    }
+                  : localMatch?.verification,
+              };
             });
-            return merged;
+
+            return [...merged, ...localOnlyDocs];
           });
 
           setSelectedDocument((prev) => {
@@ -727,16 +757,40 @@ export default function App() {
 
   // Handle Delete Document
   const handleDeleteDocument = async (docId: string) => {
+    deletedDocIdsRef.current.add(docId);
     const target = documents.find((d) => d.id === docId);
+    if (target?.nomorBerkas) {
+      deletedDocIdsRef.current.add(target.nomorBerkas);
+    }
+    try {
+      localStorage.setItem(
+        STORAGE_KEY_DELETED_DOCS,
+        JSON.stringify(Array.from(deletedDocIdsRef.current))
+      );
+    } catch (e) {}
+
+    // Instantly remove from local UI
     setDocuments((prev) => prev.filter((d) => d.id !== docId));
     if (selectedDocument?.id === docId) {
       const remaining = documents.filter((d) => d.id !== docId);
       setSelectedDocument(remaining.length > 0 ? remaining[0] : null);
     }
+
     if (target) {
+      // Send persistent delete request to Google Sheet & Google Drive
+      try {
+        await deleteDocumentFromGoogleSheet(
+          target.id,
+          target.nomorBerkas,
+          target.googleDrive?.fileId
+        );
+      } catch (err) {
+        console.warn('Gagal menghapus berkas dari Google Sheet / Drive:', err);
+      }
+
       addNotification({
-        title: '🗑️ Berkas Dihapus',
-        message: `Berkas "${target.nomorBerkas} - ${target.judul}" telah dihapus dari sistem.`,
+        title: '🗑️ Berkas Dihapus Permanen',
+        message: `Berkas "${target.nomorBerkas} - ${target.judul}" telah dihapus permanen dari sistem, Google Sheet, dan Google Drive.`,
         type: 'SYSTEM',
         targetRole: 'VERIFIKATOR',
         docId,

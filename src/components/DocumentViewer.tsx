@@ -26,10 +26,13 @@ import {
   HardDrive,
   CheckCircle2,
   Layers,
+  RefreshCw,
+  Loader2,
+  Zap,
 } from 'lucide-react';
 import { DocumentItem } from '../types';
 import { DocumentWatermark } from './DocumentWatermark';
-import { getGoogleDriveFolderUrl, sanitizeGoogleDriveUrl } from '../services/googleSheetsWebhook';
+import { getGoogleDriveFolderUrl, sanitizeGoogleDriveUrl, fetchFileBase64FromAppsScript } from '../services/googleSheetsWebhook';
 
 interface DocumentViewerProps {
   document: DocumentItem;
@@ -43,6 +46,9 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
   const [showWatermark, setShowWatermark] = useState<boolean>(false);
   const [watermarkOpacity, setWatermarkOpacity] = useState<number>(0.04);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [serverStreamDataUri, setServerStreamDataUri] = useState<string | null>(null);
+  const [isLoadingStream, setIsLoadingStream] = useState<boolean>(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
 
   const totalPages = document.content.pdfPages?.length || 1;
   const isApproved = document.status === 'APPROVED';
@@ -61,20 +67,60 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
     document.googleDrive?.viewUrl || document.googleDrive?.downloadUrl || getGoogleDriveFolderUrl()
   );
 
-  // Extract Google Drive File ID if present
-  const driveFileId =
-    document.googleDrive?.fileId ||
-    (() => {
-      const raw = document.googleDrive?.viewUrl || document.googleDrive?.downloadUrl || '';
-      const match = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-      return match ? match[1] : '';
-    })();
+  // Robust Google Drive File ID resolution: avoids "dsadasd" or fake IDs
+  const getCleanDriveFileId = (): string => {
+    const rawCandidates = [
+      document.googleDrive?.fileId,
+      document.googleDrive?.viewUrl,
+      document.googleDrive?.downloadUrl,
+      (document.googleDrive as any)?.previewUrl,
+      document.verification?.bavNumber,
+      document.notes,
+    ];
+    for (const cand of rawCandidates) {
+      if (!cand || typeof cand !== 'string') continue;
+      const str = cand.trim();
+      if (str === 'dsadasd' || str.startsWith('DRV-') || str.startsWith('DOC-')) continue;
+      const urlMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
+      if (urlMatch) return urlMatch[1];
+      const idMatch = str.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+      if (idMatch) return idMatch[1];
+      if (str.length >= 25 && str.length <= 45 && !str.includes('/') && !str.includes(' ') && !str.includes('SHA256') && !str.includes('BAV') && !str.includes('REG')) {
+        return str;
+      }
+    }
+    return '';
+  };
+  const driveFileId = getCleanDriveFileId();
+
+  const handleLoadDirectStream = async () => {
+    if (!driveFileId) return;
+    setIsLoadingStream(true);
+    setStreamError(null);
+    try {
+      const res = await fetchFileBase64FromAppsScript(driveFileId);
+      if (res.success && res.dataUri) {
+        setServerStreamDataUri(res.dataUri);
+      } else {
+        setStreamError(res.message || 'Gagal memuat stream dari server');
+      }
+    } catch (e) {
+      setStreamError('Koneksi server gagal');
+    } finally {
+      setIsLoadingStream(false);
+    }
+  };
 
   const handleDownloadFile = () => {
     if (document.fileBlobUrl) {
       const a = window.document.createElement('a');
       a.href = document.fileBlobUrl;
       a.download = document.fileName;
+      a.click();
+    } else if (serverStreamDataUri) {
+      const a = window.document.createElement('a');
+      a.href = serverStreamDataUri;
+      a.download = document.fileName || 'dokumen_sakip.pdf';
       a.click();
     } else if (driveFileId) {
       window.open(`https://drive.google.com/uc?export=download&id=${driveFileId}`, '_blank');
@@ -340,7 +386,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                   </div>
                 )}
               </div>
-            ) : driveFileId ? (
+            ) : (driveFileId || serverStreamDataUri) ? (
               <div className="bg-white border border-slate-300 rounded-2xl p-4 shadow-md space-y-3 w-full">
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
                   <div className="flex items-center gap-2">
@@ -349,42 +395,69 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                       Berkas Google Drive OPD: {document.fileName || document.judul}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={`https://drive.google.com/uc?export=download&id=${driveFileId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Direct Server Stream Button (Bypass Google Login) */}
+                    <button
+                      type="button"
+                      onClick={handleLoadDirectStream}
+                      disabled={isLoadingStream}
+                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                      title="Muat isi file langsung via Apps Script tanpa login Google"
                     >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Download File</span>
-                    </a>
-                    <a
-                      href={`https://drive.google.com/file/d/${driveFileId}/view`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Buka di Tab Drive</span>
-                    </a>
+                      {isLoadingStream ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Zap className="w-3.5 h-3.5 text-amber-100" />
+                      )}
+                      <span>{serverStreamDataUri ? 'Muat Ulang Stream' : '⚡ Baca Server Stream (Bebas Login)'}</span>
+                    </button>
+
+                    {driveFileId && (
+                      <>
+                        <a
+                          href={`https://drive.google.com/uc?export=download&id=${driveFileId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Download</span>
+                        </a>
+                        <a
+                          href={`https://drive.google.com/file/d/${driveFileId}/view`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Buka di Tab Drive</span>
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
 
+                {streamError && (
+                  <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>{streamError}</span>
+                  </div>
+                )}
+
                 <div className="relative w-full h-[620px] rounded-xl overflow-hidden border border-slate-200 bg-slate-900">
                   <iframe
-                    src={`https://drive.google.com/file/d/${driveFileId}/preview`}
+                    src={serverStreamDataUri || `https://drive.google.com/file/d/${driveFileId}/preview`}
                     title={document.fileName || 'Pratinjau Dokumen'}
                     className="w-full h-full border-0 bg-white"
                   />
                 </div>
 
-                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-900 flex items-center justify-between gap-2">
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-900 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
                     <span>
-                      Tersimpan resmi di Google Drive Server Nagekeo ({document.opdName}). Gunakan tombol <strong>Download File</strong> atau <strong>Buka di Tab Drive</strong> jika pratinjau terhalang cookie browser.
+                      Tersimpan resmi di Google Drive Server Nagekeo ({document.opdName}). Jika pratinjau terhalang cookie atau multi-login Google, klik tombol <strong>⚡ Baca Server Stream (Bebas Login)</strong> di atas.
                     </span>
                   </div>
                 </div>

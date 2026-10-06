@@ -59,36 +59,107 @@ function getMasterFolder() {
   return DriveApp.getRootFolder();
 }
 
-function getCategoryFolder(categoryName) {
+/**
+ * =========================================================================
+ * FOLDER TUNGGAL PER OPD (1 DINAS = 1 FOLDER GOOGLE DRIVE)
+ * Memastikan semua berkas (baru, revisi, maupun disahkan) milik satu dinas
+ * masuk secara otomatis ke SATU folder Google Drive saja. Tidak membuat folder duplikat.
+ * =========================================================================
+ */
+function getSingleOpdFolder(opdName, opdId) {
   var master = getMasterFolder();
-  var folders = master.getFoldersByName(categoryName);
-  if (folders.hasNext()) return folders.next();
+  var rawName = String(opdName || opdId || "UMUM_OPD").trim();
+  var cleanName = rawName.replace(/^SAKIP\s*[-_:]\s*/i, "").trim();
+  if (!cleanName) cleanName = "UMUM_OPD";
+  var folderDisplayName = "SAKIP - " + cleanName;
+
+  // 1. Cek folder yang sudah terdaftar di sheet MAPPING_FOLDER_OPD
   try {
-    var f = master.createFolder(categoryName);
+    var ss = getActiveSpreadsheetSafely();
+    if (ss) {
+      var mapSheet = ss.getSheetByName("MAPPING_FOLDER_OPD");
+      if (mapSheet && mapSheet.getLastRow() > 1) {
+        var mVals = mapSheet.getDataRange().getValues();
+        for (var m = 1; m < mVals.length; m++) {
+          var mId = String(mVals[m][1] || "").trim().toLowerCase();
+          var mName = String(mVals[m][2] || "").trim().toLowerCase();
+          var targetId = String(opdId || "").trim().toLowerCase();
+          var targetName = cleanName.toLowerCase();
+
+          if ((targetId && mId === targetId) || (targetName && (mName === targetName || mName.indexOf(targetName) !== -1 || targetName.indexOf(mName) !== -1))) {
+            var urlCol = String(mVals[m][3] || mVals[m][4] || "").trim();
+            var idCol = String(mVals[m][4] || "").trim();
+            var matchedFolderId = idCol;
+            if (!matchedFolderId && urlCol.indexOf("folders/") !== -1) {
+              var matchUrl = urlCol.match(/folders\/([a-zA-Z0-9_-]+)/);
+              if (matchUrl) matchedFolderId = matchUrl[1];
+            }
+            if (matchedFolderId && matchedFolderId.length > 15) {
+              try {
+                var foundFolder = DriveApp.getFolderById(matchedFolderId);
+                if (foundFolder) return foundFolder;
+              } catch (eF) {}
+            }
+          }
+        }
+      }
+    }
+  } catch (errMap) {}
+
+  // 2. Cek apakah folder dinas tersebut sudah ada di folder Master Google Drive
+  var exactFolders = master.getFoldersByName(folderDisplayName);
+  if (exactFolders.hasNext()) return exactFolders.next();
+
+  var plainFolders = master.getFoldersByName(cleanName);
+  if (plainFolders.hasNext()) return plainFolders.next();
+
+  var allSubFolders = master.getFolders();
+  while (allSubFolders.hasNext()) {
+    var fItem = allSubFolders.next();
+    var fName = fItem.getName().toLowerCase();
+    if (fName.indexOf(cleanName.toLowerCase()) !== -1 || (opdId && fName.indexOf(String(opdId).toLowerCase()) !== -1)) {
+      return fItem;
+    }
+  }
+
+  // 3. Jika belum ada, buat 1 folder baru di Master & buka akses viewer link
+  try {
+    var newFolder = master.createFolder(folderDisplayName);
     try {
-      f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    } catch (e) {}
-    return f;
-  } catch (err) {
+      newFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (eShare) {}
+
+    // Daftarkan ke MAPPING_FOLDER_OPD agar selamanya dipakai ulang
+    try {
+      var ss2 = getActiveSpreadsheetSafely();
+      if (ss2) {
+        var mapSheet2 = ss2.getSheetByName("MAPPING_FOLDER_OPD");
+        if (mapSheet2) {
+          mapSheet2.appendRow([
+            new Date().toLocaleString("id-ID"),
+            opdId || cleanName,
+            cleanName,
+            newFolder.getUrl(),
+            newFolder.getId(),
+            newFolder.getName(),
+            "Sistem Otomatis",
+            "-",
+            "Folder tunggal dinas Google Drive"
+          ]);
+        }
+      }
+    } catch (eReg) {}
+
+    return newFolder;
+  } catch (errCreate) {
     return master;
   }
 }
 
-function getOpdTargetFolder(categoryName, opdName) {
-  var parent = getCategoryFolder(categoryName);
-  var effectiveOpd = opdName || "UMUM_OPD";
-  var subName = "SAKIP - " + effectiveOpd;
-  var existing = parent.getFoldersByName(subName);
-  if (existing.hasNext()) return existing.next();
-  try {
-    var opdF = parent.createFolder(subName);
-    try {
-      opdF.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    } catch (e) {}
-    return opdF;
-  } catch (e) {
-    return parent;
-  }
+// Alias untuk kompatibilitas ke belakang (selalu arahkan ke folder tunggal dinas!)
+function getOpdTargetFolder(categoryOrOpd, opdName) {
+  var actualOpd = opdName || categoryOrOpd;
+  return getSingleOpdFolder(actualOpd);
 }
 
 function initDefaultDataIfEmpty(ss) {
@@ -144,107 +215,51 @@ function initDefaultDataIfEmpty(ss) {
     folderSheet.getRange(1, 1, 1, 9).setFontWeight("bold").setBackground("#134e4a").setFontColor("#2dd4bf");
   }
 
-  migrateLegacyData(ss);
+  cleanObsoleteLegacySheetsAndFix(ss);
 }
 
-function migrateLegacyData(ss) {
+/**
+ * Membersihkan sheet-sheet usang di luar struktur baru yang telah ditetapkan,
+ * dan memulihkan baris dokumen yang kolom ID file-nya rusak atau bergeser.
+ */
+function cleanObsoleteLegacySheetsAndFix(ss) {
+  if (!ss) return;
   try {
-    var prosesSheet = getOrCreateSheet(ss, "DOKUMEN_PROSES");
-    var sahSheet = getOrCreateSheet(ss, "DOKUMEN_SAH_TERVERIFIKASI");
-    var summarySheet = getOrCreateSheet(ss, "SUMMARY_RIWAYAT_REVISI");
-
-    var existingMap = {};
-    if (prosesSheet.getLastRow() > 1) {
-      var pData = prosesSheet.getDataRange().getValues();
-      for (var p = 1; p < pData.length; p++) {
-        var idStr = String(pData[p][1] || "").trim().toLowerCase();
-        var noStr = String(pData[p][2] || "").trim().toLowerCase();
-        if (idStr) existingMap[idStr] = true;
-        if (noStr) existingMap[noStr] = true;
-      }
-    }
-    if (sahSheet.getLastRow() > 1) {
-      var sData = sahSheet.getDataRange().getValues();
-      for (var s = 1; s < sData.length; s++) {
-        var sIdStr = String(sData[s][1] || "").trim().toLowerCase();
-        var sNoStr = String(sData[s][2] || "").trim().toLowerCase();
-        if (sIdStr) existingMap[sIdStr] = true;
-        if (sNoStr) existingMap[sNoStr] = true;
+    // 1. Hapus sheet lama yang tidak terpakai agar tidak memicu kebingungan pembacaan
+    var obsoleteNames = ["DATA_VERIFIKASI_DOKUMEN", "Sheet1", "Sheet 1", "DOKUMEN_SAKIP"];
+    for (var l = 0; l < obsoleteNames.length; l++) {
+      var ls = ss.getSheetByName(obsoleteNames[l]);
+      if (ls && ss.getSheets().length > 1) {
+        try { ss.deleteSheet(ls); } catch (e) {}
       }
     }
 
-    var allSheets = ss.getSheets();
-    var reserved = ["DOKUMEN_PROSES", "DOKUMEN_SAH_TERVERIFIKASI", "SUMMARY_RIWAYAT_REVISI", "DATABASE_PENGGUNA", "MAPPING_FOLDER_OPD"];
-
-    for (var i = 0; i < allSheets.length; i++) {
-      var curSheet = allSheets[i];
-      var name = curSheet.getName();
-      if (reserved.indexOf(name) !== -1) continue;
-
-      if (curSheet.getLastRow() > 1) {
-        var rows = curSheet.getDataRange().getValues();
-        for (var r = 1; r < rows.length; r++) {
-          var row = rows[r];
-          var tanggal = String(row[0] || new Date().toLocaleString("id-ID"));
-          var docId = String(row[1] || ("DOC-" + r)).trim();
-          var docNo = String(row[2] || "-").trim();
-          var judul = String(row[3] || "Dokumen SAKIP");
-          var opd = String(row[4] || "OPD");
-          var versi = String(row[5] || "v1");
-          var format = String(row[6] || "PDF");
-          var pemohonNama = String(row[7] || "Pemohon");
-          var pemohonEmail = String(row[8] || "-");
-          var instansi = String(row[9] || opd);
-          var status = String(row[10] || "PENDING").trim().toUpperCase();
-          var verifier = String(row[11] || "-");
-          var nip = String(row[12] || "-");
-          var fileUrl = String(row[13] || row[14] || "");
-          var fileId = String(row[14] || row[15] || "");
-          var notes = String(row[15] || row[16] || "Dokumen migrasi");
-
-          var checkId = docId.toLowerCase();
-          var checkNo = docNo.toLowerCase();
-
-          if (existingMap[checkId] || existingMap[checkNo]) continue;
-
-          if (status === "APPROVED" || status === "DISETUJUI" || status === "SAH") {
-            var exp5 = new Date();
-            exp5.setFullYear(exp5.getFullYear() + 5);
-            var exp5Str = exp5.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-            sahSheet.appendRow([
-              tanggal, docId, docNo, judul, opd, versi, format,
-              pemohonNama, pemohonEmail, "APPROVED", verifier, nip,
-              "BAV/SAKIP/" + (docNo || "001"), fileUrl, fileId, notes,
-              "SHA256-MIGRATED-" + docId, exp5Str, RETENTION_APPROVED_DAYS
-            ]);
-            existingMap[checkId] = true;
-            existingMap[checkNo] = true;
-          } else {
-            var cleanSt = (status === "REVISION" || status === "REVISI") ? "REVISION" : (status === "REJECTED" ? "REJECTED" : "PENDING");
-            prosesSheet.appendRow([
-              tanggal, docId, docNo, judul, opd, versi, format,
-              pemohonNama, pemohonEmail, instansi, cleanSt, verifier, nip,
-              fileUrl, fileId, notes, "01_DOKUMEN_PROSES"
-            ]);
-            existingMap[checkId] = true;
-            existingMap[checkNo] = true;
-
-            if (cleanSt === "REVISION") {
-              var exp3 = new Date();
-              exp3.setDate(exp3.getDate() + 90);
-              var exp3Str = exp3.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-              summarySheet.appendRow([
-                tanggal, docId, docNo, judul, opd, versi, "CATATAN_PERBAIKAN",
-                notes.slice(0, 80), notes, verifier, fileUrl, fileId,
-                exp3Str, RETENTION_REVISION_DAYS, "AKTIF_3_BULAN"
-              ]);
+    // 2. Perbaiki baris-baris pada DOKUMEN_PROSES & DOKUMEN_SAH_TERVERIFIKASI jika ada fileId bernilai "dsadasd" atau salah letak
+    var targetSheets = ["DOKUMEN_PROSES", "DOKUMEN_SAH_TERVERIFIKASI"];
+    for (var t = 0; t < targetSheets.length; t++) {
+      var cur = ss.getSheetByName(targetSheets[t]);
+      if (cur && cur.getLastRow() > 1) {
+        var vals = cur.getDataRange().getValues();
+        for (var r = 1; r < vals.length; r++) {
+          var row = vals[r];
+          var curFileId = String(row[14] || "").trim();
+          if (!curFileId || curFileId.length < 15 || curFileId === "dsadasd" || curFileId.indexOf("DRV-") !== -1) {
+            var rowText = row.join(" ");
+            var m = rowText.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
+            if (m) {
+              var recovered = m[1];
+              cur.getRange(r + 1, 14).setValue("https://drive.google.com/file/d/" + recovered + "/view");
+              cur.getRange(r + 1, 15).setValue(recovered);
+              try {
+                DriveApp.getFileById(recovered).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+              } catch (e) {}
             }
           }
         }
       }
     }
   } catch (err) {
-    console.error("Migration note:", err);
+    console.error("Clean legacy note:", err);
   }
 }
 
@@ -366,6 +381,10 @@ function doGet(e) {
       return ContentService.createTextOutput(JSON.stringify(adminGetDashboardData()))
         .setMimeType(ContentService.MimeType.JSON);
     }
+    if (action === "delete_document" || action === "delete") {
+      return ContentService.createTextOutput(JSON.stringify(adminDeleteDocument(e.parameter)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     if (action === "clean_expired") {
       return ContentService.createTextOutput(JSON.stringify(autoCleanExpiredData()))
         .setMimeType(ContentService.MimeType.JSON);
@@ -382,6 +401,77 @@ function doGet(e) {
   } catch (error) {
     return ContentService.createTextOutput("Error: " + error.toString()).setMimeType(ContentService.MimeType.TEXT);
   }
+}
+
+/**
+ * =========================================================================
+ * PENGHAPUSAN BERKAS PERMANEN (Web, Google Sheet & Google Drive)
+ * Menghapus baris berkas dari sheet DOKUMEN_PROSES, DOKUMEN_SAH_TERVERIFIKASI,
+ * dan SUMMARY_RIWAYAT_REVISI serta memasukkan berkas Drive ke kotak sampah.
+ * =========================================================================
+ */
+function adminDeleteDocument(data) {
+  var ss = getActiveSpreadsheetSafely();
+  if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan." };
+
+  var docId = String(data.docId || "").trim().toLowerCase();
+  var docNumber = String(data.docNumber || "").trim().toLowerCase();
+  var fileId = String(data.fileId || "").trim();
+
+  if (fileId.indexOf("/file/d/") !== -1) {
+    var match = fileId.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (match) fileId = match[1];
+  }
+  if (fileId.indexOf("?") !== -1) {
+    fileId = fileId.split("?")[0];
+  }
+
+  // 1. Hapus / Buang file ke trash di Google Drive
+  if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1 && fileId !== "dsadasd") {
+    try {
+      var df = DriveApp.getFileById(fileId);
+      df.setTrashed(true);
+    } catch (eDrive) {
+      console.warn("Drive trash note:", eDrive);
+    }
+  }
+
+  // 2. Hapus baris dari seluruh worksheet
+  var sheetsToPurge = ["DOKUMEN_PROSES", "DOKUMEN_SAH_TERVERIFIKASI", "SUMMARY_RIWAYAT_REVISI"];
+  var deletedCount = 0;
+
+  for (var s = 0; s < sheetsToPurge.length; s++) {
+    var sh = ss.getSheetByName(sheetsToPurge[s]);
+    if (sh && sh.getLastRow() > 1) {
+      var vals = sh.getDataRange().getValues();
+      for (var r = vals.length - 1; r >= 1; r--) {
+        var rowId = String(vals[r][1] || "").trim().toLowerCase();
+        var rowNo = String(vals[r][2] || "").trim().toLowerCase();
+        var rowFileId = String(vals[r][14] || vals[r][11] || "").trim();
+
+        // Jika belum terhapus di Drive dan baris ini menyimpan ID file, buang ke trash
+        if (!fileId && rowFileId && rowFileId.length > 15 && rowFileId.indexOf("DRV-") === -1 && rowFileId !== "dsadasd") {
+          try {
+            DriveApp.getFileById(rowFileId).setTrashed(true);
+          } catch (e) {}
+        }
+
+        var matchId = docId && (rowId === docId || (docId.length >= 6 && rowId.indexOf(docId) !== -1));
+        var matchNo = docNumber && (rowNo === docNumber || (docNumber.length >= 3 && rowNo.indexOf(docNumber) !== -1));
+
+        if (matchId || matchNo) {
+          sh.deleteRow(r + 1);
+          deletedCount++;
+        }
+      }
+    }
+  }
+
+  return {
+    status: "success",
+    message: "Dokumen (" + (data.docNumber || data.docId) + ") berhasil dihapus permanen dari Google Sheet (" + deletedCount + " baris) dan Google Drive.",
+    deletedRows: deletedCount
+  };
 }
 
 function doPost(e) {
@@ -404,6 +494,9 @@ function doPost(e) {
     if (data.action === "READ_FILE") {
       return ContentService.createTextOutput(JSON.stringify(adminGetFileBase64(data.fileId))).setMimeType(ContentService.MimeType.JSON);
     }
+    if (data.action === "DELETE_DOCUMENT" || data.action === "DELETE") {
+      return ContentService.createTextOutput(JSON.stringify(adminDeleteDocument(data))).setMimeType(ContentService.MimeType.JSON);
+    }
     if (data.action === "REGISTER_USER_ACCOUNT" || data.action === "UPDATE_USER_PASSWORD" || data.action === "UPDATE_PASSWORD") {
       return ContentService.createTextOutput(JSON.stringify(adminSaveUserAccount(data.userId, data.username, data.email, data.pemohonName || data.nama, data.role, data.opdName, data.verifierNip || data.nip, data.newPassword, data.driveFolderUrl))).setMimeType(ContentService.MimeType.JSON);
     }
@@ -416,8 +509,9 @@ function doPost(e) {
     var nowStr = data.timestamp || new Date().toLocaleString("id-ID");
 
     var isRevisionUpload = (data.action === "UPLOAD_REVISION" || data.action === "REVISE_DOCUMENT");
-    var targetFolderName = isRevisionUpload ? "03_DRAF_REVISI_SUMMARY_3_BULAN" : "01_DOKUMEN_PROSES";
-    var targetOpdFolder = getOpdTargetFolder(targetFolderName, data.opdName);
+    // Gunakan folder tunggal OPD
+    var targetOpdFolder = getSingleOpdFolder(data.opdName, data.opdId);
+    var targetFolderName = targetOpdFolder.getName();
     var driveFileUrl = targetOpdFolder.getUrl();
     var driveFileId = "";
 
@@ -534,20 +628,16 @@ function adminProcessVerification(data) {
   var version = data.versionNumber || (existingRowData ? Number(String(existingRowData[5] || "1").replace("v", "")) : 1);
 
   if (status === "APPROVED") {
-    try {
-      var sahFolder = getOpdTargetFolder("02_DOKUMEN_SAH_FINAL_5_TAHUN", opd);
-      if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1) {
+    // Berkas tetap berada di folder tunggal dinas (tidak dipindah-pindah antar folder)
+    if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1 && fileId !== "dsadasd") {
+      try {
         var driveFile = DriveApp.getFileById(fileId);
-        driveFile.moveTo(sahFolder);
-        try {
-          driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-        } catch (se) {}
+        driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         fileUrl = "https://drive.google.com/file/d/" + fileId + "/view";
-      } else if (!fileUrl || fileUrl.indexOf("DRV-") !== -1) {
-        fileUrl = sahFolder.getUrl();
-      }
-    } catch (mErr) {
-      fileUrl = sahFolder ? sahFolder.getUrl() : "";
+      } catch (se) {}
+    } else {
+      var opdF = getSingleOpdFolder(opd, data.opdId);
+      if (!fileUrl) fileUrl = opdF.getUrl();
     }
 
     var expiry5Y = new Date();
@@ -643,19 +733,38 @@ function adminGetDashboardData() {
   var master = getMasterFolder();
   var masterUrl = master.getUrl();
 
-  function sanitizeDriveUrls(rawUrl, rawFileId) {
+  function sanitizeDriveUrls(rawUrl, rawFileId, rowData) {
     var fileId = String(rawFileId || "").trim();
     var url = String(rawUrl || "").trim();
 
-    if (!fileId && url.indexOf("/file/d/") !== -1) {
-      var match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileId.indexOf("/file/d/") !== -1) {
+      var match = fileId.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
       if (match) fileId = match[1];
     }
     if (fileId.indexOf("?") !== -1) {
       fileId = fileId.split("?")[0];
     }
 
-    if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1) {
+    // Pemulihan otomatis jika fileId kosong, bergeser, bernilai "dsadasd", atau diawali "DRV-"
+    if (!fileId || fileId.length < 15 || fileId === "dsadasd" || fileId.indexOf("DRV-") !== -1) {
+      var haystack = (url + " " + (rowData ? rowData.join(" ") : "")).trim();
+      var m1 = haystack.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
+      if (m1) {
+        fileId = m1[1];
+      } else {
+        var m2 = haystack.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
+        if (m2) {
+          fileId = m2[1];
+        } else {
+          var m3 = haystack.match(/\b([a-zA-Z0-9_-]{25,45})\b/);
+          if (m3 && m3[1].indexOf("SHA256") === -1 && m3[1].indexOf("DOC-") === -1 && m3[1].indexOf("BAV") === -1 && m3[1].indexOf("REG") === -1) {
+            fileId = m3[1];
+          }
+        }
+      }
+    }
+
+    if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1 && fileId !== "dsadasd") {
       try {
         var df = DriveApp.getFileById(fileId);
         df.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -678,7 +787,7 @@ function adminGetDashboardData() {
   if (prosesSheet && prosesSheet.getLastRow() > 1) {
     var pV = prosesSheet.getDataRange().getValues();
     for (var i = 1; i < pV.length; i++) {
-      var urls = sanitizeDriveUrls(pV[i][13], pV[i][14]);
+      var urls = sanitizeDriveUrls(pV[i][13], pV[i][14], pV[i]);
 
       prosesDocs.push({
         tanggalMasuk: String(pV[i][0] || ""),
@@ -710,7 +819,7 @@ function adminGetDashboardData() {
   if (sahSheet && sahSheet.getLastRow() > 1) {
     var sV = sahSheet.getDataRange().getValues();
     for (var j = 1; j < sV.length; j++) {
-      var sUrls = sanitizeDriveUrls(sV[j][13], sV[j][14]);
+      var sUrls = sanitizeDriveUrls(sV[j][13], sV[j][14], sV[j]);
 
       sahDocs.push({
         tanggalMasuk: String(sV[j][0] || ""),
@@ -746,7 +855,7 @@ function adminGetDashboardData() {
   if (summarySheet && summarySheet.getLastRow() > 1) {
     var smV = summarySheet.getDataRange().getValues();
     for (var k = 1; k < smV.length; k++) {
-      var smUrls = sanitizeDriveUrls(smV[k][10], smV[k][11]);
+      var smUrls = sanitizeDriveUrls(smV[k][10], smV[k][11], smV[k]);
 
       summaryDocs.push({
         tanggalMasuk: String(smV[k][0] || ""),

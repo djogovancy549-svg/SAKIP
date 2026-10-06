@@ -58,6 +58,7 @@ export function DocumentList({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | VerificationStatus>('ALL');
   const [formatFilter, setFormatFilter] = useState<'ALL' | DocumentFormat>('ALL');
+  const [docToDelete, setDocToDelete] = useState<DocumentItem | null>(null);
 
   // Robust OPD & User Filtering:
   // If verifier and opdScope is ALL, show all documents across all 38 OPDs;
@@ -508,11 +509,7 @@ export function DocumentList({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (onDeleteDocument) {
-                          if (confirm(`Apakah Anda yakin ingin menghapus berkas "${doc.nomorBerkas} - ${doc.judul}"?`)) {
-                            onDeleteDocument(doc.id);
-                          }
-                        }
+                        setDocToDelete(doc);
                       }}
                       className="px-2 py-0.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 font-bold rounded-md border border-rose-200 text-[10px] inline-flex items-center gap-1 transition-colors cursor-pointer"
                       title="Hapus Berkas Ini"
@@ -531,6 +528,56 @@ export function DocumentList({
           })
         )}
       </div>
+
+      {/* In-App Deletion Confirmation Modal (Bypass Browser Window.Confirm Restrictions) */}
+      {docToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="p-3 bg-rose-100 rounded-xl">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Konfirmasi Hapus Berkas</h3>
+                <p className="text-xs text-slate-500 font-medium">Hapus permanen dari web, Google Sheet &amp; Drive</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1">
+              <div><strong>Nomor Berkas:</strong> {docToDelete.nomorBerkas}</div>
+              <div><strong>Judul Dokumen:</strong> {docToDelete.judul}</div>
+              <div><strong>OPD:</strong> {docToDelete.opdName}</div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Apakah Anda yakin ingin menghapus berkas ini? Dokumen dan file Google Drive akan dibuang ke tempat sampah serta baris pada Google Sheet akan dihapus.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDocToDelete(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteDocument && docToDelete) {
+                    onDeleteDocument(docToDelete.id);
+                  }
+                  setDocToDelete(null);
+                }}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-md inline-flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Permanen</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

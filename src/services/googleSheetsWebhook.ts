@@ -165,6 +165,42 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
         const verifierNip = d.verifierNip || '19850101 201001 1 002';
         const noteContent = d.notes || (isApproved ? 'Seluruh instrumen kelengkapan berkas dan syarat teknis telah dipenuhi dan dinyatakan sah.' : 'Dokumen diajukan untuk verifikasi.');
 
+        // Robust Google Drive File ID & URL resolution:
+        // Scans drive properties & raw text to ensure shifted columns never cause missing/broken file links
+        let cleanFileId = d.googleDrive?.fileId || '';
+        let cleanViewUrl = d.googleDrive?.viewUrl || '';
+        let cleanDownloadUrl = d.googleDrive?.downloadUrl || '';
+
+        // Check if fileId is invalid or a text word like "dsadasd"
+        const isInvalidId = !cleanFileId || cleanFileId.length < 15 || cleanFileId === 'dsadasd' || cleanFileId.indexOf('DRV-') !== -1;
+        if (isInvalidId) {
+          const searchHaystack = `${cleanViewUrl} ${cleanDownloadUrl} ${d.bavNumber || ''} ${d.fileUrl || ''} ${d.downloadUrl || ''} ${d.notes || ''}`;
+          const urlMatch = searchHaystack.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/);
+          if (urlMatch) {
+            cleanFileId = urlMatch[1];
+          } else {
+            const rawIdMatch = searchHaystack.match(/\b([a-zA-Z0-9_-]{25,45})\b/);
+            if (rawIdMatch && !rawIdMatch[1].startsWith('SHA256') && !rawIdMatch[1].startsWith('DOC-')) {
+              cleanFileId = rawIdMatch[1];
+            }
+          }
+        }
+
+        if (cleanFileId && cleanFileId.length > 15) {
+          cleanViewUrl = `https://drive.google.com/file/d/${cleanFileId}/view`;
+          cleanDownloadUrl = `https://drive.google.com/uc?export=download&id=${cleanFileId}`;
+        }
+
+        const resolvedDrive = {
+          fileId: cleanFileId,
+          viewUrl: cleanViewUrl,
+          downloadUrl: cleanDownloadUrl,
+          folderId: d.googleDrive?.folderId || '',
+          folderName: d.googleDrive?.folderName || matchedOpdName,
+          serverMasterFolder: d.googleDrive?.serverMasterFolder || '01_DOKUMEN_PROSES',
+          syncedAt: d.googleDrive?.syncedAt || d.tanggalMasuk || new Date().toLocaleString('id-ID'),
+        };
+
         return {
           id: docId,
           nomorBerkas: d.nomorBerkas || 'Draf',
@@ -186,7 +222,8 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
           urgency: 'TINGGI',
           currentVersion: d.currentVersion || 1,
           isLocked: isApproved,
-          googleDrive: d.googleDrive,
+          notes: noteContent,
+          googleDrive: resolvedDrive,
           verification: {
             status: currentStatus,
             verifiedBy: verifierName,
@@ -627,6 +664,102 @@ export async function sendVerificationToGoogleSheet(
     message: responseText,
     timestamp,
   };
+}
+
+export async function deleteDocumentFromGoogleSheet(
+  docId: string,
+  docNumber?: string,
+  fileId?: string
+): Promise<{ success: boolean; message: string }> {
+  const webhookUrl = getGoogleSheetsWebhookUrl();
+  const timestamp = new Date().toLocaleString('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    dateStyle: 'medium',
+    timeStyle: 'medium',
+  });
+
+  const payload = {
+    action: 'DELETE_DOCUMENT',
+    docId,
+    docNumber,
+    fileId,
+    timestamp,
+  };
+
+  try {
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+      mode: 'no-cors',
+    });
+
+    // Also send GET beacon for guaranteed execution across proxy configurations
+    try {
+      const getDelUrl = `${webhookUrl}${webhookUrl.includes('?') ? '&' : '?'}action=delete_document&docId=${encodeURIComponent(docId)}&docNumber=${encodeURIComponent(docNumber || '')}&fileId=${encodeURIComponent(fileId || '')}`;
+      fetch(getDelUrl, { mode: 'no-cors' }).catch(() => {});
+    } catch (e) {}
+
+    const logEntry: WebhookSyncLog = {
+      id: `DEL-${Date.now()}`,
+      docId,
+      docNumber: docNumber || '-',
+      opd: 'Sistem',
+      status: 'REJECTED',
+      timestamp,
+      success: true,
+      responseMessage: `Dokumen (${docNumber || docId}) dihapus permanen dari Google Sheet & Google Drive.`,
+      payload: payload as unknown as Record<string, unknown>,
+    };
+    appendSyncLog(logEntry);
+
+    return {
+      success: true,
+      message: `Dokumen (${docNumber || docId}) berhasil dihapus dari Google Sheet & Drive.`,
+    };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      message: err instanceof Error ? err.message : 'Koneksi gagal',
+    };
+  }
+}
+
+/**
+ * Mengambil Blob/Base64 file secara langsung dari server Google Apps Script
+ * Bermanfaat jika tampilan pratinjau Google Drive di iframe terhalang cookie atau multi-login.
+ */
+export async function fetchFileBase64FromAppsScript(fileId: string): Promise<{
+  success: boolean;
+  dataUri?: string;
+  mimeType?: string;
+  fileName?: string;
+  message?: string;
+}> {
+  if (!fileId || fileId.length < 10) return { success: false, message: 'ID file tidak valid' };
+  try {
+    const webhookUrl = getGoogleSheetsWebhookUrl();
+    const readUrl = `${webhookUrl}${webhookUrl.includes('?') ? '&' : '?'}action=read_file&fileId=${encodeURIComponent(fileId)}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const res = await fetch(readUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) return { success: false, message: 'Gagal menghubungi server Apps Script' };
+    const data = await res.json();
+    if (data && data.status === 'success' && data.dataUri) {
+      return {
+        success: true,
+        dataUri: data.dataUri,
+        mimeType: data.mimeType || 'application/pdf',
+        fileName: data.fileName,
+      };
+    }
+    return { success: false, message: data.message || 'Berkas tidak ditemukan' };
+  } catch (err) {
+    return { success: false, message: 'Gagal mengambil berkas' };
+  }
 }
 
 export async function sendPasswordUpdateToGoogleSheet(
