@@ -393,7 +393,7 @@ export function DocumentList({
                       </span>
                     </div>
                     <p className="font-bold leading-relaxed line-clamp-3 italic bg-white/95 p-2 rounded-lg border border-amber-200">
-                      "{doc.verification?.notes || doc.versions[doc.versions.length - 1]?.reviewerNotes || doc.perihal || 'Harap lakukan perbaikan sesuai arahan verifikator.'}"
+                      "{doc.verification?.notes || doc.notes || doc.versions[doc.versions.length - 1]?.reviewerNotes || doc.perihal || 'Harap lakukan perbaikan sesuai arahan verifikator.'}"
                     </p>
                     {!isVerifier && onOpenRevisionModalForDoc && (
                       <button

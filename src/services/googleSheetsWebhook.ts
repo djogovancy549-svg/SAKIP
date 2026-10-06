@@ -163,7 +163,10 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
         const sealHash = d.digitalSealHash || (isApproved ? `SHA256-${docId}-${Date.now().toString().slice(-4)}` : '');
         const verifierName = d.verifierName || 'Admin Verifikator SAKIP';
         const verifierNip = d.verifierNip || '19850101 201001 1 002';
-        const noteContent = d.notes || (isApproved ? 'Seluruh instrumen kelengkapan berkas dan syarat teknis telah dipenuhi dan dinyatakan sah.' : 'Dokumen diajukan untuk verifikasi.');
+        const rawNotes = d.notes || d.verification?.notes || d.detailEvaluasi || '';
+        const noteContent = (rawNotes && rawNotes.trim() !== '' && rawNotes.trim() !== '-')
+          ? rawNotes
+          : (isApproved ? 'Seluruh instrumen kelengkapan berkas dan syarat teknis telah dipenuhi dan dinyatakan sah.' : 'Dokumen diajukan untuk verifikasi.');
 
         // Robust Google Drive File ID & URL resolution:
         // Scans drive properties & raw text to ensure shifted columns never cause missing/broken file links

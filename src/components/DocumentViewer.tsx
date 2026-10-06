@@ -336,7 +336,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                 </span>
               </div>
               <p className="text-xs md:text-sm font-bold leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-200 shadow-2xs italic">
-                "{document.verification?.notes || document.versions[document.versions.length - 1]?.reviewerNotes || document.perihal || 'Dokumen memerlukan pemeriksaan dan perbaikan.'}"
+                "{document.verification?.notes || document.notes || document.versions[document.versions.length - 1]?.reviewerNotes || document.perihal || 'Dokumen memerlukan pemeriksaan dan perbaikan.'}"
               </p>
             </div>
           </div>
