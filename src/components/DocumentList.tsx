@@ -19,8 +19,9 @@ import {
   FolderOpen,
   Edit3,
   Trash2,
+  MessageSquare,
 } from 'lucide-react';
-import { DocumentItem, DocumentFormat, VerificationStatus, OPD, AppRole } from '../types';
+import { DocumentItem, DocumentFormat, VerificationStatus, OPD, AppRole, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
 
 interface DocumentListProps {
@@ -29,6 +30,7 @@ interface DocumentListProps {
   onSelectDocument: (doc: DocumentItem) => void;
   activeOpd: OPD;
   appRole: AppRole;
+  currentUser?: UserAccount | null;
   onOpenRevisionModalForDoc?: (doc: DocumentItem) => void;
   onSelectOpd?: (opd: OPD) => void;
   onOpenUploadModal?: () => void;
@@ -43,6 +45,7 @@ export function DocumentList({
   onSelectDocument,
   activeOpd,
   appRole,
+  currentUser,
   onOpenRevisionModalForDoc,
   onSelectOpd,
   onOpenUploadModal,
@@ -56,10 +59,33 @@ export function DocumentList({
   const [statusFilter, setStatusFilter] = useState<'ALL' | VerificationStatus>('ALL');
   const [formatFilter, setFormatFilter] = useState<'ALL' | DocumentFormat>('ALL');
 
-  // If verifier and opdScope is ALL, show all documents across all 38 OPDs; otherwise filter by active OPD
+  // Robust OPD & User Filtering:
+  // If verifier and opdScope is ALL, show all documents across all 38 OPDs;
+  // Otherwise filter by active OPD, and if user is Dinas, ensure all their OPD documents are included.
   const opdDocuments = isVerifier && opdScope === 'ALL'
     ? documents
-    : documents.filter((doc) => doc.opdId === activeOpd.id);
+    : documents.filter((doc) => {
+        // Direct matching by OPD ID
+        if (doc.opdId && activeOpd?.id && (doc.opdId === activeOpd.id || doc.opdId.toUpperCase() === activeOpd.id.toUpperCase())) return true;
+        // Matching by OPD name or shortName
+        if (doc.opdName && activeOpd?.name && (
+          doc.opdName.toLowerCase() === activeOpd.name.toLowerCase() ||
+          doc.opdName.toLowerCase().includes(activeOpd.shortName?.toLowerCase() || '') ||
+          activeOpd.name.toLowerCase().includes(doc.opdName.toLowerCase())
+        )) return true;
+        // When logged in as Dinas Pemohon, ensure ALL documents belonging to user's OPD or pemohon are visible:
+        if (!isVerifier && currentUser) {
+          if (currentUser.opdId && (doc.opdId === currentUser.opdId || doc.opdId?.toUpperCase() === currentUser.opdId.toUpperCase())) return true;
+          if (currentUser.opdName && doc.opdName && (
+            doc.opdName.toLowerCase() === currentUser.opdName.toLowerCase() ||
+            doc.opdName.toLowerCase().includes(currentUser.opdName.toLowerCase()) ||
+            currentUser.opdName.toLowerCase().includes(doc.opdName.toLowerCase())
+          )) return true;
+          if (currentUser.email && doc.pemohon?.email && doc.pemohon.email.toLowerCase() === currentUser.email.toLowerCase()) return true;
+          if (currentUser.nama && doc.pemohon?.nama && doc.pemohon.nama.toLowerCase() === currentUser.nama.toLowerCase()) return true;
+        }
+        return false;
+      });
 
   // Apply search and status filters
   const filteredDocuments = opdDocuments.filter((doc) => {
@@ -355,13 +381,43 @@ export function DocumentList({
 
                 {/* Highlighted Verifier / Revision Notes Box */}
                 {doc.status === 'REVISION' && (
-                  <div className="my-2 p-2.5 bg-amber-50 border-2 border-amber-300 rounded-xl text-xs text-amber-950 font-sans shadow-2xs space-y-0.5">
-                    <div className="flex items-center gap-1 font-black text-[11px] text-amber-800 uppercase tracking-wide">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>Catatan Revisi / Instruksi Perbaikan:</span>
+                  <div className="my-2 p-2.5 bg-amber-50 border-2 border-amber-300 rounded-xl text-xs text-amber-950 font-sans shadow-2xs space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1 font-black text-[11px] text-amber-800 uppercase tracking-wide">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Catatan Revisi / Instruksi Perbaikan:</span>
+                      </div>
+                      <span className="font-mono text-[9px] bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded font-bold">
+                        Wajib Diperbaiki
+                      </span>
                     </div>
-                    <p className="font-bold leading-relaxed line-clamp-3 italic bg-white/90 p-1.5 rounded-md border border-amber-200">
+                    <p className="font-bold leading-relaxed line-clamp-3 italic bg-white/95 p-2 rounded-lg border border-amber-200">
                       "{doc.verification?.notes || doc.versions[doc.versions.length - 1]?.reviewerNotes || doc.perihal || 'Harap lakukan perbaikan sesuai arahan verifikator.'}"
+                    </p>
+                    {!isVerifier && onOpenRevisionModalForDoc && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenRevisionModalForDoc(doc);
+                        }}
+                        className="w-full mt-1 py-1.5 px-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-lg text-[10px] flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                      >
+                        <UploadCloud className="w-3.5 h-3.5" />
+                        <span>Unggah Berkas Hasil Revisi</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {doc.status === 'PENDING' && (doc.verification?.notes || doc.notes) && (doc.verification?.notes || doc.notes || '').trim() !== '-' && (doc.verification?.notes || doc.notes || '').trim() !== '' && (
+                  <div className="my-2 p-2.5 bg-sky-50 border-2 border-sky-300 rounded-xl text-xs text-sky-950 font-sans shadow-2xs space-y-1">
+                    <div className="flex items-center gap-1 font-black text-[11px] text-sky-800 uppercase tracking-wide">
+                      <MessageSquare className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                      <span>Catatan Evaluasi / Catatan Pengajuan:</span>
+                    </div>
+                    <p className="font-bold leading-relaxed line-clamp-3 italic bg-white/95 p-2 rounded-lg border border-sky-200">
+                      "{doc.verification?.notes || doc.notes}"
                     </p>
                   </div>
                 )}

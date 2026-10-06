@@ -166,6 +166,7 @@ export interface DocumentItem {
   fileName: string;
   status: VerificationStatus;
   urgency: 'TINGGI' | 'SEDANG' | 'STANDAR';
+  notes?: string;
   
   // Revision Cycle & Versioning
   currentVersion: number;

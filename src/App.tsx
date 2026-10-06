@@ -399,11 +399,7 @@ export default function App() {
                         jabatan: remoteDoc.verification.jabatan || merged[idx]?.verification?.jabatan || 'Verifikator SAKIP',
                         status: remoteDoc.status,
                         checklist: remoteDoc.verification.checklist || merged[idx]?.verification?.checklist || {},
-                        notes: (remoteDoc.verification?.notes && remoteDoc.verification.notes.trim() !== '') 
-                          ? remoteDoc.verification.notes 
-                          : (remoteDoc.perihal && remoteDoc.perihal.trim() !== '')
-                          ? remoteDoc.perihal
-                          : merged[idx]?.verification?.notes || '',
+                        notes: remoteDoc.verification.notes || merged[idx]?.verification?.notes || '',
                         qrCodeUrl: remoteDoc.verification.qrCodeUrl || merged[idx]?.verification?.qrCodeUrl || '',
                         digitalSealHash: remoteDoc.verification.digitalSealHash || merged[idx]?.verification?.digitalSealHash || '',
                         bavNumber: remoteDoc.verification.bavNumber || merged[idx]?.verification?.bavNumber || '',
@@ -498,7 +494,17 @@ export default function App() {
   // Handle Login
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);
-    const userOpd = OPD_LIST.find((o) => o.id === user.opdId) || OPD_LIST[0];
+    const userOpd =
+      OPD_LIST.find(
+        (o) =>
+          o.id === user.opdId ||
+          (user.opdId && (o.id.toUpperCase() === user.opdId.toUpperCase() || user.opdId.toUpperCase().includes(o.id.toUpperCase()))) ||
+          (user.opdName && (
+            o.name.toLowerCase() === user.opdName.toLowerCase() ||
+            user.opdName.toLowerCase().includes(o.shortName.toLowerCase()) ||
+            o.name.toLowerCase().includes(user.opdName.toLowerCase())
+          ))
+      ) || OPD_LIST[0];
     setActiveOpd(userOpd);
 
     // Pick first document: if Verifier, pick any available document, else pick OPD-specific document
@@ -509,7 +515,18 @@ export default function App() {
         setSelectedDocument(null);
       }
     } else {
-      const opdDocs = documents.filter((d) => d.opdId === userOpd.id);
+      const opdDocs = documents.filter(
+        (d) =>
+          d.opdId === userOpd.id ||
+          (d.opdId && userOpd.id && d.opdId.toUpperCase() === userOpd.id.toUpperCase()) ||
+          (d.opdName && userOpd.name && (
+            d.opdName.toLowerCase() === userOpd.name.toLowerCase() ||
+            d.opdName.toLowerCase().includes(userOpd.shortName.toLowerCase())
+          )) ||
+          (user.opdId && (d.opdId === user.opdId || d.opdId.toUpperCase() === user.opdId.toUpperCase())) ||
+          (user.email && d.pemohon?.email && d.pemohon.email.toLowerCase() === user.email.toLowerCase()) ||
+          (user.nama && d.pemohon?.nama && d.pemohon.nama.toLowerCase() === user.nama.toLowerCase())
+      );
       if (opdDocs.length > 0) {
         setSelectedDocument(opdDocs[0]);
       } else {
@@ -875,9 +892,23 @@ export default function App() {
   // Dynamic ticker documents (show all SAKIP documents across Pemkab Nagekeo):
   const tickerDocuments = documents;
 
-  const currentOpdDocsCount = documents.filter((d) => d.opdId === activeOpd.id).length;
-
   const isDinas = currentUser.role === 'DINAS_PEMOHON';
+
+  const currentOpdDocsCount = documents.filter((d) => {
+    if (d.opdId && (d.opdId === activeOpd.id || d.opdId.toUpperCase() === activeOpd.id.toUpperCase())) return true;
+    if (d.opdName && activeOpd.name && (
+      d.opdName.toLowerCase() === activeOpd.name.toLowerCase() ||
+      d.opdName.toLowerCase().includes(activeOpd.shortName?.toLowerCase() || '') ||
+      activeOpd.name.toLowerCase().includes(d.opdName.toLowerCase())
+    )) return true;
+    if (isDinas && currentUser) {
+      if (currentUser.opdId && (d.opdId === currentUser.opdId || d.opdId?.toUpperCase() === currentUser.opdId.toUpperCase())) return true;
+      if (currentUser.opdName && d.opdName && d.opdName.toLowerCase() === currentUser.opdName.toLowerCase()) return true;
+      if (currentUser.email && d.pemohon?.email && d.pemohon.email.toLowerCase() === currentUser.email.toLowerCase()) return true;
+      if (currentUser.nama && d.pemohon?.nama && d.pemohon.nama.toLowerCase() === currentUser.nama.toLowerCase()) return true;
+    }
+    return false;
+  }).length;
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950 flex flex-col font-sans selection:bg-blue-500/20 font-medium">
@@ -1182,6 +1213,7 @@ export default function App() {
                   onSelectDocument={handleSelectDocument}
                   activeOpd={activeOpd}
                   appRole={currentUser.role}
+                  currentUser={currentUser}
                   onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
                   onSelectOpd={handleSelectOpd}
                   onOpenUploadModal={() => setIsUploadOpen(true)}
@@ -1305,6 +1337,7 @@ export default function App() {
                 onSelectDocument={handleSelectDocument}
                 activeOpd={activeOpd}
                 appRole={currentUser.role}
+                currentUser={currentUser}
                 onOpenRevisionModalForDoc={() => setIsRevisionOpen(true)}
                 onSelectOpd={handleSelectOpd}
                 onOpenUploadModal={() => setIsUploadOpen(true)}

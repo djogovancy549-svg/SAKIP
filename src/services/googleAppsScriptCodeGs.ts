@@ -539,6 +539,9 @@ function adminProcessVerification(data) {
       if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1) {
         var driveFile = DriveApp.getFileById(fileId);
         driveFile.moveTo(sahFolder);
+        try {
+          driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch (se) {}
         fileUrl = "https://drive.google.com/file/d/" + fileId + "/view";
       } else if (!fileUrl || fileUrl.indexOf("DRV-") !== -1) {
         fileUrl = sahFolder.getUrl();
@@ -650,6 +653,13 @@ function adminGetDashboardData() {
     }
     if (fileId.indexOf("?") !== -1) {
       fileId = fileId.split("?")[0];
+    }
+
+    if (fileId && fileId.length > 15 && fileId.indexOf("DRV-") === -1) {
+      try {
+        var df = DriveApp.getFileById(fileId);
+        df.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (errSharing) {}
     }
 
     var cleanViewUrl = fileId ? ("https://drive.google.com/file/d/" + fileId + "/view") : (url || masterUrl);

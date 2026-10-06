@@ -39,7 +39,7 @@ import {
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
-  'https://script.google.com/macros/s/AKfycbxfXMWep5W8GbCp8N6d9s54ORYt39wot1yOy9i2pVU4Rl--4ZdATgwtU_FEI3VXM0eIKw/exec';
+  'https://script.google.com/macros/s/AKfycbznXpFIL805i7u9lF7khBk8TPEiW2Y9dFM9pDZJzBsnDNuZ1WZOapnZryn8GixWPiQhYg/exec';
 
 // Embedded Google Drive Induk Server Folder ID & URL
 export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
@@ -291,23 +291,27 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
         };
       });
 
-      const users: UserAccount[] = (data.users || []).map((u: any) => ({
-        id: u.id || `usr-${u.username}`,
-        username: u.username || 'user',
-        email: u.email || `${u.username}@nagekeokab.go.id`,
-        nama: u.nama || u.username,
-        role: u.role || 'DINAS_PEMOHON',
-        opdId: u.opdId || 'SETDA',
-        opdName: u.opdName || 'Sekretariat Daerah',
-        nip: u.nip || '19880101 201501 1 001',
-        jabatan: u.jabatan || 'Pengelola SAKIP',
-        pangkat: 'Penata Muda / III-a',
-        password: u.password || '123456',
-        lastPasswordChangedAt: new Date().toLocaleString('id-ID'),
-        driveFolderId: u.driveFolderId || '',
-        driveFolderName: u.driveFolderName || `Folder ${u.opdName}`,
-        driveFolderUrl: u.driveFolderUrl || '',
-      }));
+      const users: UserAccount[] = (data.users || []).map((u: any) => {
+        const opdId = findOpdIdFromText(u.opdName, u.opdId);
+        const opdName = u.opdName || (OPD_LIST.find((o) => o.id === opdId)?.name || 'Sekretariat Daerah');
+        return {
+          id: u.id || `usr-${u.username}`,
+          username: u.username || 'user',
+          email: u.email || `${u.username}@nagekeokab.go.id`,
+          nama: u.nama || u.username,
+          role: u.role || 'DINAS_PEMOHON',
+          opdId: opdId,
+          opdName: opdName,
+          nip: u.nip || '19880101 201501 1 001',
+          jabatan: u.jabatan || 'Pengelola SAKIP',
+          pangkat: 'Penata Muda / III-a',
+          password: u.password || '123456',
+          lastPasswordChangedAt: new Date().toLocaleString('id-ID'),
+          driveFolderId: u.driveFolderId || '',
+          driveFolderName: u.driveFolderName || `Folder ${opdName}`,
+          driveFolderUrl: u.driveFolderUrl || '',
+        };
+      });
 
       const folders: OpdFolderRegistration[] = (data.folders || []).map((f: any) => ({
         opdId: f.opdId || '',

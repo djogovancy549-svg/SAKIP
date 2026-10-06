@@ -61,12 +61,23 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
     document.googleDrive?.viewUrl || document.googleDrive?.downloadUrl || getGoogleDriveFolderUrl()
   );
 
+  // Extract Google Drive File ID if present
+  const driveFileId =
+    document.googleDrive?.fileId ||
+    (() => {
+      const raw = document.googleDrive?.viewUrl || document.googleDrive?.downloadUrl || '';
+      const match = raw.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : '';
+    })();
+
   const handleDownloadFile = () => {
     if (document.fileBlobUrl) {
       const a = window.document.createElement('a');
       a.href = document.fileBlobUrl;
       a.download = document.fileName;
       a.click();
+    } else if (driveFileId) {
+      window.open(`https://drive.google.com/uc?export=download&id=${driveFileId}`, '_blank');
     } else {
       // Open Drive link
       window.open(driveUrl, '_blank');
@@ -328,6 +339,55 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                     </div>
                   </div>
                 )}
+              </div>
+            ) : driveFileId ? (
+              <div className="bg-white border border-slate-300 rounded-2xl p-4 shadow-md space-y-3 w-full">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                      Berkas Google Drive OPD: {document.fileName || document.judul}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`https://drive.google.com/uc?export=download&id=${driveFileId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download File</span>
+                    </a>
+                    <a
+                      href={`https://drive.google.com/file/d/${driveFileId}/view`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Buka di Tab Drive</span>
+                    </a>
+                  </div>
+                </div>
+
+                <div className="relative w-full h-[620px] rounded-xl overflow-hidden border border-slate-200 bg-slate-900">
+                  <iframe
+                    src={`https://drive.google.com/file/d/${driveFileId}/preview`}
+                    title={document.fileName || 'Pratinjau Dokumen'}
+                    className="w-full h-full border-0 bg-white"
+                  />
+                </div>
+
+                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-900 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>
+                      Tersimpan resmi di Google Drive Server Nagekeo ({document.opdName}). Gunakan tombol <strong>Download File</strong> atau <strong>Buka di Tab Drive</strong> jika pratinjau terhalang cookie browser.
+                    </span>
+                  </div>
+                </div>
               </div>
             ) : (
               /* High-Contrast Document Canvas Layout */

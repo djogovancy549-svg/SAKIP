@@ -756,6 +756,18 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
                 </p>
               </div>
             </div>
+
+            {/* If there are notes or preliminary feedback from verifier */}
+            {((document.verification?.notes && document.verification.notes.trim() !== '-') || (document.notes && document.notes.trim() !== '-')) && (
+              <div className="p-4 bg-white rounded-2xl border-2 border-blue-200 space-y-1.5 shadow-2xs mt-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 block">
+                  Catatan / Instruksi Verifikator:
+                </span>
+                <p className="text-xs font-bold text-blue-950 leading-relaxed bg-blue-50/60 p-3 rounded-xl border border-blue-100 italic">
+                  "{document.verification?.notes || document.notes}"
+                </p>
+              </div>
+            )}
           </div>
         )}
 

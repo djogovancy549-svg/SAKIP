@@ -341,13 +341,22 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         <iframe id="previewIframe" src="" class="w-full h-full rounded-2xl border border-slate-800 bg-white" style="display: block;"></iframe>
 
         <!-- Frame Server Stream -->
-        <div id="serverStreamContainer" class="w-full h-full rounded-2xl border border-slate-800 bg-slate-900 hidden flex-col items-center justify-center p-4">
-          <div id="streamLoading" class="flex flex-col items-center gap-3 text-slate-400">
+        <div id="serverStreamContainer" class="w-full h-full rounded-2xl border border-slate-800 bg-slate-900 hidden flex-col items-center justify-center p-2">
+          <div id="streamLoading" class="flex flex-col items-center gap-3 text-slate-400 py-12">
             <i class="fa-solid fa-spinner fa-spin text-3xl text-sky-500"></i>
             <span class="text-xs">Mengambil dokumen asli dari Google Drive Server...</span>
           </div>
-          <iframe id="streamIframe" src="" class="w-full h-full rounded-xl bg-white hidden"></iframe>
+          <div id="streamEmbedWrapper" class="w-full h-full flex flex-col items-center justify-center"></div>
         </div>
+      </div>
+
+      <!-- Banner Bantuan Akses Berkas -->
+      <div class="bg-slate-900/90 border-t border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between text-[11px] text-slate-400 gap-2">
+        <div class="flex items-center gap-1.5">
+          <i class="fa-solid fa-circle-info text-sky-400"></i>
+          <span>Jika pratinjau Drive terhalang cookie Google, gunakan tab <strong>Baca Server Stream</strong> atau klik tombol <strong>Unduh Berkas</strong> / <strong>Tab Drive</strong>.</span>
+        </div>
+        <div class="text-[10px] text-slate-500 font-mono">SIMVERIF SAKIP NAGEKEO</div>
       </div>
     </div>
   </div>
@@ -841,8 +850,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         verifyBtn.style.display = 'none';
       }
 
-      // Default buka preview frame
-      switchViewerMode('DRIVE', previewUrl, fileId);
+      // Default buka server stream bebas login agar tidak terhalang cookie Google Drive
+      switchViewerMode('SERVER', previewUrl, fileId);
 
       document.getElementById('previewModal').style.display = 'flex';
     }
@@ -860,7 +869,8 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     function closePreviewModal() {
       document.getElementById('previewModal').style.display = 'none';
       document.getElementById('previewIframe').src = '';
-      document.getElementById('streamIframe').src = '';
+      var wrapper = document.getElementById('streamEmbedWrapper');
+      if (wrapper) wrapper.innerHTML = '';
       currentPreviewDoc = null;
     }
 
@@ -891,30 +901,42 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         statusMsg.innerText = 'Mengambil file dari server script...';
 
         var loadingEl = document.getElementById('streamLoading');
-        var streamIframe = document.getElementById('streamIframe');
+        var wrapper = document.getElementById('streamEmbedWrapper');
         loadingEl.style.display = 'flex';
-        streamIframe.style.display = 'none';
+        wrapper.innerHTML = '';
 
         if (typeof google !== 'undefined' && google.script && google.script.run && fileId) {
           google.script.run
             .withSuccessHandler(function(res) {
               loadingEl.style.display = 'none';
               if (res && res.status === 'success' && res.dataUri) {
-                streamIframe.src = res.dataUri;
-                streamIframe.style.display = 'block';
-                statusMsg.innerText = 'Berkas terbaca langsung via Server (' + (res.fileSize || '') + ')';
+                wrapper.innerHTML = '<object data="' + res.dataUri + '" type="' + (res.mimeType || 'application/pdf') + '" class="w-full h-full rounded-xl bg-white shadow-inner">' +
+                  '<div class="p-8 text-center text-slate-300 space-y-3 flex flex-col items-center justify-center h-full">' +
+                    '<i class="fa-solid fa-file-pdf text-4xl text-rose-500"></i>' +
+                    '<p class="text-sm font-bold text-white">' + (res.fileName || 'Dokumen SAKIP') + ' (' + (res.fileSize || '') + ')</p>' +
+                    '<p class="text-xs text-slate-400 max-w-sm">Peramban Anda siap membuka atau mengunduh berkas ini secara langsung:</p>' +
+                    '<div class="flex items-center gap-3 pt-2">' +
+                      '<a href="' + (res.downloadUrl || '#') + '" target="_blank" download class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs inline-flex items-center gap-2"><i class="fa-solid fa-download"></i> Unduh File</a>' +
+                      '<a href="' + (res.viewUrl || '#') + '" target="_blank" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs inline-flex items-center gap-2"><i class="fa-solid fa-arrow-up-right-from-square"></i> Tab Google Drive</a>' +
+                    '</div>' +
+                  '</div>' +
+                '</object>';
+                statusMsg.innerText = 'Berkas terbaca via Server (' + (res.fileSize || '') + ')';
               } else {
-                statusMsg.innerText = 'Server: ' + (res.message || 'Gagal memuat.');
+                statusMsg.innerText = 'Info: ' + (res.message || 'Gunakan link unduh.');
+                wrapper.innerHTML = '<div class="p-6 text-center text-slate-400"><p class="text-xs mb-3">' + (res.message || 'Gagal memuat stream.') + '</p><a href="' + previewUrl + '" target="_blank" class="px-3 py-1.5 bg-sky-600 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka via Google Drive</a></div>';
               }
             })
             .withFailureHandler(function(err) {
               loadingEl.style.display = 'none';
               statusMsg.innerText = 'Error stream: ' + err.toString();
+              wrapper.innerHTML = '<div class="p-6 text-center text-slate-400"><p class="text-xs mb-3">' + err.toString() + '</p><a href="' + previewUrl + '" target="_blank" class="px-3 py-1.5 bg-sky-600 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka via Google Drive</a></div>';
             })
             .adminGetFileBase64(fileId);
         } else {
           loadingEl.style.display = 'none';
-          statusMsg.innerText = 'Mode server siap digunakan saat terpasang di Google Apps Script.';
+          statusMsg.innerText = 'Mode pratinjau browser aktif.';
+          wrapper.innerHTML = '<div class="p-8 text-center text-slate-300 space-y-3 flex flex-col items-center justify-center h-full"><p class="text-sm font-bold">Pratinjau Berkas Siap</p><div class="flex items-center gap-3"><a href="' + previewUrl + '" target="_blank" class="px-4 py-2 bg-sky-600 text-white rounded-xl font-bold text-xs inline-flex items-center gap-2"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka di Google Drive</a></div></div>';
         }
       }
     }
