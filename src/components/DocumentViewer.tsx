@@ -39,7 +39,7 @@ interface DocumentViewerProps {
 }
 
 export function DocumentViewer({ document }: DocumentViewerProps) {
-  const [activeTab, setActiveTab] = useState<'ORIGINAL_FILE' | 'STRUCTURED_VIEW' | 'DRIVE_LOCATION'>('ORIGINAL_FILE');
+  const [activeTab, setActiveTab] = useState<'ORIGINAL_FILE' | 'STRUCTURED_VIEW' | 'DRIVE_LOCATION' | 'VERSION_HISTORY'>('ORIGINAL_FILE');
   const [zoom, setZoom] = useState<number>(100);
   const [rotation, setRotation] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -49,6 +49,21 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
   const [serverStreamDataUri, setServerStreamDataUri] = useState<string | null>(null);
   const [isLoadingStream, setIsLoadingStream] = useState<boolean>(false);
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [viewingVersionNumber, setViewingVersionNumber] = useState<number | null>(null);
+
+  const targetVersionNum = viewingVersionNumber !== null ? viewingVersionNumber : document.currentVersion;
+  const currentViewingVersion = document.versions?.find((v) => v.versionNumber === targetVersionNum) || document.versions?.[document.versions.length - 1] || {
+    versionNumber: document.currentVersion,
+    uploadedAt: document.tanggalMasuk,
+    uploadedBy: document.pemohon.nama,
+    fileName: document.fileName,
+    fileSize: document.fileSize,
+    status: document.status,
+    fileBase64: document.fileBase64,
+    fileBlobUrl: document.fileBlobUrl,
+    googleDrive: document.googleDrive,
+  };
+  const isLatestVersion = targetVersionNum === document.currentVersion;
 
   const totalPages = document.content.pdfPages?.length || 1;
   const isApproved = document.status === 'APPROVED';
@@ -305,6 +320,18 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
           <HardDrive className="w-4 h-4 text-emerald-600" />
           <span>3. Lokasi Folder Google Drive</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('VERSION_HISTORY')}
+          className={`py-2.5 border-b-2 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            activeTab === 'VERSION_HISTORY'
+              ? 'border-blue-600 text-blue-700 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-orange-600" />
+          <span>4. Riwayat Versi (Baru &amp; Lama: {document.versions?.length || 1} Versi)</span>
+        </button>
       </div>
 
       {/* Main Viewport */}
@@ -344,29 +371,81 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
         {/* TAB 1: PRATINJAU BERKAS ASLI (PDF / EMBED / GAMBAR) */}
         {activeTab === 'ORIGINAL_FILE' && (
           <div className="w-full max-w-5xl space-y-4">
+            {/* Version Information Banner (New vs Old) */}
+            <div className={`p-3 rounded-2xl border flex flex-wrap items-center justify-between text-xs font-bold gap-2 shadow-xs ${
+              isLatestVersion
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                : 'bg-amber-50 border-amber-300 text-amber-950'
+            }`}>
+              <div className="flex items-center gap-2">
+                {isLatestVersion ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                )}
+                <span>
+                  {isLatestVersion
+                    ? `🟢 BERKAS TERBARU (AKTIF) — Versi ${targetVersionNum} (${currentViewingVersion.fileName})`
+                    : `📁 BERKAS VERSI LAMA (ARSIP) — Versi ${targetVersionNum} (${currentViewingVersion.fileName}) — Telah digantikan oleh revisi baru.`}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {!isLatestVersion && (
+                  <button
+                    type="button"
+                    onClick={() => setViewingVersionNumber(document.currentVersion)}
+                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs cursor-pointer shadow-2xs"
+                  >
+                    Kembali ke Versi Terbaru (v{document.currentVersion})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('VERSION_HISTORY')}
+                  className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-xs text-slate-800 cursor-pointer"
+                >
+                  Lihat Riwayat Semua Versi ({document.versions?.length || 1})
+                </button>
+              </div>
+            </div>
+
             {/* If there's an actual user file base64 or valid blob */}
-            {document.fileBase64 ? (
+            {currentViewingVersion.fileBase64 ? (
               <div className="bg-white border border-slate-300 rounded-2xl p-4 shadow-md space-y-3">
                 <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200">
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-600" />
                     <span className="font-bold text-slate-900 text-xs sm:text-sm">
-                      Menampilkan File Asli yang Diunggah Dinas: {document.fileName}
+                      Menampilkan Berkas [Versi {targetVersionNum}]: {currentViewingVersion.fileName}
                     </span>
                   </div>
                   <button
-                    onClick={handleDownloadFile}
+                    onClick={() => {
+                      if (currentViewingVersion.fileBlobUrl) {
+                        const a = window.document.createElement('a');
+                        a.href = currentViewingVersion.fileBlobUrl;
+                        a.download = currentViewingVersion.fileName;
+                        a.click();
+                      } else if (currentViewingVersion.fileBase64) {
+                        const a = window.document.createElement('a');
+                        a.href = `data:application/octet-stream;base64,${currentViewingVersion.fileBase64}`;
+                        a.download = currentViewingVersion.fileName;
+                        a.click();
+                      } else {
+                        handleDownloadFile();
+                      }
+                    }}
                     className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Download File</span>
+                    <span>Download Versi Ini</span>
                   </button>
                 </div>
 
                 {document.format === 'PDF' && (
                   <iframe
-                    src={`data:application/pdf;base64,${document.fileBase64}`}
-                    title={document.fileName}
+                    src={`data:application/pdf;base64,${currentViewingVersion.fileBase64}`}
+                    title={currentViewingVersion.fileName}
                     className="w-full h-[620px] rounded-xl border border-slate-200 bg-slate-50 shadow-inner"
                   />
                 )}
@@ -374,8 +453,8 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                 {document.format === 'IMAGE' && (
                   <div className="flex justify-center p-4 bg-slate-900 rounded-xl overflow-hidden">
                     <img
-                      src={`data:image/png;base64,${document.fileBase64}`}
-                      alt={document.fileName}
+                      src={`data:image/png;base64,${currentViewingVersion.fileBase64}`}
+                      alt={currentViewingVersion.fileName}
                       className="max-h-[600px] object-contain rounded-lg shadow-lg"
                     />
                   </div>
@@ -387,9 +466,9 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                       {document.format === 'DOCX' ? <FileText className="w-12 h-12" /> : <FileSpreadsheet className="w-12 h-12 text-emerald-600" />}
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-slate-900">{document.fileName}</h3>
+                      <h3 className="text-base font-bold text-slate-900">{currentViewingVersion.fileName}</h3>
                       <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                        Berkas naskah {document.format} siap dibuka di Google Drive atau diunduh untuk diedit pada komputer Anda.
+                        Berkas naskah {document.format} (Versi {targetVersionNum}) siap dibuka di Google Drive atau diunduh.
                       </p>
                     </div>
                     <div className="flex items-center justify-center gap-3 pt-2">
@@ -403,18 +482,12 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                         <span>Buka &amp; Edit di Google Drive</span>
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
-                      <button
-                        onClick={handleDownloadFile}
-                        className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl font-bold text-xs inline-flex items-center gap-2 shadow-xs cursor-pointer"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span>Unduh ke Perangkat</span>
-                      </button>
                     </div>
                   </div>
                 )}
               </div>
             ) : (driveFileId || serverStreamDataUri) ? (
+
               <div className="bg-white border border-slate-300 rounded-2xl p-4 shadow-md space-y-3 w-full">
                 <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200">
                   <div className="flex items-center gap-2">
@@ -688,6 +761,124 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: RIWAYAT VERSI (BARU VS LAMA) */}
+        {activeTab === 'VERSION_HISTORY' && (
+          <div className="w-full max-w-4xl bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-md space-y-6 text-slate-900">
+            <div className="border-b border-slate-200 pb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-blue-600" />
+                  <span>Riwayat Versi Dokumen (Baru vs Lama)</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Perbandingan dokumen asli awal, versi revisi sebelumnya (arsip lama), dan dokumen versi terbaru yang aktif saat ini.
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl">
+                Versi Aktif: v{document.currentVersion}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {(document.versions || []).slice().reverse().map((ver) => {
+                const isCurrentActive = ver.versionNumber === document.currentVersion;
+                return (
+                  <div
+                    key={ver.versionNumber}
+                    className={`p-4 rounded-2xl border-2 transition-all space-y-3 ${
+                      isCurrentActive
+                        ? 'bg-emerald-50/60 border-emerald-400 shadow-sm'
+                        : 'bg-slate-50 border-slate-300'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-black font-mono shadow-xs ${
+                          isCurrentActive
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-600 text-white'
+                        }`}>
+                          Versi {ver.versionNumber}
+                        </span>
+                        {isCurrentActive ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>🟢 VERSI TERBARU (AKTIF / BARU)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                            <span>📁 VERSI LAMA (ARSIP / SEBELUMNYA)</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-[11px] font-mono text-slate-500 font-semibold">
+                        Diunggah: {ver.uploadedAt}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div className="space-y-1">
+                        <div><strong>Nama Berkas:</strong> <span className="font-mono text-blue-800">{ver.fileName}</span></div>
+                        <div><strong>Ukuran:</strong> <span className="font-mono">{ver.fileSize}</span></div>
+                        <div><strong>Pengunggah:</strong> {ver.uploadedBy}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div><strong>Status Verifikasi:</strong> <span className="font-bold text-slate-800">{ver.status}</span></div>
+                        {ver.googleDrive?.viewUrl && (
+                          <div>
+                            <strong>Google Drive:</strong>{' '}
+                            <a href={ver.googleDrive.viewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                              Lihat di Drive
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {ver.changeSummary && (
+                      <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1">
+                        <span className="font-bold text-blue-950 text-[11px] uppercase tracking-wide">
+                          Catatan / Rincian Perbaikan dari Dinas :
+                        </span>
+                        <p className="text-xs text-blue-900 italic font-medium">
+                          "{ver.changeSummary}"
+                        </p>
+                      </div>
+                    )}
+
+                    {ver.reviewerNotes && (
+                      <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-1">
+                        <span className="font-bold text-amber-950 text-[11px] uppercase tracking-wide">
+                          Catatan Pemeriksa / Verifikator pada Versi Ini :
+                        </span>
+                        <p className="text-xs text-amber-900 italic font-medium">
+                          "{ver.reviewerNotes}"
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewingVersionNumber(ver.versionNumber);
+                          setActiveTab('ORIGINAL_FILE');
+                        }}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Pratinjau Berkas Versi {ver.versionNumber}</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
