@@ -979,7 +979,7 @@ function adminGetDashboardData() {
   for (var shIdx = 0; shIdx < allSheets.length; shIdx++) {
     var curSh = allSheets[shIdx];
     var sName = curSh.getName();
-    if (sName === "DOKUMEN_PROSES" || sName === "DOKUMEN_SAH_TERVERIFIKASI" || sName === "SUMMARY_RIWAYAT_REVISI" || sName === "DATABASE_PENGGUNA" || sName === "MAPPING_FOLDER_OPD") {
+    if (sName === "DOKUMEN_PROSES" || sName === "DOKUMEN_SAH_TERVERIFIKASI" || sName === "SUMMARY_RIWAYAT_REVISI" || sName === "DATABASE_PENGGUNA" || sName === "MAPPING_FOLDER_OPD" || sName === "DATA_VERIFIKASI_DOKUMEN" || sName === "Sheet1" || sName === "Sheet 1" || sName === "DOKUMEN_SAKIP") {
       continue;
     }
     if (curSh.getLastRow() > 1) {
