@@ -1064,6 +1064,15 @@ function adminGetDashboardData() {
     }
   }
 
+  if (users.length === 0) {
+    users = [
+      { id: "usr-admin", username: "admin", email: "admin@nagekeokab.go.id", nama: "Admin Verifikator Utama", role: "ADMIN_VERIFIKATOR", opdName: "Inspektorat Daerah / Verifikator", nip: "198501012010011002", password: "123", status: "AKTIF" },
+      { id: "usr-setda", username: "setda", email: "setda@nagekeokab.go.id", nama: "Sekretariat Daerah", role: "DINAS_PEMOHON", opdName: "Sekretariat Daerah", nip: "198101012005011001", password: "123", status: "AKTIF" },
+      { id: "usr-diskominfo", username: "diskominfo", email: "diskominfo@nagekeokab.go.id", nama: "Dinas Komunikasi dan Informatika", role: "DINAS_PEMOHON", opdName: "Dinas Komunikasi dan Informatika", nip: "198801012012011003", password: "123", status: "AKTIF" },
+      { id: "usr-bappeda", username: "bappeda", email: "bappeda@nagekeokab.go.id", nama: "BAPPEDA", role: "DINAS_PEMOHON", opdName: "BAPPEDA", nip: "198301012008011004", password: "123", status: "AKTIF" }
+    ];
+  }
+
   var folders = [];
   if (folderSheet && folderSheet.getLastRow() > 1) {
     var fV = folderSheet.getDataRange().getValues();

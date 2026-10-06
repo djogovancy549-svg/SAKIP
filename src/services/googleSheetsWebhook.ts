@@ -39,7 +39,7 @@ import {
 
 // Embedded Google Apps Script Webhook URL directly in code
 export const DEFAULT_GOOGLE_SHEETS_WEBHOOK_URL =
-  'https://script.google.com/macros/s/AKfycbykN14JVPYDuhMAU_25rh87iSEPBQb586J7tFPkKH1N53N5tVPVcEz5Q-h-9FYz5Kn8Iw/exec';
+  'https://script.google.com/macros/s/AKfycbzUmmpXnTGJgGVR_171pT2Xu7LT1l02Xw0sW3ULA9CAadNsXbgsep_78A9KSMGgCB3B4g/exec';
 
 // Embedded Google Drive Induk Server Folder ID & URL
 export const DEFAULT_GOOGLE_DRIVE_FOLDER_ID = '1oeL5XXQlgo6GNyoEeXl804UMMGwHARl7';
@@ -524,7 +524,23 @@ export async function sendUploadToGoogleDriveAndSheet(
   customTargetFolderId?: string
 ): Promise<{ success: boolean; message: string; timestamp: string }> {
   const webhookUrl = getGoogleSheetsWebhookUrl();
-  let masterFolderId = customTargetFolderId || getGoogleDriveFolderId();
+  let masterFolderId = customTargetFolderId;
+  if (!masterFolderId || masterFolderId === DEFAULT_GOOGLE_DRIVE_FOLDER_ID) {
+    try {
+      const savedRegs = localStorage.getItem('simverif_opd_folder_registrations');
+      if (savedRegs) {
+        const regs = JSON.parse(savedRegs);
+        const match = regs[doc.opdId] || Object.values(regs).find((r: any) => r.opdName?.toLowerCase() === doc.opdName?.toLowerCase());
+        if (match && (match as any).driveFolderId && (match as any).driveFolderId !== DEFAULT_GOOGLE_DRIVE_FOLDER_ID) {
+          masterFolderId = (match as any).driveFolderId;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (!masterFolderId || masterFolderId === DEFAULT_GOOGLE_DRIVE_FOLDER_ID) {
+    masterFolderId = `OPD-FOLDER-${doc.opdId || doc.opdName.replace(/\s+/g, '_')}`;
+  }
 
   if (masterFolderId && masterFolderId.includes('drive.google.com')) {
     const match = masterFolderId.match(/folders\/([a-zA-Z0-9_-]+)/);

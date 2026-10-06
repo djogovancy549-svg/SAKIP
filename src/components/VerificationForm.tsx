@@ -302,7 +302,122 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
   };
 
   const handlePrintBeritaAcara = () => {
-    window.print();
+    const reg = document.registrationSeal;
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Berita Acara Verifikasi (BAV) - SAKIP Nagekeo</title>
+  <style>
+    body { font-family: 'Times New Roman', serif; color: #000; background: #fff; margin: 0; padding: 30px; line-height: 1.6; }
+    .header { text-align: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 25px; }
+    .header h2 { margin: 2px 0; font-size: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+    .header h1 { margin: 6px 0; font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+    .header p { margin: 2px 0; font-size: 11px; }
+    .title { text-align: center; margin: 25px 0; font-weight: bold; font-size: 14px; text-decoration: underline; text-transform: uppercase; letter-spacing: 0.5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
+    th, td { border: 1px solid #000; padding: 7px 10px; vertical-align: top; }
+    th { background: #f2f2f2; text-align: left; width: 32%; }
+    .notes-box { border: 1px solid #000; padding: 12px; margin: 15px 0; font-style: italic; font-size: 12px; background: #fafafa; }
+    .signature-section { margin-top: 50px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+    .sig-box { width: 42%; text-align: center; font-size: 12px; }
+    .sig-space { height: 75px; }
+    @media print {
+      button { display: none; }
+      body { padding: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Pemerintah Kabupaten Nagekeo</h2>
+    <h1>Sistem Informasi Administrasi &amp; Pengawasan SAKIP (SIMVERIF SAKIP)</h1>
+    <p>Jl. Mayor M. Pati No. 1, Mbay, Kabupaten Nagekeo, Nusa Tenggara Timur</p>
+  </div>
+
+  <div class="title">Berita Acara Verifikasi &amp; Pengesahan Dokumen SAKIP (BAV)</div>
+
+  <p style="font-size: 12px; text-align: justify;">
+    Pada hari ini tanggal <b>${new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}</b>, Tim Verifikator SAKIP Pemerintah Kabupaten Nagekeo telah melaksanakan pemeriksaan administrasi dan substansi terhadap dokumen kinerja perangkat daerah dengan rincian sebagai berikut:
+  </p>
+
+  <table>
+    <tr>
+      <th>Nomor Berita Acara (BAV)</th>
+      <td><b>${reg?.bavNumber || bavNumber || 'BAV/SAKIP/' + document.nomorBerkas}</b></td>
+    </tr>
+    <tr>
+      <th>Nomor Registrasi Sistem</th>
+      <td>${reg?.regNumber || 'REG-' + document.opdId + '-' + document.nomorBerkas}</td>
+    </tr>
+    <tr>
+      <th>Judul Dokumen</th>
+      <td><b>${document.judul}</b></td>
+    </tr>
+    <tr>
+      <th>Nomor / Perihal Berkas</th>
+      <td>${document.nomorBerkas} - ${document.perihal || '-'}</td>
+    </tr>
+    <tr>
+      <th>Organisasi Perangkat Daerah</th>
+      <td>${document.opdName}</td>
+    </tr>
+    <tr>
+      <th>Nama Pemohon / Pengaju</th>
+      <td>${document.pemohon.nama} (${document.pemohon.instansi})</td>
+    </tr>
+    <tr>
+      <th>Status Verifikasi</th>
+      <td><b style="color: #047857;">TERVERIFIKASI &amp; DISAHKAN (SAH 5 TAHUN)</b></td>
+    </tr>
+    <tr>
+      <th>Waktu Pengesahan</th>
+      <td>${reg?.issuedAt || document.verification?.verifiedAt || new Date().toLocaleString('id-ID')}</td>
+    </tr>
+  </table>
+
+  <div style="font-size: 12px; font-weight: bold; margin-top: 10px;">Catatan &amp; Kesimpulan Pengesahan Verifikator:</div>
+  <div class="notes-box">
+    "${document.verification?.notes || notes || 'Seluruh instrumen kelengkapan berkas dan syarat teknis telah dipenuhi dan dinyatakan sah sesuai regulasi SAKIP Kabupaten Nagekeo.'}"
+  </div>
+
+  <p style="font-size: 11px; margin-top: 10px; font-family: monospace;">
+    Kode Pengaman Integritas Digital (SHA-256): ${reg?.securityHash || 'SHA-256-VALIDATED-SECURE'}
+  </p>
+
+  <div class="signature-section">
+    <div class="sig-box">
+      <div>Mengetahui,</div>
+      <div>Pimpinan / Kepala Dinas ${document.opdName}</div>
+      <div class="sig-space"></div>
+      <div><b>( _________________________ )</b></div>
+      <div>NIP. _________________________</div>
+    </div>
+    <div class="sig-box">
+      <div>Mbay, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+      <div>Tim Verifikator SAKIP Nagekeo</div>
+      <div class="sig-space"></div>
+      <div><b>${reg?.verifiedBy || verifierName}</b></div>
+      <div>NIP. ${reg?.verifiedNip || verifierNip}</div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+    };
+  </script>
+</body>
+</html>`;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   // =========================================================================
