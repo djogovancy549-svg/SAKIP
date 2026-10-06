@@ -608,10 +608,11 @@ function doPost(e) {
     if (isRevisionUpload) {
       var expiry3M2 = new Date();
       expiry3M2.setDate(expiry3M2.getDate() + 90);
+      var dinasNotes = data.notes || "Catatan perbaikan dari dinas";
       summarySheet.appendRow([
-        nowStr, data.docId || ("DOC-" + Date.now()), data.docNumber || "-", data.title || "Draf Revisi",
-        data.opdName || "Dinas", "v" + (data.versionNumber || 2), "UNGGAH_REVISI",
-        data.notes || "Pengajuan draf revisi", data.notes || "-", data.pemohonName || "Pemohon",
+        nowStr, data.docId || ("DOC-" + Date.now()), data.docNumber || "-", data.title || "Revisi Dinas",
+        data.opdName || "Dinas", "v" + (data.versionNumber || 2), "PERBAIKAN_DINAS",
+        "Perbaikan v" + (data.versionNumber || 2) + ": " + dinasNotes, dinasNotes, data.pemohonName || "Pemohon",
         driveFileUrl, driveFileId, expiry3M2.toLocaleDateString("id-ID"), RETENTION_REVISION_DAYS, "AKTIF_3_BULAN"
       ]);
 
@@ -622,21 +623,22 @@ function doPost(e) {
           foundPRow2 = p2 + 1; break;
         }
       }
+      var finalNote = "Catatan Perbaikan Dinas (v" + (data.versionNumber || 2) + "): " + dinasNotes;
       if (foundPRow2 > 0) {
         prosesSheet.getRange(foundPRow2, 6).setValue("v" + (data.versionNumber || 2));
         prosesSheet.getRange(foundPRow2, 11).setValue("PENDING");
         prosesSheet.getRange(foundPRow2, 14).setValue(driveFileUrl);
         prosesSheet.getRange(foundPRow2, 15).setValue(driveFileId);
-        prosesSheet.getRange(foundPRow2, 16).setValue("Draf revisi diajukan: " + (data.notes || ""));
+        prosesSheet.getRange(foundPRow2, 16).setValue(finalNote);
       } else {
         prosesSheet.appendRow([
           nowStr, data.docId || ("DOC-" + Date.now()), data.docNumber || "Draf", data.title || "Dokumen SAKIP",
           data.opdName || "Dinas", "v" + (data.versionNumber || 2), data.format || "PDF",
           data.pemohonName || "Pemohon", data.pemohonEmail || data.email || "-", data.pemohonInstansi || data.opdName || "-",
-          "PENDING", "-", "-", driveFileUrl, driveFileId, "Draf revisi diajukan", targetFolderName
+          "PENDING", "-", "-", driveFileUrl, driveFileId, finalNote, targetFolderName
         ]);
       }
-      return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Berkas revisi berhasil diunggah!", fileUrl: driveFileUrl, fileId: driveFileId })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Berkas revisi dan catatan perbaikan dinas berhasil disimpan!", fileUrl: driveFileUrl, fileId: driveFileId })).setMimeType(ContentService.MimeType.JSON);
 
     } else {
       prosesSheet.appendRow([
@@ -876,22 +878,31 @@ function adminGetDashboardData() {
     var pV = prosesSheet.getDataRange().getValues();
     for (var i = 1; i < pV.length; i++) {
       var rowP = pV[i];
-      if (!rowP[1] && !rowP[2] && !rowP[3]) continue;
-      var docId = String(rowP[1] || ("DOC-P-" + i));
+      if (!rowP[0] && !rowP[1] && !rowP[2] && !rowP[3] && !rowP[4]) continue;
+
+      var docId = String(rowP[1] || rowP[0] || ("DOC-P-" + i)).trim();
       seenDocIds[docId.toLowerCase()] = true;
-      var urls = sanitizeDriveUrls(rowP[13], rowP[14], rowP);
+      var rawUrl = String(rowP[13] || rowP[14] || rowP[12] || "").trim();
+      var rawFileId = String(rowP[14] || rowP[15] || rowP[13] || "").trim();
+      var urls = sanitizeDriveUrls(rawUrl, rawFileId, rowP);
+
+      var st = String(rowP[10] || rowP[9] || rowP[8] || "PENDING").trim().toUpperCase();
+      if (st.indexOf("APPROV") !== -1 || st.indexOf("SAH") !== -1) st = "APPROVED";
+      else if (st.indexOf("REV") !== -1) st = "REVISION";
+      else if (st.indexOf("REJ") !== -1 || st.indexOf("TOLAK") !== -1) st = "REJECTED";
+      else st = "PENDING";
 
       prosesDocs.push({
-        tanggalMasuk: String(rowP[0] || ""),
+        tanggalMasuk: String(rowP[0] || new Date().toLocaleString("id-ID")),
         id: docId,
-        nomorBerkas: String(rowP[2] || "-"),
-        judul: String(rowP[3] || "Dokumen SAKIP"),
-        opdName: String(rowP[4] || "-"),
+        nomorBerkas: String(rowP[2] || rowP[1] || "-"),
+        judul: String(rowP[3] || rowP[2] || "Dokumen SAKIP"),
+        opdName: String(rowP[4] || rowP[3] || "OPD"),
         opdId: String(rowP[9] || rowP[4] || "OPD"),
         currentVersion: Number(String(rowP[5] || "1").replace("v", "")) || 1,
         format: String(rowP[6] || "PDF"),
         pemohon: { nama: String(rowP[7] || "Pemohon"), email: String(rowP[8] || ""), instansi: String(rowP[9] || rowP[4] || "") },
-        status: String(rowP[10] || "PENDING"),
+        status: st,
         verifierName: String(rowP[11] || "-"),
         verifierNip: String(rowP[12] || "-"),
         googleDrive: {
@@ -900,9 +911,9 @@ function adminGetDashboardData() {
           previewUrl: urls.previewUrl,
           fileId: urls.fileId
         },
-        notes: String(rowP[15] || ""),
+        notes: String(rowP[15] || rowP[16] || rowP[14] || ""),
         sourceSheet: "DOKUMEN_PROSES",
-        verification: { status: String(rowP[10] || "PENDING"), verifiedBy: String(rowP[11] || "Admin Verifikator"), nip: String(rowP[12] || "-"), notes: String(rowP[15] || "") }
+        verification: { status: st, verifiedBy: String(rowP[11] || "Admin Verifikator"), nip: String(rowP[12] || "-"), notes: String(rowP[15] || rowP[16] || rowP[14] || "") }
       });
     }
   }

@@ -847,7 +847,11 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
             '<div class="text-[10px] text-slate-500 font-mono">' + ((d.pemohon && d.pemohon.email) ? d.pemohon.email : '-') + '</div>' +
           '</td>' +
           '<td class="p-3.5">' + stBadge + '</td>' +
-          '<td class="p-3.5 text-slate-400 max-w-xs truncate" title="' + (d.notes || '-') + '">' + (d.notes || '-') + '</td>' +
+          '<td class="p-3.5 text-slate-300 max-w-xs" title="' + (d.notes || '-') + '">' + 
+            ((d.notes && (d.notes.indexOf('Catatan Perbaikan Dinas') !== -1 || d.notes.indexOf('Perbaikan') !== -1))
+              ? '<span class="text-emerald-300 font-bold block text-[11px] bg-emerald-950/80 p-2 rounded-lg border border-emerald-700/50"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>' + d.notes + '</span>'
+              : '<span class="text-slate-400 truncate block">' + (d.notes || '-') + '</span>') + 
+          '</td>' +
           '<td class="p-3.5 text-right">' +
             '<button type="button" onclick="openVerifyModalForProses(' + i + ')" class="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs shadow-md shadow-sky-600/20 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1.5">' +
               '<i class="fa-solid fa-signature"></i>' +

@@ -164,13 +164,17 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
         const verifierName = d.verifierName || 'Admin Verifikator SAKIP';
         const verifierNip = d.verifierNip || '19850101 201001 1 002';
 
-        const matchingSummary = (data.summaryDocs || []).find((sm: any) =>
-          (sm.id && sm.id.toLowerCase() === docId.toLowerCase()) ||
-          (sm.nomorBerkas && d.nomorBerkas && sm.nomorBerkas.trim().toLowerCase() === d.nomorBerkas.trim().toLowerCase())
+        const matchingVerifSummary = (data.summaryDocs || []).slice().reverse().find((sm: any) =>
+          ((sm.id && sm.id.toLowerCase() === docId.toLowerCase()) ||
+           (sm.nomorBerkas && d.nomorBerkas && sm.nomorBerkas.trim().toLowerCase() === d.nomorBerkas.trim().toLowerCase())) &&
+          (sm.jenisCatatan === 'CATATAN_PERBAIKAN' || sm.jenisCatatan === 'PENOLAKAN')
         );
-        const summaryNotes = matchingSummary?.detailEvaluasi || matchingSummary?.summaryPetunjuk || '';
+        const verifierNotes = matchingVerifSummary?.detailEvaluasi || matchingVerifSummary?.summaryPetunjuk || '';
 
-        const rawNotes = d.notes || d.verification?.notes || summaryNotes || '';
+        const rawNotes = currentStatus === 'REVISION'
+          ? (verifierNotes || d.notes || '')
+          : (d.notes || verifierNotes || '');
+
         const noteContent = (rawNotes && rawNotes.trim() !== '' && rawNotes.trim() !== '-')
           ? rawNotes
           : (isApproved ? 'Seluruh instrumen kelengkapan berkas dan syarat teknis telah dipenuhi dan dinyatakan sah.' : (currentStatus === 'REVISION' ? 'Harap lakukan perbaikan sesuai catatan verifikator.' : 'Dokumen diajukan untuk verifikasi.'));
@@ -554,7 +558,7 @@ export async function sendUploadToGoogleDriveAndSheet(
     verifierNip: '-',
     bavNumber: '-',
     digitalSealHash: '-',
-    notes: doc.perihal || 'Pengajuan berkas baru.',
+    notes: actionType === 'UPLOAD_REVISION' ? (version.changeSummary || 'Catatan perbaikan dari dinas') : (doc.perihal || 'Pengajuan berkas baru.'),
     downloadUrl: version.googleDrive?.downloadUrl || doc.googleDrive?.downloadUrl || '',
     driveFolderUrl: getGoogleDriveFolderUrl(),
     driveMasterFolderId: masterFolderId,
