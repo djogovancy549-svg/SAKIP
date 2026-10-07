@@ -518,7 +518,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
         <div>
           <label class="block text-[11px] font-bold text-slate-300 mb-1">Nama Instansi / Dinas (OPD) *</label>
-          <input type="text" id="inputUserOpd" placeholder="Dinas Komunikasi dan Informatika" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
+          <input type="text" id="inputUserOpd" oninput="autoLinkOpdFolder()" placeholder="Dinas Komunikasi dan Informatika" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-indigo-500">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
@@ -544,8 +544,12 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         </div>
 
         <div>
-          <label class="block text-[11px] font-bold text-slate-300 mb-1">URL Folder Google Drive OPD (Opsional)</label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-[11px] font-bold text-slate-300">URL Folder Google Drive OPD (Terhubung Otomatis)</label>
+            <span class="text-[10px] text-teal-400 font-mono font-bold"><i class="fa-solid fa-link"></i> Auto-Sync Folder</span>
+          </div>
           <input type="url" id="inputUserDriveUrl" placeholder="https://drive.google.com/drive/folders/..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white font-mono text-[11px] focus:outline-none focus:border-indigo-500">
+          <p id="linkedFolderNotice" class="text-[10px] text-teal-300 mt-1 font-medium hidden"></p>
         </div>
       </div>
 
@@ -1515,6 +1519,34 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       }
     }
 
+    function autoLinkOpdFolder() {
+      var opd = (document.getElementById('inputUserOpd')?.value || '').trim().toLowerCase();
+      var driveInput = document.getElementById('inputUserDriveUrl');
+      var notice = document.getElementById('linkedFolderNotice');
+      if (!opd || !driveInput) return;
+
+      var found = null;
+      if (globalData && globalData.folders) {
+        found = globalData.folders.find(function(f) {
+          var fOpd = (f.opdName || f.opdId || '').toLowerCase();
+          return fOpd === opd || fOpd.indexOf(opd) !== -1 || opd.indexOf(fOpd) !== -1;
+        });
+      }
+
+      if (found && found.driveFolderUrl) {
+        driveInput.value = found.driveFolderUrl;
+        if (notice) {
+          notice.innerHTML = '<i class="fa-solid fa-link text-emerald-400"></i> Terhubung otomatis dengan: <strong>' + (found.opdName || found.driveFolderName || 'Folder OPD') + '</strong>';
+          notice.classList.remove('hidden');
+        }
+      } else {
+        if (notice) {
+          notice.innerHTML = '<i class="fa-solid fa-sparkles text-sky-400"></i> Folder Google Drive akan otomatis dibuatkan / dipetakan ke <strong>MAPPING_FOLDER_OPD</strong> saat akun disimpan.';
+          notice.classList.remove('hidden');
+        }
+      }
+    }
+
     function openUserModal() {
       document.getElementById('userModalTitle').innerText = 'Pendaftaran Akun Pengguna OPD Baru';
       document.getElementById('inputUserId').value = '';
@@ -1525,8 +1557,10 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('inputUserNama').value = '';
       document.getElementById('inputUserNip').value = '';
       document.getElementById('inputUserEmail').value = '';
-      document.getElementById('inputUserPassword').value = '123456';
+      document.getElementById('inputUserPassword').value = 'Dinas@2026!';
       document.getElementById('inputUserDriveUrl').value = '';
+      var notice = document.getElementById('linkedFolderNotice');
+      if (notice) notice.classList.add('hidden');
       document.getElementById('userModal').style.display = 'flex';
     }
 
@@ -1542,8 +1576,17 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       document.getElementById('inputUserNama').value = user.nama || '';
       document.getElementById('inputUserNip').value = user.nip || '';
       document.getElementById('inputUserEmail').value = user.email || (user.username + '@nagekeokab.go.id');
-      document.getElementById('inputUserPassword').value = user.password || '123456';
+      document.getElementById('inputUserPassword').value = user.password || 'Dinas@2026!';
       document.getElementById('inputUserDriveUrl').value = user.driveFolderUrl || '';
+      var notice = document.getElementById('linkedFolderNotice');
+      if (notice) {
+        if (user.driveFolderUrl) {
+          notice.innerHTML = '<i class="fa-solid fa-link text-emerald-400"></i> Terhubung dengan folder: <strong>' + (user.opdName || 'Folder Drive') + '</strong>';
+          notice.classList.remove('hidden');
+        } else {
+          notice.classList.add('hidden');
+        }
+      }
       document.getElementById('userModal').style.display = 'flex';
     }
 

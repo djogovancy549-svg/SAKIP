@@ -562,8 +562,17 @@ function doPost(e) {
     if (data.action === "DELETE_DOCUMENT" || data.action === "DELETE") {
       return ContentService.createTextOutput(JSON.stringify(adminDeleteDocument(data))).setMimeType(ContentService.MimeType.JSON);
     }
-    if (data.action === "REGISTER_USER_ACCOUNT" || data.action === "UPDATE_USER_PASSWORD" || data.action === "UPDATE_PASSWORD") {
-      return ContentService.createTextOutput(JSON.stringify(adminSaveUserAccount(data.userId, data.username, data.email, data.pemohonName || data.nama, data.role, data.opdName, data.verifierNip || data.nip, data.newPassword, data.driveFolderUrl))).setMimeType(ContentService.MimeType.JSON);
+    if (data.action === "REGISTER_USER_ACCOUNT" || data.action === "REGISTER_USER" || data.action === "USER_REGISTRATION" || data.action === "UPDATE_USER_PASSWORD" || data.action === "UPDATE_PASSWORD") {
+      var uId = data.userId || data.id;
+      var uName = data.username;
+      var uEmail = data.email;
+      var uNama = data.pemohonName || data.nama || data.fullName;
+      var uRole = data.role;
+      var uOpd = data.opdName || data.dinasName;
+      var uNip = data.verifierNip || data.nip;
+      var uPass = data.newPassword || data.password;
+      var uDrive = data.driveFolderUrl || data.folderUrl;
+      return ContentService.createTextOutput(JSON.stringify(adminSaveUserAccount(uId, uName, uEmail, uNama, uRole, uOpd, uNip, uPass, uDrive))).setMimeType(ContentService.MimeType.JSON);
     }
     if (data.action === "REGISTER_OPD_FOLDER" || data.action === "SAVE_OPD_FOLDER") {
       return ContentService.createTextOutput(JSON.stringify(adminRegisterFolderServer(data.opdId, data.opdName, data.driveFolderUrl || data.driveUrl, data.driveFolderId || data.folderId, data.driveFolderName || data.subfolderName, data.registrar || data.pemohonName, data.nip, data.notes))).setMimeType(ContentService.MimeType.JSON);
@@ -1152,6 +1161,68 @@ function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip,
     if (!ss) return { status: "error", message: "Spreadsheet tidak ditemukan" };
     initDefaultDataIfEmpty(ss);
     var userSheet = getOrCreateSheet(ss, "DATABASE_PENGGUNA");
+    var folderSheet = getOrCreateSheet(ss, "MAPPING_FOLDER_OPD");
+
+    var cleanOpd = String(opdName || "-").trim();
+    var effectiveFolderUrl = String(driveFolderUrl || "").trim();
+    var opdId = (username || cleanOpd).toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    // 1. Jika URL folder tidak diisi saat mendaftar, cari folder yang sudah ada di MAPPING_FOLDER_OPD
+    if (!effectiveFolderUrl && folderSheet.getLastRow() > 1) {
+      var fVals = folderSheet.getDataRange().getValues();
+      for (var f = 1; f < fVals.length; f++) {
+        var fOpdName = String(fVals[f][2] || "").trim().toLowerCase();
+        var fOpdId = String(fVals[f][1] || "").trim().toLowerCase();
+        if (fOpdName === cleanOpd.toLowerCase() || fOpdId === opdId.toLowerCase() ||
+            (cleanOpd && fOpdName.indexOf(cleanOpd.toLowerCase()) !== -1) ||
+            (cleanOpd && cleanOpd.toLowerCase().indexOf(fOpdName) !== -1)) {
+          effectiveFolderUrl = String(fVals[f][3] || "").trim();
+          break;
+        }
+      }
+    }
+
+    // 2. Jika masih kosong, dapatkan atau buat folder Google Drive resmi untuk OPD ini
+    if (!effectiveFolderUrl && cleanOpd && cleanOpd !== "-") {
+      try {
+        var autoFolder = getSingleOpdFolder(cleanOpd, opdId);
+        if (autoFolder) {
+          effectiveFolderUrl = autoFolder.getUrl();
+        }
+      } catch (eFld) {}
+    }
+
+    // 3. Jika URL folder ada, otomatis sinkronkan dan daftarkan ke MAPPING_FOLDER_OPD
+    if (effectiveFolderUrl && effectiveFolderUrl.indexOf("http") === 0) {
+      var folderMatchRow = -1;
+      if (folderSheet.getLastRow() > 1) {
+        var fVals2 = folderSheet.getDataRange().getValues();
+        for (var f2 = 1; f2 < fVals2.length; f2++) {
+          if (String(fVals2[f2][1]).toLowerCase() === opdId.toLowerCase() || 
+              String(fVals2[f2][2]).toLowerCase() === cleanOpd.toLowerCase()) {
+            folderMatchRow = f2 + 1;
+            break;
+          }
+        }
+      }
+
+      var fid = "";
+      var m = effectiveFolderUrl.match(/folders\/([a-zA-Z0-9_-]+)/);
+      if (m && m[1]) fid = m[1];
+      var nowStr = new Date().toLocaleString("id-ID");
+
+      if (folderMatchRow > 0) {
+        folderSheet.getRange(folderMatchRow, 1).setValue(nowStr);
+        folderSheet.getRange(folderMatchRow, 4).setValue(effectiveFolderUrl);
+        folderSheet.getRange(folderMatchRow, 5).setValue(fid);
+        folderSheet.getRange(folderMatchRow, 7).setValue("Admin (Terhubung Akun @" + username + ")");
+      } else {
+        folderSheet.appendRow([
+          nowStr, opdId, cleanOpd, effectiveFolderUrl, fid, "SAKIP - " + cleanOpd,
+          "Admin (Terhubung Akun @" + username + ")", nip || "-", "Terhubung otomatis saat pendaftaran akun"
+        ]);
+      }
+    }
 
     var foundUserRow = -1;
     var uVals = userSheet.getDataRange().getValues();
@@ -1169,14 +1240,14 @@ function adminSaveUserAccount(userId, username, email, nama, role, opdName, nip,
       userSheet.getRange(foundUserRow, 4).setValue(effectiveEmail);
       userSheet.getRange(foundUserRow, 5).setValue(nama || "-");
       userSheet.getRange(foundUserRow, 6).setValue(role || "DINAS_PEMOHON");
-      userSheet.getRange(foundUserRow, 7).setValue(opdName || "-");
+      userSheet.getRange(foundUserRow, 7).setValue(cleanOpd);
       userSheet.getRange(foundUserRow, 8).setValue(nip || "-");
-      userSheet.getRange(foundUserRow, 9).setValue(driveFolderUrl || "-");
+      userSheet.getRange(foundUserRow, 9).setValue(effectiveFolderUrl || "-");
       if (password) userSheet.getRange(foundUserRow, 10).setValue(password);
     } else {
       userSheet.appendRow([
         now, userId || ("usr-" + username), username, effectiveEmail, nama || "-",
-        role || "DINAS_PEMOHON", opdName || "-", nip || "-", driveFolderUrl || "-",
+        role || "DINAS_PEMOHON", cleanOpd, nip || "-", effectiveFolderUrl || "-",
         password || "123456", "AKTIF"
       ]);
     }

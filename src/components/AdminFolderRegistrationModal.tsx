@@ -225,11 +225,25 @@ export function AdminFolderRegistrationModal({
 
     onAddUserAccount(newUser);
 
+    // Auto-link and save folder mapping for this OPD
+    const newReg: OpdFolderRegistration = {
+      opdId: opdTarget.id,
+      opdName: opdTarget.name,
+      driveFolderUrl: effectiveFolderUrl,
+      driveFolderId: effectiveFolderId,
+      driveFolderName: registeredFolder?.driveFolderName || `SAKIP - ${opdTarget.name}`,
+      registeredByAdmin: currentUser?.nama || 'Admin Sistem',
+      registeredAt: new Date().toLocaleString('id-ID'),
+      notes: `Terhubung otomatis saat pendaftaran akun @${newUser.username}`,
+    };
+    onSaveRegistration(newReg);
+
     try {
       await sendUserRegistrationToGoogleSheet(newUser, currentUser || undefined);
-      setSuccessToast(`Akun dinas @${newUser.username} (${effectiveEmail}) berhasil didaftarkan dan dicatat ke sheet DATABASE_PENGGUNA!`);
+      await sendFolderRegistrationToGoogleSheet(newReg, currentUser || undefined);
+      setSuccessToast(`Akun dinas @${newUser.username} berhasil didaftarkan dan terhubung otomatis dengan folder Google Drive ${opdTarget.name}!`);
     } catch {
-      setSuccessToast(`Akun dinas @${newUser.username} berhasil disimpan secara lokal!`);
+      setSuccessToast(`Akun dinas @${newUser.username} dan folder berhasil disimpan secara lokal!`);
     } finally {
       setIsCreatingUser(false);
       setNewUsername('');
