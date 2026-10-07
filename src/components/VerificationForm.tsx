@@ -96,7 +96,8 @@ export function VerificationForm({
   onOpenRevisionModal,
 }: VerificationFormProps) {
   const notesId = useId();
-  const isVerifier = appRole === 'VERIFIKATOR';
+  const isVerifier = appRole === 'VERIFIKATOR' || appRole === 'ADMIN_VERIFIKATOR' || appRole === 'SUPERADMIN';
+  const isDinas = appRole === 'DINAS_PEMOHON';
 
   // State for Admin Form
   const [selectedStatus, setSelectedStatus] = useState<VerificationStatus>(
@@ -106,7 +107,7 @@ export function VerificationForm({
   const defaultBav =
     document.verification?.bavNumber ||
     document.registrationSeal?.bavNumber ||
-    `BAV/SAKIP/${document.nomorBerkas}`;
+    `BAV/SAKIP/${document.nomorBerkas || 'DOC'}`;
 
   const [bavNumber, setBavNumber] = useState<string>(defaultBav);
   const [revisionDeadline, setRevisionDeadline] = useState<string>(() => {
@@ -136,10 +137,11 @@ export function VerificationForm({
   const [syncFeedback, setSyncFeedback] = useState<{ success: boolean; message: string } | null>(null);
   const [copiedReg, setCopiedReg] = useState<boolean>(false);
 
-  const isApproved = document.status === 'APPROVED';
-  const isRevision = document.status === 'REVISION';
-  const isPending = document.status === 'PENDING';
-  const isRejected = document.status === 'REJECTED';
+  const statusNorm = (document.status || '').toUpperCase();
+  const isApproved = statusNorm === 'APPROVED' || statusNorm === 'SAH' || statusNorm === 'DISETUJUI' || statusNorm === 'FINAL';
+  const isRevision = statusNorm === 'REVISION' || statusNorm === 'PERLU_REVISI' || statusNorm === 'REVISI';
+  const isRejected = statusNorm === 'REJECTED' || statusNorm === 'DITOLAK';
+  const isPending = !isApproved && !isRevision && !isRejected;
 
   const handleToggleChecklist = (id: string) => {
     setChecklist((prev) => ({
@@ -396,7 +398,7 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
     </tr>
     <tr>
       <th>Nama Pemohon / Pengaju</th>
-      <td>${document.pemohon.nama} (${document.pemohon.instansi})</td>
+      <td>${document.pemohon?.nama || document.opdName || 'Dinas Pemohon'} (${document.pemohon?.instansi || document.opdName})</td>
     </tr>
     <tr>
       <th>Status Verifikasi</th>
@@ -824,7 +826,7 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-blue-100 font-medium">Pemohon / OPD:</span>
             <span className="text-white font-medium truncate">
-              {document.pemohon.nama} ({document.opdName})
+              {document.pemohon?.nama || document.opdName || 'Dinas Pemohon'} ({document.opdName})
             </span>
           </div>
         </div>

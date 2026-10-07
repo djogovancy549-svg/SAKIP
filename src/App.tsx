@@ -50,6 +50,7 @@ import { RunningTicker } from './components/RunningTicker';
 import { DocumentList } from './components/DocumentList';
 import { DocumentViewer } from './components/DocumentViewer';
 import { VerificationForm } from './components/VerificationForm';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { GoogleSheetModal } from './components/GoogleSheetModal';
 import { UploadDocumentModal } from './components/UploadDocumentModal';
 import { UploadRevisionModal } from './components/UploadRevisionModal';
@@ -1357,8 +1358,9 @@ export default function App() {
         )}
 
         {/* MODE 1: SINGLE VIEW (SATU PER SATU - LEBIH BESAR & LEGA) */}
-        {layoutMode === 'SINGLE' ? (
-          <div className="w-full flex-1 flex flex-col">
+        <ErrorBoundary fallbackTitle="Kendala Memuat Panel Lembar Kerja">
+          {layoutMode === 'SINGLE' ? (
+            <div className="w-full flex-1 flex flex-col">
             {/* VIEW 1: DAFTAR BERKAS */}
             {activeView === 'LIST' && (
               <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150">
@@ -1568,6 +1570,7 @@ export default function App() {
             </div>
           </div>
         )}
+        </ErrorBoundary>
       </main>
 
       {/* Modals */}

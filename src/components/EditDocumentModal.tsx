@@ -45,9 +45,9 @@ export function EditDocumentModal({
       setNomorBerkas(document.nomorBerkas);
       setJudul(document.judul);
       setPerihal(document.perihal || document.judul);
-      setPemohonNama(document.pemohon.nama);
-      setPemohonInstansi(document.pemohon.instansi);
-      setPemohonKontak(document.pemohon.kontak || '');
+      setPemohonNama(document.pemohon?.nama || document.opdName || 'Dinas Pemohon');
+      setPemohonInstansi(document.pemohon?.instansi || document.opdName || 'Pemerintah Kabupaten Nagekeo');
+      setPemohonKontak(document.pemohon?.kontak || '');
       setFileName(document.fileName);
       setRevisionDeadline(document.revisionDeadline || '');
       setIsConfirmingDelete(false);

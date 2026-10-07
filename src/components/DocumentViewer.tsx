@@ -55,22 +55,22 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
   const [streamError, setStreamError] = useState<string | null>(null);
   const [viewingVersionNumber, setViewingVersionNumber] = useState<number | null>(null);
 
-  const targetVersionNum = viewingVersionNumber !== null ? viewingVersionNumber : document.currentVersion;
+  const targetVersionNum = viewingVersionNumber !== null ? viewingVersionNumber : (document.currentVersion || 1);
   const currentViewingVersion = document.versions?.find((v) => v.versionNumber === targetVersionNum) || document.versions?.[document.versions.length - 1] || {
-    versionNumber: document.currentVersion,
-    uploadedAt: document.tanggalMasuk,
-    uploadedBy: document.pemohon.nama,
-    fileName: document.fileName,
-    fileSize: document.fileSize,
-    status: document.status,
+    versionNumber: document.currentVersion || 1,
+    uploadedAt: document.tanggalMasuk || new Date().toISOString(),
+    uploadedBy: document.pemohon?.nama || document.opdName || 'Dinas Pemohon',
+    fileName: document.fileName || 'Dokumen SAKIP',
+    fileSize: document.fileSize || '1.0 MB',
+    status: document.status || 'PENDING',
     fileBase64: document.fileBase64,
     fileBlobUrl: document.fileBlobUrl,
     googleDrive: document.googleDrive,
   };
-  const isLatestVersion = targetVersionNum === document.currentVersion;
+  const isLatestVersion = targetVersionNum === (document.currentVersion || 1);
 
-  const totalPages = document.content.pdfPages?.length || 1;
-  const isApproved = document.status === 'APPROVED';
+  const totalPages = document.content?.pdfPages?.length || 1;
+  const isApproved = document.status === 'APPROVED' || document.status === 'SAH';
   const isLocked = document.isLocked || isApproved;
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 15, 160));
@@ -651,8 +651,8 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                       <div className="bg-white border border-slate-200 p-3 rounded-xl">
                         <span className="text-[10px] text-slate-500 uppercase font-bold block">Pemohon / Pengelola Berkas:</span>
-                        <span className="font-bold text-slate-950 text-xs">{document.pemohon.nama}</span>
-                        <span className="text-[11px] text-slate-600 block">{document.pemohon.instansi}</span>
+                        <span className="font-bold text-slate-950 text-xs">{document.pemohon?.nama || document.opdName || 'Dinas Pemohon'}</span>
+                        <span className="text-[11px] text-slate-600 block">{document.pemohon?.instansi || document.opdName}</span>
                       </div>
                       <div className="bg-white border border-slate-200 p-3 rounded-xl">
                         <span className="text-[10px] text-slate-500 uppercase font-bold block">Tautan di Google Drive:</span>
@@ -912,8 +912,8 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
           <div className="flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-blue-600" />
             <span className="font-semibold text-slate-500">Pemohon:</span>
-            <span className="font-bold text-slate-900">{document.pemohon.nama}</span>
-            <span className="text-slate-500 text-[11px]">({document.pemohon.instansi})</span>
+            <span className="font-bold text-slate-900">{document.pemohon?.nama || document.opdName || 'Dinas Pemohon'}</span>
+            <span className="text-slate-500 text-[11px]">({document.pemohon?.instansi || document.opdName})</span>
           </div>
           <div className="hidden md:flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />

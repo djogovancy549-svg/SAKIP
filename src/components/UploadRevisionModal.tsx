@@ -128,7 +128,7 @@ Dokumen revisi ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan di Folde
         dateStyle: 'medium',
         timeStyle: 'short',
       }),
-      uploadedBy: `${document.pemohon.nama} (${document.opdName})`,
+      uploadedBy: `${document.pemohon?.nama || document.opdName || 'Dinas Pemohon'} (${document.opdName})`,
       fileName: effectiveFileName,
       fileSize,
       changeSummary: changeSummary.trim(),
