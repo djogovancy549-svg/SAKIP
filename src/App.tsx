@@ -1098,26 +1098,30 @@ export default function App() {
               </span>
             )}
 
-            {/* Quick Action Shortcuts: Kelola Folder & Daftar Akun */}
-            <button
-              type="button"
-              onClick={handleOpenFolderManagement}
-              className="text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-lg flex items-center gap-1 font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              title="Kelola & Hubungkan Folder Google Drive OPD"
-            >
-              <FolderTree className="w-3.5 h-3.5 text-amber-700" />
-              <span>Kelola Folder</span>
-            </button>
+            {/* Quick Action Shortcuts: Kelola Folder & Daftar Akun (Admin Verifikator Only) */}
+            {currentUser.role !== 'DINAS_PEMOHON' && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleOpenFolderManagement}
+                  className="text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-lg flex items-center gap-1 font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Kelola & Hubungkan Folder Google Drive OPD (Admin)"
+                >
+                  <FolderTree className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Kelola Folder</span>
+                </button>
 
-            <button
-              type="button"
-              onClick={() => handleOpenAccountRegistration()}
-              className="text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-lg flex items-center gap-1 font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-              title="Pendaftaran Akun Dinas Baru & Kelola Pengguna"
-            >
-              <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Daftar Akun</span>
-            </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAccountRegistration()}
+                  className="text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-lg flex items-center gap-1 font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Pendaftaran Akun Dinas Baru & Kelola Pengguna (Admin)"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Daftar Akun</span>
+                </button>
+              </>
+            )}
 
             <span className="text-slate-300">|</span>
             <span className="text-slate-800 font-bold">

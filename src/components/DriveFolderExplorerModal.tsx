@@ -223,7 +223,7 @@ export function DriveFolderExplorerModal({
               <span>Ringkasan Draf Lama (Retensi 3 Bulan) ({searchedArchivedDrafts.length})</span>
             </button>
 
-            {onOpenAdminFolderRegistration && (
+            {onOpenAdminFolderRegistration && !isDinas && (
               <button
                 type="button"
                 onClick={() => {
@@ -231,7 +231,7 @@ export function DriveFolderExplorerModal({
                   onOpenAdminFolderRegistration();
                 }}
                 className="px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 cursor-pointer font-bold"
-                title="Daftarkan & kelola tautan folder Google Drive tiap dinas"
+                title="Daftarkan & kelola tautan folder Google Drive tiap dinas (Admin)"
               >
                 <FolderPlus className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Kelola Folder Dinas</span>
@@ -312,7 +312,7 @@ export function DriveFolderExplorerModal({
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
 
-                    {onOpenAdminFolderRegistration && (
+                    {onOpenAdminFolderRegistration && !isDinas && (
                       <button
                         type="button"
                         onClick={() => {
@@ -320,7 +320,7 @@ export function DriveFolderExplorerModal({
                           onOpenAdminFolderRegistration();
                         }}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                        title="Ubah & kelola pendaftaran tautan folder dinas ini"
+                        title="Ubah & kelola pendaftaran tautan folder dinas ini (Admin)"
                       >
                         <FolderPlus className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Kelola Pendaftaran</span>

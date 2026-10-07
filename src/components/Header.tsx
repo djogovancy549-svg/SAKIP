@@ -224,27 +224,31 @@ export function Header({
             <span className="hidden sm:inline">Upload Dokumen</span>
           </button>
 
-          {/* 2. Direct Action Button: KELOLA FOLDER */}
-          <button
-            type="button"
-            onClick={onOpenAdminFolderRegistration}
-            className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-            title="Kelola & Hubungkan Folder Google Drive OPD"
-          >
-            <FolderTree className="w-4 h-4 text-amber-700 shrink-0" />
-            <span className="hidden md:inline">Kelola Folder</span>
-          </button>
+          {/* 2. Direct Action Button: KELOLA FOLDER (Admin Verifikator Only) */}
+          {!isDinas && (
+            <button
+              type="button"
+              onClick={onOpenAdminFolderRegistration}
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Kelola & Hubungkan Folder Google Drive OPD (Admin)"
+            >
+              <FolderTree className="w-4 h-4 text-amber-700 shrink-0" />
+              <span className="hidden md:inline">Kelola Folder</span>
+            </button>
+          )}
 
-          {/* 3. Direct Action Button: DAFTAR AKUN */}
-          <button
-            type="button"
-            onClick={() => onOpenAccountRegistration?.()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-            title="Pendaftaran Akun Dinas Baru & Kelola Pengguna"
-          >
-            <UserPlus className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span className="hidden lg:inline">Daftar Akun</span>
-          </button>
+          {/* 3. Direct Action Button: DAFTAR AKUN (Admin Verifikator Only) */}
+          {!isDinas && (
+            <button
+              type="button"
+              onClick={() => onOpenAccountRegistration?.()}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Pendaftaran Akun Dinas Baru & Kelola Pengguna (Admin)"
+            >
+              <UserPlus className="w-4 h-4 text-emerald-700 shrink-0" />
+              <span className="hidden lg:inline">Daftar Akun</span>
+            </button>
+          )}
 
           {/* 4. Consolidated Server & Storage Menu Dropdown */}
           <div className="relative" ref={serverRef}>
@@ -310,37 +314,41 @@ export function Header({
                     </div>
                   </button>
 
-                  {/* Option 3: Kelola Folder Google Drive OPD (Available for all) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsServerMenuOpen(false);
-                      onOpenAdminFolderRegistration();
-                    }}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-amber-50 flex items-start gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    <div>
-                      <div className="font-bold text-slate-900">Kelola &amp; Hubungkan Folder OPD</div>
-                      <div className="text-[10px] text-slate-600 font-medium">Pemetaan link Google Drive per dinas</div>
-                    </div>
-                  </button>
+                  {/* Option 3: Kelola Folder Google Drive OPD (Admin Only) */}
+                  {!isDinas && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsServerMenuOpen(false);
+                        onOpenAdminFolderRegistration();
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-amber-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold text-slate-900">Kelola &amp; Hubungkan Folder OPD</div>
+                        <div className="text-[10px] text-slate-600 font-medium">Pemetaan link Google Drive per dinas</div>
+                      </div>
+                    </button>
+                  )}
 
-                  {/* Option 4: Daftar Akun Pengguna Dinas (Available for all) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsServerMenuOpen(false);
-                      onOpenAccountRegistration?.();
-                    }}
-                    className="w-full text-left p-2.5 rounded-xl hover:bg-emerald-50 flex items-start gap-2.5 transition-colors cursor-pointer"
-                  >
-                    <UserPlus className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                    <div>
-                      <div className="font-bold text-slate-900">Daftar Akun Pengguna Baru</div>
-                      <div className="text-[10px] text-slate-600 font-medium">Tambah akun dinas &amp; verifikator SAKIP</div>
-                    </div>
-                  </button>
+                  {/* Option 4: Daftar Akun Pengguna Dinas (Admin Only) */}
+                  {!isDinas && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsServerMenuOpen(false);
+                        onOpenAccountRegistration?.();
+                      }}
+                      className="w-full text-left p-2.5 rounded-xl hover:bg-emerald-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <UserPlus className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                      <div>
+                        <div className="font-bold text-slate-900">Daftar Akun Pengguna Baru</div>
+                        <div className="text-[10px] text-slate-600 font-medium">Tambah akun dinas &amp; verifikator SAKIP</div>
+                      </div>
+                    </button>
+                  )}
 
                   {/* Option 5: Self-Check & Diagnostics */}
                   <button
