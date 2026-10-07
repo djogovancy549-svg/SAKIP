@@ -646,6 +646,9 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       users: [],
       folders: []
     };
+    var currentRenderedProsesDocs = [];
+    var currentRenderedSahDocs = [];
+    var currentRenderedSummaryDocs = [];
     var selectedVerifyDoc = null;
     var currentPreviewDoc = null;
 
@@ -923,6 +926,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           (d.judul && d.judul.toLowerCase().indexOf(q) !== -1) ||
           (d.opdName && d.opdName.toLowerCase().indexOf(q) !== -1);
       });
+      currentRenderedProsesDocs = docs;
 
       if (docs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
@@ -1002,6 +1006,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
           (d.bavNumber && d.bavNumber.toLowerCase().indexOf(q) !== -1) ||
           (d.opdName && d.opdName.toLowerCase().indexOf(q) !== -1);
       });
+      currentRenderedSahDocs = docs;
 
       if (docs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
@@ -1055,6 +1060,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var tbody = document.getElementById('summaryTableBody');
       if (!tbody) return;
       var docs = globalData.summaryDocs.filter(filterByAccount);
+      currentRenderedSummaryDocs = docs;
 
       if (docs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
@@ -1207,13 +1213,19 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     function openPreviewModalForProses(idx) {
-      openPreviewModal(globalData.prosesDocs[idx], 'PROSES');
+      var doc = (currentRenderedProsesDocs && currentRenderedProsesDocs[idx]) ? currentRenderedProsesDocs[idx] : globalData.prosesDocs[idx];
+      if (!doc) return;
+      openPreviewModal(doc, 'PROSES');
     }
     function openPreviewModalForSah(idx) {
-      openPreviewModal(globalData.sahDocs[idx], 'SAH');
+      var doc = (currentRenderedSahDocs && currentRenderedSahDocs[idx]) ? currentRenderedSahDocs[idx] : globalData.sahDocs[idx];
+      if (!doc) return;
+      openPreviewModal(doc, 'SAH');
     }
     function openPreviewModalForSummary(idx) {
-      openPreviewModal(globalData.summaryDocs[idx], 'SUMMARY');
+      var doc = (currentRenderedSummaryDocs && currentRenderedSummaryDocs[idx]) ? currentRenderedSummaryDocs[idx] : globalData.summaryDocs[idx];
+      if (!doc) return;
+      openPreviewModal(doc, 'SUMMARY');
     }
 
     function closePreviewModal() {
@@ -1398,7 +1410,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     function openVerifyModalForProses(idx) {
-      selectedVerifyDoc = globalData.prosesDocs[idx];
+      selectedVerifyDoc = (currentRenderedProsesDocs && currentRenderedProsesDocs[idx]) ? currentRenderedProsesDocs[idx] : globalData.prosesDocs[idx];
       if (!selectedVerifyDoc) return;
       openVerifyModalDirect(selectedVerifyDoc);
     }
