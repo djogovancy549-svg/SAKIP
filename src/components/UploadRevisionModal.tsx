@@ -323,21 +323,39 @@ Dokumen revisi ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan di Folde
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Simpan ke Google Drive & Kirim Ulang</span>
-            </button>
+          <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200 flex-wrap">
+            {calculateDeadlineInfo(document.revisionDeadline).isOverdue ? (
+              <span className="text-[11px] text-rose-700 font-bold flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-rose-600" />
+                <span>Batas waktu terlewati. Hubungi Admin untuk perpanjangan.</span>
+              </span>
+            ) : (
+              <span className="text-[10px] text-slate-500">
+                Berkas langsung tersimpan ke server Drive dinas Anda
+              </span>
+            )}
+
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={calculateDeadlineInfo(document.revisionDeadline).isOverdue}
+                className={`px-4 py-2 font-bold rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5 ${
+                  calculateDeadlineInfo(document.revisionDeadline).isOverdue
+                    ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer'
+                }`}
+              >
+                <UploadCloud className="w-4 h-4" />
+                <span>Simpan ke Google Drive &amp; Kirim Ulang</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -972,24 +972,74 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
               {deadlineInfo.hasDeadline && (
                 <div className={`p-3.5 rounded-2xl border-2 flex items-center justify-between flex-wrap gap-2 text-xs ${
                   deadlineInfo.isOverdue
-                    ? 'bg-rose-100/80 border-rose-300 text-rose-950'
+                    ? 'bg-rose-100/90 border-rose-300 text-rose-950 shadow-xs'
                     : 'bg-white border-amber-300 text-slate-800'
                 }`}>
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                    <Calendar className={`w-4 h-4 shrink-0 ${deadlineInfo.isOverdue ? 'text-rose-600' : 'text-amber-600'}`} />
                     <div>
                       <span className="text-[10px] text-slate-500 font-bold uppercase block">Batas Waktu (Deadline) yang Ditetapkan Admin:</span>
                       <strong className="font-mono text-xs text-slate-900 font-black">{deadlineInfo.formattedDate}</strong>
                     </div>
                   </div>
 
-                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
-                    deadlineInfo.isOverdue
-                      ? 'bg-rose-600 text-white'
-                      : 'bg-amber-100 text-amber-900'
-                  }`}>
-                    {deadlineInfo.isOverdue ? 'STATUS: TERLAMBAT' : 'STATUS: AKTIF'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
+                      deadlineInfo.isOverdue
+                        ? 'bg-rose-600 text-white animate-pulse'
+                        : 'bg-amber-100 text-amber-900'
+                    }`}>
+                      {deadlineInfo.isOverdue ? '🔒 STATUS: TERKUNCI (TERLAMBAT)' : 'STATUS: AKTIF'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Deadline Extension for Admin Verifikator */}
+              {isAdmin && (
+                <div className="p-3.5 bg-indigo-50/90 border-2 border-indigo-200 rounded-2xl flex items-center justify-between flex-wrap gap-2.5 text-xs">
+                  <div className="flex items-center gap-2 text-indigo-950 font-bold">
+                    <Timer className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <div>
+                      <span className="font-black text-xs block">Perpanjangan Deadline (Dispensasi Admin):</span>
+                      <span className="text-[10px] text-slate-600 font-normal">Buka kunci pengunggahan OPD dengan menambah batas waktu</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newDl = createDefaultDeadline(1);
+                        onUpdateDocument({ ...document, revisionDeadline: newDl });
+                      }}
+                      className="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="Perpanjang deadline +1 Hari dari sekarang"
+                    >
+                      +1 Hari
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newDl = createDefaultDeadline(3);
+                        onUpdateDocument({ ...document, revisionDeadline: newDl });
+                      }}
+                      className="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="Perpanjang deadline +3 Hari dari sekarang"
+                    >
+                      +3 Hari
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newDl = createDefaultDeadline(7);
+                        onUpdateDocument({ ...document, revisionDeadline: newDl });
+                      }}
+                      className="px-2.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                      title="Perpanjang deadline +7 Hari dari sekarang"
+                    >
+                      +7 Hari
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1003,15 +1053,35 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
                 </p>
               </div>
 
-              {/* Direct Action Upload Revision Button */}
-              <button
-                type="button"
-                onClick={onOpenRevisionModal}
-                className="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black rounded-2xl text-xs transition-all shadow-md cursor-pointer active:scale-98"
-              >
-                <UploadCloud className="w-5 h-5" />
-                <span>Unggah Dokumen Hasil Revisi (Versi {document.currentVersion + 1})</span>
-              </button>
+              {/* Direct Action Upload Revision Button / Locked State for Dinas */}
+              {deadlineInfo.isOverdue && isDinas ? (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-slate-200 border-2 border-slate-300 text-slate-500 font-black rounded-2xl text-xs cursor-not-allowed shadow-none"
+                    title="Batas waktu revisi telah berakhir. Pengunggahan terkunci."
+                  >
+                    <Lock className="w-5 h-5 text-rose-500 shrink-0" />
+                    <span>Pengunggahan Terkunci (Batas Waktu Revisi Telah Berakhir)</span>
+                  </button>
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-xs flex items-start gap-2 font-medium">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">
+                      Batas waktu pengunggahan revisi telah habis pada <strong>{deadlineInfo.formattedDate}</strong>. Pengunggahan terkunci otomatis. Silakan koordinasi dengan <strong>Tim Verifikator SAKIP / Admin</strong> untuk mengajukan permohonan perpanjangan waktu (Dispensasi).
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onOpenRevisionModal}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black rounded-2xl text-xs transition-all shadow-md cursor-pointer active:scale-98"
+                >
+                  <UploadCloud className="w-5 h-5" />
+                  <span>Unggah Dokumen Hasil Revisi (Versi {document.currentVersion + 1})</span>
+                </button>
+              )}
             </div>
           );
         })()}
