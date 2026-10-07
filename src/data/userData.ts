@@ -1,7 +1,86 @@
 import { UserAccount } from '../types';
 
 /**
- * Daftar Akun Resmi Pengguna Dinas / OPD
- * Kosong secara default agar hanya akun yang didaftarkan secara mandiri yang tersedia.
+ * Daftar Akun Resmi Pengguna Dinas / OPD & Admin Verifikator
+ * Kabupaten Nagekeo
  */
-export const INITIAL_USER_ACCOUNTS: UserAccount[] = [];
+export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
+  {
+    id: 'usr-admin-setda',
+    username: 'admin',
+    nama: 'Administrator Verifikator SAKIP',
+    role: 'VERIFIKATOR',
+    opdId: 'SETDA',
+    opdName: 'SEKRETARIAT DAERAH',
+    nip: '19750814 200003 1 005',
+    jabatan: 'Koordinator Verifikasi SAKIP Kabupaten Nagekeo',
+    password: 'Admin@2026!',
+    email: 'admin.sakip@nagekeokab.go.id',
+    driveFolderName: 'SAKIP - SEKRETARIAT DAERAH',
+  },
+  {
+    id: 'usr-djogovancy',
+    username: 'djogovancy',
+    nama: 'Djogo Vancy - Admin Pengawas SAKIP',
+    role: 'VERIFIKATOR',
+    opdId: 'SETDA',
+    opdName: 'SEKRETARIAT DAERAH',
+    nip: '19820514 200801 1 009',
+    jabatan: 'Analis Pengawasan Akuntabilitas Kinerja',
+    password: 'Admin@2026!',
+    email: 'djogovancy549@gmail.com',
+    driveFolderName: 'SAKIP - SEKRETARIAT DAERAH',
+  },
+  {
+    id: 'usr-dikbud',
+    username: 'dikbud',
+    nama: 'Pengelola SAKIP Dinas Pendidikan & Kebudayaan',
+    role: 'DINAS_PEMOHON',
+    opdId: 'DISDIKBUD',
+    opdName: 'DINAS PENDIDIKAN DAN KEBUDAYAAN',
+    nip: '19870315 201101 1 004',
+    jabatan: 'Kepala Sub Bagian Program & Pelaporan Dikbud',
+    password: 'Dinas@2026!',
+    email: 'dikbud@nagekeokab.go.id',
+    driveFolderName: 'SAKIP - DINAS PENDIDIKAN DAN KEBUDAYAAN',
+  },
+  {
+    id: 'usr-dinkes',
+    username: 'dinkes',
+    nama: 'Pengelola SAKIP Dinas Kesehatan',
+    role: 'DINAS_PEMOHON',
+    opdId: 'DINKES',
+    opdName: 'DINAS KESEHATAN',
+    nip: '19890620 201402 2 003',
+    jabatan: 'Penyusun Program Anggaran & Pelaporan Dinkes',
+    password: 'Dinas@2026!',
+    email: 'dinkes@nagekeokab.go.id',
+    driveFolderName: 'SAKIP - DINAS KESEHATAN',
+  },
+  {
+    id: 'usr-dpupr',
+    username: 'dpupr',
+    nama: 'Pengelola SAKIP Dinas PUPR',
+    role: 'DINAS_PEMOHON',
+    opdId: 'DPUPR',
+    opdName: 'DINAS PEKERJAAN UMUM DAN PENATAAN RUANG',
+    nip: '19841108 200903 1 002',
+    jabatan: 'Kepala Seksi Perencanaan & Evaluasi Kinerja PUPR',
+    password: 'Dinas@2026!',
+    email: 'dpupr@nagekeokab.go.id',
+    driveFolderName: 'SAKIP - DINAS PEKERJAAN UMUM DAN PENATAAN RUANG',
+  },
+  {
+    id: 'usr-bapelitbangda',
+    username: 'bapelitbangda',
+    nama: 'Perencana Ahli Bapelitbangda',
+    role: 'DINAS_PEMOHON',
+    opdId: 'BAPELITBANGDA',
+    opdName: 'BADAN PERENCANAAN, PENELITIAN DAN PENGEMBANGAN DAERAH',
+    nip: '19880412 201201 1 006',
+    jabatan: 'Perencana Madya / Pengendalian SAKIP',
+    password: 'Dinas@2026!',
+    email: 'bapelitbangda@nagekeokab.go.id',
+    driveFolderName: 'SAKIP - BADAN PERENCANAAN, PENELITIAN DAN PENGEMBANGAN DAERAH',
+  },
+];

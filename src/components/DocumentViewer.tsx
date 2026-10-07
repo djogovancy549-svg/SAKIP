@@ -29,10 +29,14 @@ import {
   RefreshCw,
   Loader2,
   Zap,
+  Timer,
+  AlertCircle,
+  Clock,
 } from 'lucide-react';
 import { DocumentItem } from '../types';
 import { DocumentWatermark } from './DocumentWatermark';
 import { getGoogleDriveFolderUrl, sanitizeGoogleDriveUrl, fetchFileBase64FromAppsScript } from '../services/googleSheetsWebhook';
+import { calculateDeadlineInfo } from '../utils/deadlineUtils';
 
 interface DocumentViewerProps {
   document: DocumentItem;
@@ -350,7 +354,7 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                   : 'bg-blue-50 border-blue-300 text-blue-950'
               }`}
             >
-              <div className="flex items-center justify-between gap-2 border-b pb-2 border-slate-300/50">
+              <div className="flex items-center justify-between gap-2 border-b pb-2 border-slate-300/50 flex-wrap">
                 <div className="flex items-center gap-2 font-black uppercase text-xs tracking-wide">
                   {document.status === 'REVISION' && <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />}
                   {document.status === 'REJECTED' && <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />}
@@ -358,9 +362,27 @@ export function DocumentViewer({ document }: DocumentViewerProps) {
                   {document.status === 'PENDING' && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
                   <span>Catatan &amp; Petunjuk Perbaikan / Evaluasi Verifikator:</span>
                 </div>
-                <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border font-bold">
-                  {document.verification?.verifiedBy || 'Admin Verifikator SAKIP'}
-                </span>
+                <div className="flex items-center gap-2">
+                  {document.status === 'REVISION' && (() => {
+                    const dlInfo = calculateDeadlineInfo(document.revisionDeadline);
+                    if (!dlInfo.hasDeadline) return null;
+                    return (
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold flex items-center gap-1 ${
+                        dlInfo.isOverdue
+                          ? 'bg-rose-600 text-white animate-pulse'
+                          : dlInfo.isNearDeadline
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-amber-200 text-amber-950'
+                      }`}>
+                        <Timer className="w-3 h-3" />
+                        <span>Deadline: {dlInfo.formattedDate} ({dlInfo.humanDiff})</span>
+                      </span>
+                    );
+                  })()}
+                  <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border font-bold">
+                    {document.verification?.verifiedBy || 'Admin Verifikator SAKIP'}
+                  </span>
+                </div>
               </div>
               <p className="text-xs md:text-sm font-bold leading-relaxed bg-white/90 p-3 rounded-xl border border-slate-200 shadow-2xs italic">
                 "{document.verification?.notes || document.notes || document.versions[document.versions.length - 1]?.reviewerNotes || document.perihal || 'Dokumen memerlukan pemeriksaan dan perbaikan.'}"

@@ -261,6 +261,10 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
           currentVersion: d.currentVersion || 1,
           isLocked: isApproved,
           notes: noteContent,
+          revisionDeadline: d.revisionDeadline || matchingVerifSummary?.revisionDeadline || d.deadline || undefined,
+          revisionRequestedAt: d.revisionRequestedAt || undefined,
+          uploadedByUserId: d.uploadedByUserId || undefined,
+          uploadedByUsername: d.uploadedByUsername || undefined,
           googleDrive: resolvedDrive,
           verification: {
             status: currentStatus,
@@ -268,6 +272,7 @@ export async function fetchDatabaseFromGoogleSheet(): Promise<{
             nip: verifierNip,
             jabatan: 'Verifikator SAKIP Nagekeo',
             verifiedAt: d.tanggalMasuk || new Date().toLocaleString('id-ID'),
+            revisionDeadline: d.revisionDeadline || matchingVerifSummary?.revisionDeadline || d.deadline || undefined,
             notes: noteContent,
             checklist: d.checklist || {
               'chk-ttd': true,
@@ -455,6 +460,8 @@ export interface VerificationWebhookPayload {
   fileName?: string;
   fileMimeType?: string;
   fileBase64?: string;
+  revisionDeadline?: string;
+  revisionRequestedAt?: string;
   folderRegistration?: OpdFolderRegistration;
   folderRegistrations?: OpdFolderRegistration[];
 }
@@ -633,7 +640,8 @@ export async function sendVerificationToGoogleSheet(
   notesOrVerifier?: any,
   checklist?: any,
   verifierObj?: any,
-  newStatus?: any
+  newStatus?: any,
+  deadline?: string
 ): Promise<{ success: boolean; message: string; timestamp: string }> {
   const webhookUrl = getGoogleSheetsWebhookUrl();
   const timestamp = new Date().toLocaleString('id-ID', {
@@ -655,6 +663,7 @@ export async function sendVerificationToGoogleSheet(
       : doc.verification?.notes || '-';
 
   const effectiveStatus = newStatus || doc.status || 'APPROVED';
+  const effectiveDeadline = deadline || doc.revisionDeadline || '';
 
   const payload: VerificationWebhookPayload = {
     action: 'VERIFY_DOCUMENT',
@@ -671,6 +680,8 @@ export async function sendVerificationToGoogleSheet(
     bavNumber: doc.verification?.bavNumber || `BAV/SAKIP/${doc.nomorBerkas}`,
     digitalSealHash: doc.verification?.digitalSealHash || '-',
     notes: effectiveNotes,
+    revisionDeadline: effectiveDeadline,
+    revisionRequestedAt: timestamp,
     downloadUrl: doc.googleDrive?.downloadUrl || '',
     driveFolderUrl: getGoogleDriveFolderUrl(),
     pemohonName: doc.pemohon.nama,

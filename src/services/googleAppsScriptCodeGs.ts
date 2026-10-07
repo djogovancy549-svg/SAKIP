@@ -230,9 +230,9 @@ function initDefaultDataIfEmpty(ss) {
       "Waktu Pengajuan", "ID Dokumen", "Nomor Berkas", "Judul Dokumen", "OPD / Dinas",
       "Versi", "Format", "Nama Pemohon", "Email Dinas", "Instansi Pemohon",
       "Status Proses", "Nama Verifikator", "NIP Verifikator", "Tautan File Drive",
-      "ID File Drive", "Catatan Verifikator", "Folder Kategori"
+      "ID File Drive", "Catatan Verifikator", "Folder Kategori", "Batas Waktu Revisi (Deadline)"
     ]);
-    prosesSheet.getRange(1, 1, 1, 17).setFontWeight("bold").setBackground("#0f172a").setFontColor("#38bdf8");
+    prosesSheet.getRange(1, 1, 1, 18).setFontWeight("bold").setBackground("#0f172a").setFontColor("#38bdf8");
   }
 
   var sahSheet = getOrCreateSheet(ss, "DOKUMEN_SAH_TERVERIFIKASI");
@@ -743,17 +743,23 @@ function adminProcessVerification(data) {
 
     } else {
       // Status REVISION atau REJECTED
+      var deadlineVal = String(data.revisionDeadline || data.deadline || "").trim();
       if (foundPRow > 0 && prosesSheet) {
         try {
           prosesSheet.getRange(foundPRow, 11).setValue(status);
           prosesSheet.getRange(foundPRow, 12).setValue(verifier);
           prosesSheet.getRange(foundPRow, 13).setValue(nip);
           prosesSheet.getRange(foundPRow, 16).setValue(notes);
+          if (prosesSheet.getLastColumn() >= 18) {
+            prosesSheet.getRange(foundPRow, 18).setValue(deadlineVal);
+          } else {
+            prosesSheet.getRange(foundPRow, 18).setValue(deadlineVal);
+          }
         } catch (up) {}
       } else if (prosesSheet) {
         prosesSheet.appendRow([
           nowStr, docId, docNumber, title, opd, "v" + version, format,
-          pemohonName, pemohonEmail, opd, status, verifier, nip, fileUrl, fileId, notes, "01_DOKUMEN_PROSES"
+          pemohonName, pemohonEmail, opd, status, verifier, nip, fileUrl, fileId, notes, "01_DOKUMEN_PROSES", deadlineVal
         ]);
       }
 
@@ -761,19 +767,24 @@ function adminProcessVerification(data) {
       expiry3M.setDate(expiry3M.getDate() + 90);
 
       var shortNote = notes.length > 80 ? notes.substring(0, 80) + "..." : notes;
+      if (status === "REVISION" && deadlineVal) {
+        shortNote = "[DEADLINE: " + deadlineVal + "] " + shortNote;
+      }
 
       summarySheet.appendRow([
         nowStr, docId, docNumber, title, opd, "v" + version,
         status === "REVISION" ? "CATATAN_PERBAIKAN" : "PENOLAKAN",
         shortNote, notes, verifier, fileUrl, fileId,
-        expiry3M.toLocaleDateString("id-ID"), RETENTION_REVISION_DAYS, "AKTIF_3_BULAN"
+        deadlineVal || expiry3M.toLocaleDateString("id-ID"), RETENTION_REVISION_DAYS,
+        status === "REVISION" ? (deadlineVal ? "DEADLINE: " + deadlineVal : "AKTIF_3_BULAN") : "DITOLAK"
       ]);
 
       return {
         status: "success",
-        message: "Status " + status + " (" + (docNumber || title) + ") berhasil dicatat ke DOKUMEN_PROSES dan ringkasan dicatat ke SUMMARY_RIWAYAT_REVISI.",
+        message: "Status " + status + " (" + (docNumber || title) + ") berhasil dicatat ke DOKUMEN_PROSES dan SUMMARY_RIWAYAT_REVISI" + (deadlineVal ? " dengan batas waktu: " + deadlineVal : "") + ".",
         docId: docId,
-        docNumber: docNumber
+        docNumber: docNumber,
+        revisionDeadline: deadlineVal
       };
     }
   } catch (err) {
@@ -892,6 +903,8 @@ function adminGetDashboardData() {
       else if (st.indexOf("REJ") !== -1 || st.indexOf("TOLAK") !== -1) st = "REJECTED";
       else st = "PENDING";
 
+      var deadlineFromRow = String(rowP[17] || "").trim();
+
       prosesDocs.push({
         tanggalMasuk: String(rowP[0] || new Date().toLocaleString("id-ID")),
         id: docId,
@@ -905,6 +918,7 @@ function adminGetDashboardData() {
         status: st,
         verifierName: String(rowP[11] || "-"),
         verifierNip: String(rowP[12] || "-"),
+        revisionDeadline: deadlineFromRow,
         googleDrive: {
           viewUrl: urls.viewUrl,
           downloadUrl: urls.downloadUrl,
@@ -913,7 +927,13 @@ function adminGetDashboardData() {
         },
         notes: String(rowP[15] || rowP[16] || rowP[14] || ""),
         sourceSheet: "DOKUMEN_PROSES",
-        verification: { status: st, verifiedBy: String(rowP[11] || "Admin Verifikator"), nip: String(rowP[12] || "-"), notes: String(rowP[15] || rowP[16] || rowP[14] || "") }
+        verification: {
+          status: st,
+          verifiedBy: String(rowP[11] || "Admin Verifikator"),
+          nip: String(rowP[12] || "-"),
+          notes: String(rowP[15] || rowP[16] || rowP[14] || ""),
+          revisionDeadline: deadlineFromRow
+        }
       });
     }
   }

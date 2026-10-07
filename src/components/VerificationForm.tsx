@@ -19,6 +19,10 @@ import {
   RefreshCw,
   X,
   FileCode,
+  Calendar,
+  Clock,
+  Timer,
+  AlertCircle,
 } from 'lucide-react';
 import {
   DocumentItem,
@@ -29,6 +33,11 @@ import {
   AppRole,
 } from '../types';
 import { sendVerificationToGoogleSheet } from '../services/googleSheetsWebhook';
+import {
+  calculateDeadlineInfo,
+  createDefaultDeadline,
+  toDateTimeLocalString,
+} from '../utils/deadlineUtils';
 
 interface VerificationFormProps {
   document: DocumentItem;
@@ -100,6 +109,9 @@ export function VerificationForm({
     `BAV/SAKIP/${document.nomorBerkas}`;
 
   const [bavNumber, setBavNumber] = useState<string>(defaultBav);
+  const [revisionDeadline, setRevisionDeadline] = useState<string>(() => {
+    return document.revisionDeadline || createDefaultDeadline(3);
+  });
   const [verifierName, setVerifierName] = useState<string>(
     document.verification?.verifiedBy || verifier.name || 'Admin Verifikator SAKIP'
   );
@@ -183,6 +195,9 @@ export function VerificationForm({
           }
         : document.registrationSeal;
 
+    const effectiveDeadline = selectedStatus === 'REVISION' ? revisionDeadline : undefined;
+    const effectiveRequestedAt = selectedStatus === 'REVISION' ? (document.revisionRequestedAt || timestampNow) : undefined;
+
     const updatedVersions = document.versions.map((ver) => {
       if (ver.versionNumber === document.currentVersion) {
         return {
@@ -190,6 +205,7 @@ export function VerificationForm({
           status: selectedStatus,
           reviewerNotes: notes || ver.reviewerNotes,
           reviewedAt: timestampNow,
+          revisionDeadline: effectiveDeadline,
         };
       }
       return ver;
@@ -200,6 +216,8 @@ export function VerificationForm({
       status: selectedStatus,
       isLocked: selectedStatus === 'APPROVED',
       registrationSeal: newSeal,
+      revisionDeadline: effectiveDeadline,
+      revisionRequestedAt: effectiveRequestedAt,
       versions: updatedVersions,
       verification: {
         status: selectedStatus,
@@ -213,6 +231,7 @@ export function VerificationForm({
         digitalSealHash: securityHash,
         syncedToGoogleSheet: true,
         bavNumber: effectiveBav,
+        revisionDeadline: effectiveDeadline,
       },
     };
 
@@ -225,7 +244,14 @@ export function VerificationForm({
     };
 
     try {
-      await sendVerificationToGoogleSheet(updatedDoc, notes, checklist, verifierObj, selectedStatus);
+      await sendVerificationToGoogleSheet(
+        updatedDoc,
+        notes,
+        checklist,
+        verifierObj,
+        selectedStatus,
+        effectiveDeadline
+      );
       setSyncFeedback({
         success: true,
         message: 'Hasil keputusan verifikasi & BAV berhasil tersimpan dan tersinkronisasi ke Google Sheet DATA_VERIFIKASI_DOKUMEN!',
@@ -487,13 +513,113 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
                   ✅ SAH / DISETUJUI (TERBITKAN NOMOR BAV)
                 </option>
                 <option value="REVISION">
-                  ⚠️ MEMERLUKAN REVISI / PERBAIKAN BERKAS
+                  ⚠️ MEMERLUKAN REVISI / PERBAIKAN BERKAS (TETAPKAN DEADLINE)
                 </option>
                 <option value="REJECTED">
                   ❌ DITOLAK
                 </option>
               </select>
             </div>
+
+            {/* BATAS WAKTU / DEADLINE REVISI YANG DITETAPKAN ADMIN */}
+            {selectedStatus === 'REVISION' && (
+              <div className="p-4 bg-amber-950/40 border-2 border-amber-500/60 rounded-2xl space-y-3 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-amber-400" />
+                    <span className="font-black text-amber-200 text-xs uppercase tracking-wide">
+                      Batas Waktu (Deadline) Revisi Dokumen :
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                    Wajib Ditentukan Admin
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                  Tentukan tanggal dan jam batas akhir bagi <strong>{document.opdName}</strong> untuk mengunggah draf perbaikan. Sistem akan menampilkan peringatan dan hitung mundur sisa waktu secara otomatis.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                  <div className="relative">
+                    <Calendar className="w-4 h-4 text-amber-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="datetime-local"
+                      required
+                      value={revisionDeadline}
+                      onChange={(e) => setRevisionDeadline(e.target.value)}
+                      className="w-full bg-slate-900 border border-amber-500/50 rounded-xl pl-9 pr-3 py-2 text-white font-mono text-xs focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40"
+                    />
+                  </div>
+
+                  {/* Preset Durasi Cepat */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-bold block sm:hidden">Pilih Cepat:</span>
+                    <button
+                      type="button"
+                      onClick={() => setRevisionDeadline(createDefaultDeadline(1))}
+                      className="px-2 py-1 bg-slate-800 hover:bg-amber-600 hover:text-white text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      +1 Hari
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRevisionDeadline(createDefaultDeadline(2))}
+                      className="px-2 py-1 bg-slate-800 hover:bg-amber-600 hover:text-white text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      +2 Hari
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRevisionDeadline(createDefaultDeadline(3))}
+                      className="px-2 py-1 bg-amber-600 text-white rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      +3 Hari (Standar)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRevisionDeadline(createDefaultDeadline(7))}
+                      className="px-2 py-1 bg-slate-800 hover:bg-amber-600 hover:text-white text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      +7 Hari
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRevisionDeadline(createDefaultDeadline(14))}
+                      className="px-2 py-1 bg-slate-800 hover:bg-amber-600 hover:text-white text-amber-300 border border-amber-500/30 rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                    >
+                      +14 Hari
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status Countdown Box */}
+                {(() => {
+                  const info = calculateDeadlineInfo(revisionDeadline);
+                  return (
+                    <div
+                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-[11px] ${
+                        info.isOverdue
+                          ? 'bg-rose-950/60 border-rose-500/50 text-rose-200'
+                          : info.isNearDeadline
+                          ? 'bg-amber-900/60 border-amber-500/60 text-amber-200'
+                          : 'bg-emerald-950/50 border-emerald-500/40 text-emerald-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-bold truncate">
+                          Batas Akhir: {info.formattedDate}
+                        </span>
+                      </div>
+                      <span className="font-mono font-black text-[10px] uppercase px-2 py-0.5 rounded bg-black/40 shrink-0">
+                        {info.humanDiff}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* 3. Nomor Berita Acara Verifikasi (BAV) Input (Matches Image.png) */}
             <div className="space-y-1.5">
@@ -796,43 +922,99 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
           </div>
         )}
 
-        {isRevision && (
-          <div className="p-5 bg-amber-50 border-2 border-amber-400 rounded-3xl space-y-4 shadow-md">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-amber-600 text-white rounded-xl shrink-0 shadow-xs">
-                <AlertTriangle className="w-6 h-6" />
+        {isRevision && (() => {
+          const deadlineInfo = calculateDeadlineInfo(document.revisionDeadline);
+          return (
+            <div className={`p-5 rounded-3xl space-y-4 shadow-md border-2 ${
+              deadlineInfo.isOverdue
+                ? 'bg-rose-50 border-rose-400'
+                : deadlineInfo.isNearDeadline
+                ? 'bg-amber-50 border-amber-400'
+                : 'bg-amber-50/80 border-amber-300'
+            }`}>
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-start gap-3">
+                  <div className={`p-2.5 rounded-xl shrink-0 shadow-xs text-white ${
+                    deadlineInfo.isOverdue ? 'bg-rose-600' : 'bg-amber-600'
+                  }`}>
+                    {deadlineInfo.isOverdue ? <AlertCircle className="w-6 h-6" /> : <Timer className="w-6 h-6" />}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className={`font-black text-sm uppercase tracking-wide ${
+                      deadlineInfo.isOverdue ? 'text-rose-950' : 'text-amber-950'
+                    }`}>
+                      {deadlineInfo.isOverdue ? '⚠️ Melewati Batas Waktu Revisi' : 'Memerlukan Perbaikan / Revisi Berkas'}
+                    </h3>
+                    <p className={`text-xs leading-relaxed font-medium ${
+                      deadlineInfo.isOverdue ? 'text-rose-900' : 'text-amber-900'
+                    }`}>
+                      Tim Verifikator meminta perbaikan berkas dengan batas waktu yang telah ditetapkan.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Badge Status Waktu */}
+                {deadlineInfo.hasDeadline && (
+                  <div className={`px-3 py-1.5 rounded-xl border text-xs font-mono font-black flex items-center gap-1.5 shadow-xs ${
+                    deadlineInfo.isOverdue
+                      ? 'bg-rose-100 border-rose-300 text-rose-800 animate-pulse'
+                      : deadlineInfo.isNearDeadline
+                      ? 'bg-amber-100 border-amber-400 text-amber-900 animate-bounce'
+                      : 'bg-blue-100 border-blue-300 text-blue-900'
+                  }`}>
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{deadlineInfo.humanDiff}</span>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <h3 className="font-black text-sm text-amber-950 uppercase tracking-wide">
-                  Memerlukan Perbaikan / Revisi Berkas
-                </h3>
-                <p className="text-xs text-amber-900 leading-relaxed font-medium">
-                  Tim Verifikator telah memeriksa dokumen Anda dan meminta perbaikan. Silakan periksa catatan di bawah dan unggah ulang berkas hasil revisi.
+
+              {/* Deadline Detail Callout Banner */}
+              {deadlineInfo.hasDeadline && (
+                <div className={`p-3.5 rounded-2xl border-2 flex items-center justify-between flex-wrap gap-2 text-xs ${
+                  deadlineInfo.isOverdue
+                    ? 'bg-rose-100/80 border-rose-300 text-rose-950'
+                    : 'bg-white border-amber-300 text-slate-800'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <span className="text-[10px] text-slate-500 font-bold uppercase block">Batas Waktu (Deadline) yang Ditetapkan Admin:</span>
+                      <strong className="font-mono text-xs text-slate-900 font-black">{deadlineInfo.formattedDate}</strong>
+                    </div>
+                  </div>
+
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg ${
+                    deadlineInfo.isOverdue
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-amber-100 text-amber-900'
+                  }`}>
+                    {deadlineInfo.isOverdue ? 'STATUS: TERLAMBAT' : 'STATUS: AKTIF'}
+                  </span>
+                </div>
+              )}
+
+              {/* Revision Notes Callout Box */}
+              <div className="p-4 bg-white rounded-2xl border-2 border-amber-300 space-y-1.5 shadow-2xs">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
+                  Petunjuk / Catatan Perbaikan dari Verifikator:
+                </span>
+                <p className="text-xs font-bold text-amber-950 leading-relaxed bg-amber-50/50 p-3 rounded-xl border border-amber-200">
+                  {document.verification?.notes || notes || 'Harap melengkapi dokumen lampiran dan menyesuaikan format naskah dinas.'}
                 </p>
               </div>
-            </div>
 
-            {/* Revision Notes Callout Box */}
-            <div className="p-4 bg-white rounded-2xl border-2 border-amber-300 space-y-1.5 shadow-2xs">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">
-                Petunjuk / Catatan Perbaikan dari Verifikator:
-              </span>
-              <p className="text-xs font-bold text-amber-950 leading-relaxed bg-amber-50/50 p-3 rounded-xl border border-amber-200">
-                {document.verification?.notes || notes || 'Harap melengkapi dokumen lampiran dan menyesuaikan format naskah dinas.'}
-              </p>
+              {/* Direct Action Upload Revision Button */}
+              <button
+                type="button"
+                onClick={onOpenRevisionModal}
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black rounded-2xl text-xs transition-all shadow-md cursor-pointer active:scale-98"
+              >
+                <UploadCloud className="w-5 h-5" />
+                <span>Unggah Dokumen Hasil Revisi (Versi {document.currentVersion + 1})</span>
+              </button>
             </div>
-
-            {/* Direct Action Upload Revision Button */}
-            <button
-              type="button"
-              onClick={onOpenRevisionModal}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black rounded-2xl text-xs transition-all shadow-md cursor-pointer animate-pulse"
-            >
-              <UploadCloud className="w-5 h-5" />
-              <span>Unggah Dokumen Hasil Revisi (Versi {document.currentVersion + 1})</span>
-            </button>
-          </div>
-        )}
+          );
+        })()}
 
         {isRejected && (
           <div className="p-5 bg-rose-50 border-2 border-rose-400 rounded-3xl space-y-3 shadow-md">

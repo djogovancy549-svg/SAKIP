@@ -109,6 +109,7 @@ export interface DocumentVersion {
   checklist?: Record<string, boolean>;
   reviewedBy?: string;
   reviewedAt?: string;
+  revisionDeadline?: string; // Batas waktu revisi yang ditentukan pemeriksa
   googleDrive?: GoogleDriveStorageInfo; // Penyimpanan di Google Drive Induk
   fileBase64?: string;
   fileBlobUrl?: string;
@@ -145,6 +146,7 @@ export interface VerificationResult {
   syncedToGoogleSheet: boolean;
   googleSheetTimestamp?: string;
   bavNumber: string;
+  revisionDeadline?: string; // Batas waktu penyelesaian revisi yang ditetapkan verifikator
 }
 
 export interface DocumentItem {
@@ -168,7 +170,7 @@ export interface DocumentItem {
   urgency: 'TINGGI' | 'SEDANG' | 'STANDAR';
   notes?: string;
   
-  // Revision Cycle & Versioning
+  // Revision Cycle & Versioning & Deadline
   currentVersion: number;
   versions: DocumentVersion[];
   isLocked: boolean; // Terkunci permanen setelah verifikasi disetujui (tidak bisa diubah)
@@ -176,6 +178,12 @@ export interface DocumentItem {
   googleDrive?: GoogleDriveStorageInfo; // Lokasi penyimpanan di Google Drive Induk (Server)
   fileBase64?: string;
   fileBlobUrl?: string;
+
+  // Deadline & Batas Waktu Revisi yang Ditetapkan Admin
+  revisionDeadline?: string; // Tanggal & Jam batas waktu perbaikan revisi (e.g. "2026-10-15T16:00")
+  revisionRequestedAt?: string; // Tanggal saat admin menetapkan status revisi
+  uploadedByUserId?: string; // ID akun pembuat/pengunggah dokumen untuk isolasi privasi ketat
+  uploadedByUsername?: string; // Username akun pengunggah
 
   // Format-specific simulated content
   content: {

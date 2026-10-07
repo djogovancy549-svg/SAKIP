@@ -20,9 +20,13 @@ import {
   Edit3,
   Trash2,
   MessageSquare,
+  Timer,
+  AlertCircle,
+  Calendar,
 } from 'lucide-react';
 import { DocumentItem, DocumentFormat, VerificationStatus, OPD, AppRole, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
+import { calculateDeadlineInfo } from '../utils/deadlineUtils';
 
 interface DocumentListProps {
   documents: DocumentItem[];
@@ -56,37 +60,41 @@ export function DocumentList({
   const isVerifier = appRole === 'VERIFIKATOR';
   const [opdScope, setOpdScope] = useState<'ALL' | 'SINGLE'>(isVerifier ? 'ALL' : 'SINGLE');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | VerificationStatus>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | VerificationStatus | 'OVERDUE'>('ALL');
   const [formatFilter, setFormatFilter] = useState<'ALL' | DocumentFormat>('ALL');
   const [docToDelete, setDocToDelete] = useState<DocumentItem | null>(null);
 
-  // Robust OPD & User Filtering:
-  // If verifier and opdScope is ALL, show all documents across all 38 OPDs;
-  // Otherwise filter by active OPD, and if user is Dinas, ensure all their OPD documents are included.
-  const opdDocuments = isVerifier && opdScope === 'ALL'
-    ? documents
-    : documents.filter((doc) => {
-        // Direct matching by OPD ID
-        if (doc.opdId && activeOpd?.id && (doc.opdId === activeOpd.id || doc.opdId.toUpperCase() === activeOpd.id.toUpperCase())) return true;
-        // Matching by OPD name or shortName
-        if (doc.opdName && activeOpd?.name && (
-          doc.opdName.toLowerCase() === activeOpd.name.toLowerCase() ||
-          doc.opdName.toLowerCase().includes(activeOpd.shortName?.toLowerCase() || '') ||
-          activeOpd.name.toLowerCase().includes(doc.opdName.toLowerCase())
-        )) return true;
-        // When logged in as Dinas Pemohon, ensure ALL documents belonging to user's OPD or pemohon are visible:
-        if (!isVerifier && currentUser) {
-          if (currentUser.opdId && (doc.opdId === currentUser.opdId || doc.opdId?.toUpperCase() === currentUser.opdId.toUpperCase())) return true;
-          if (currentUser.opdName && doc.opdName && (
-            doc.opdName.toLowerCase() === currentUser.opdName.toLowerCase() ||
-            doc.opdName.toLowerCase().includes(currentUser.opdName.toLowerCase()) ||
-            currentUser.opdName.toLowerCase().includes(doc.opdName.toLowerCase())
-          )) return true;
-          if (currentUser.email && doc.pemohon?.email && doc.pemohon.email.toLowerCase() === currentUser.email.toLowerCase()) return true;
-          if (currentUser.nama && doc.pemohon?.nama && doc.pemohon.nama.toLowerCase() === currentUser.nama.toLowerCase()) return true;
-        }
-        return false;
-      });
+  // Strict User & Account Privacy Isolation:
+  // Akun Dinas Pemohon HANYA BISA MELIHAT & MEMBUKA DATANYA SENDIRI!
+  const isDocOwnedByUser = (doc: DocumentItem, user?: UserAccount | null): boolean => {
+    if (!user) return false;
+    if (user.role === 'VERIFIKATOR') return true;
+    if (doc.uploadedByUserId && doc.uploadedByUserId === user.id) return true;
+    if (doc.uploadedByUsername && doc.uploadedByUsername.toLowerCase() === user.username.toLowerCase()) return true;
+    if (doc.opdId && user.opdId && doc.opdId.toUpperCase() === user.opdId.toUpperCase()) return true;
+    if (doc.pemohon?.email && user.email && doc.pemohon.email.toLowerCase() === user.email.toLowerCase()) return true;
+    if (doc.pemohon?.nama && user.nama && doc.pemohon.nama.toLowerCase() === user.nama.toLowerCase()) return true;
+    if (doc.opdName && user.opdName && (
+      doc.opdName.toLowerCase() === user.opdName.toLowerCase() ||
+      doc.opdName.toLowerCase().includes(user.opdName.toLowerCase()) ||
+      user.opdName.toLowerCase().includes(doc.opdName.toLowerCase())
+    )) return true;
+    return false;
+  };
+
+  const opdDocuments = isVerifier
+    ? (opdScope === 'ALL'
+        ? documents
+        : documents.filter((doc) => {
+            if (doc.opdId && activeOpd?.id && (doc.opdId === activeOpd.id || doc.opdId.toUpperCase() === activeOpd.id.toUpperCase())) return true;
+            if (doc.opdName && activeOpd?.name && (
+              doc.opdName.toLowerCase() === activeOpd.name.toLowerCase() ||
+              doc.opdName.toLowerCase().includes(activeOpd.shortName?.toLowerCase() || '') ||
+              activeOpd.name.toLowerCase().includes(doc.opdName.toLowerCase())
+            )) return true;
+            return false;
+          }))
+    : documents.filter((doc) => isDocOwnedByUser(doc, currentUser));
 
   // Apply search and status filters
   const filteredDocuments = opdDocuments.filter((doc) => {
@@ -97,7 +105,18 @@ export function DocumentList({
       doc.pemohon.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.pemohon.instansi.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === 'ALL' || doc.status === statusFilter;
+    let matchesStatus = true;
+    if (statusFilter === 'OVERDUE') {
+      if (doc.status !== 'REVISION') {
+        matchesStatus = false;
+      } else {
+        const info = calculateDeadlineInfo(doc.revisionDeadline);
+        matchesStatus = info.isOverdue;
+      }
+    } else if (statusFilter !== 'ALL') {
+      matchesStatus = doc.status === statusFilter;
+    }
+
     const matchesFormat = formatFilter === 'ALL' || doc.format === formatFilter;
 
     return matchesSearch && matchesStatus && matchesFormat;
@@ -108,6 +127,11 @@ export function DocumentList({
   const approvedCount = opdDocuments.filter((d) => d.status === 'APPROVED').length;
   const revisionCount = opdDocuments.filter((d) => d.status === 'REVISION').length;
   const rejectedCount = opdDocuments.filter((d) => d.status === 'REJECTED').length;
+  const overdueRevisionCount = opdDocuments.filter((d) => {
+    if (d.status !== 'REVISION') return false;
+    const info = calculateDeadlineInfo(d.revisionDeadline);
+    return info.isOverdue;
+  }).length;
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -125,7 +149,7 @@ export function DocumentList({
             <h2 className="font-bold text-white text-xs sm:text-sm truncate drop-shadow-xs">
               {isVerifier && opdScope === 'ALL'
                 ? 'Semua Antrean Masuk Pemkab Nagekeo'
-                : activeOpd.name}
+                : (isVerifier ? activeOpd.name : (currentUser?.opdName || activeOpd.name))}
             </h2>
           </div>
 
@@ -133,6 +157,19 @@ export function DocumentList({
             {opdDocuments.length} Berkas
           </span>
         </div>
+
+        {/* Isolation Banner for Dinas User */}
+        {!isVerifier && (
+          <div className="mt-1.5 p-1.5 bg-blue-950/40 border border-white/25 rounded-xl text-[11px] flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-blue-100 font-bold truncate">
+              <Lock className="w-3.5 h-3.5 text-sky-300 shrink-0" />
+              <span className="truncate">Akses Mandiri Terisolasi: Berkas Akun Sendiri</span>
+            </div>
+            <span className="text-[10px] bg-sky-400 text-blue-950 px-2 py-0.2 rounded font-black shrink-0">
+              AMAN
+            </span>
+          </div>
+        )}
 
         {/* Verifier Scope Toggle Bar */}
         {isVerifier && (
@@ -175,6 +212,27 @@ export function DocumentList({
             className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder:text-slate-500 font-medium focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-500/20 shadow-2xs"
           />
         </div>
+
+        {/* Alert Button Filter jika ada berkas revisi yang melewati batas waktu */}
+        {overdueRevisionCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setStatusFilter(statusFilter === 'OVERDUE' ? 'ALL' : 'OVERDUE')}
+            className={`w-full mt-2 p-2 rounded-xl text-xs font-bold flex items-center justify-between transition-all cursor-pointer border ${
+              statusFilter === 'OVERDUE'
+                ? 'bg-rose-600 text-white border-rose-700 shadow-md ring-2 ring-rose-400'
+                : 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 animate-pulse" />
+              <span className="truncate">Perhatian: {overdueRevisionCount} Berkas Melewati Batas Waktu Revisi!</span>
+            </div>
+            <span className="text-[10px] bg-rose-200 text-rose-950 font-mono px-2 py-0.5 rounded font-black shrink-0">
+              {statusFilter === 'OVERDUE' ? 'Filter Aktif' : 'Tampilkan'}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Status Segmented Tabs */}
@@ -380,36 +438,72 @@ export function DocumentList({
                   {doc.judul}
                 </div>
 
-                {/* Highlighted Verifier / Revision Notes Box */}
-                {doc.status === 'REVISION' && (
-                  <div className="my-2 p-2.5 bg-amber-50 border-2 border-amber-300 rounded-xl text-xs text-amber-950 font-sans shadow-2xs space-y-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1 font-black text-[11px] text-amber-800 uppercase tracking-wide">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                        <span>Catatan Revisi / Instruksi Perbaikan:</span>
+                {/* Highlighted Verifier / Revision Notes Box with Deadline */}
+                {doc.status === 'REVISION' && (() => {
+                  const dlInfo = calculateDeadlineInfo(doc.revisionDeadline);
+                  return (
+                    <div className={`my-2 p-2.5 rounded-xl border-2 text-xs shadow-2xs space-y-1.5 ${
+                      dlInfo.isOverdue
+                        ? 'bg-rose-50 border-rose-400 text-rose-950'
+                        : dlInfo.isNearDeadline
+                        ? 'bg-amber-50 border-amber-400 text-amber-950'
+                        : 'bg-amber-50/80 border-amber-300 text-amber-950'
+                    }`}>
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        <div className="flex items-center gap-1 font-black text-[11px] uppercase tracking-wide">
+                          {dlInfo.isOverdue ? (
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                          ) : (
+                            <Timer className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          )}
+                          <span>Catatan &amp; Batas Waktu Revisi:</span>
+                        </div>
+                        <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded font-black ${
+                          dlInfo.isOverdue
+                            ? 'bg-rose-600 text-white animate-pulse'
+                            : dlInfo.isNearDeadline
+                            ? 'bg-amber-600 text-white'
+                            : 'bg-amber-200 text-amber-900'
+                        }`}>
+                          {dlInfo.hasDeadline ? dlInfo.humanDiff : 'Belum Ditentukan'}
+                        </span>
                       </div>
-                      <span className="font-mono text-[9px] bg-amber-200/80 text-amber-900 px-1.5 py-0.5 rounded font-bold">
-                        Wajib Diperbaiki
-                      </span>
+
+                      {dlInfo.hasDeadline && (
+                        <div className={`text-[10px] flex items-center justify-between font-mono px-2 py-0.5 rounded border ${
+                          dlInfo.isOverdue
+                            ? 'bg-rose-100/80 border-rose-200 text-rose-900'
+                            : 'bg-white border-amber-200 text-slate-800'
+                        }`}>
+                          <span className="text-slate-600 font-semibold">Batas Akhir:</span>
+                          <span className="font-bold">{dlInfo.formattedDate}</span>
+                        </div>
+                      )}
+
+                      <p className="font-bold leading-relaxed line-clamp-3 italic bg-white/95 p-2 rounded-lg border border-amber-200">
+                        "{doc.verification?.notes || doc.notes || doc.versions[doc.versions.length - 1]?.reviewerNotes || doc.perihal || 'Harap lakukan perbaikan sesuai arahan verifikator.'}"
+                      </p>
+
+                      {!isVerifier && onOpenRevisionModalForDoc && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenRevisionModalForDoc(doc);
+                          }}
+                          className={`w-full mt-1 py-1.5 px-3 font-bold rounded-lg text-[10px] flex items-center justify-center gap-1 shadow-xs cursor-pointer ${
+                            dlInfo.isOverdue
+                              ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white'
+                              : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white'
+                          }`}
+                        >
+                          <UploadCloud className="w-3.5 h-3.5" />
+                          <span>Unggah Berkas Hasil Revisi {dlInfo.isOverdue ? '(Susulan/Terlambat)' : ''}</span>
+                        </button>
+                      )}
                     </div>
-                    <p className="font-bold leading-relaxed line-clamp-3 italic bg-white/95 p-2 rounded-lg border border-amber-200">
-                      "{doc.verification?.notes || doc.notes || doc.versions[doc.versions.length - 1]?.reviewerNotes || doc.perihal || 'Harap lakukan perbaikan sesuai arahan verifikator.'}"
-                    </p>
-                    {!isVerifier && onOpenRevisionModalForDoc && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenRevisionModalForDoc(doc);
-                        }}
-                        className="w-full mt-1 py-1.5 px-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold rounded-lg text-[10px] flex items-center justify-center gap-1 shadow-xs cursor-pointer"
-                      >
-                        <UploadCloud className="w-3.5 h-3.5" />
-                        <span>Unggah Berkas Hasil Revisi</span>
-                      </button>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
 
                 {doc.status === 'PENDING' && (doc.verification?.notes || doc.notes) && (doc.verification?.notes || doc.notes || '').trim() !== '-' && (doc.verification?.notes || doc.notes || '').trim() !== '' && (
                   <div className="my-2 p-2.5 bg-sky-50 border-2 border-sky-300 rounded-xl text-xs text-sky-950 font-sans shadow-2xs space-y-1">

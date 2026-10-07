@@ -249,23 +249,24 @@ export function Header({
                 </div>
 
                 <div className="space-y-1">
-                  {/* Option 1: Code Apps Script (Admin Only) */}
-                  {!isDinas && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsServerMenuOpen(false);
-                        onOpenGoogleSheetModal();
-                      }}
-                      className="w-full text-left p-2.5 rounded-xl hover:bg-emerald-50 text-emerald-950 flex items-start gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <FileCode className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="font-bold text-emerald-950">Salin Code.gs &amp; Index.html</div>
-                        <div className="text-[10px] text-slate-600 font-medium">Kode Apps Script untuk Dashboard Admin</div>
+                  {/* Option 1: Code Apps Script (Salin Code.gs & Index.html) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsServerMenuOpen(false);
+                      onOpenGoogleSheetModal();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-emerald-50 text-emerald-950 flex items-start gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <FileCode className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-emerald-950 flex items-center gap-1.5">
+                        <span>Salin Code.gs &amp; Index.html</span>
+                        <span className="text-[9px] bg-emerald-200 text-emerald-950 px-1.5 py-0.2 rounded font-mono font-bold">Lengkap</span>
                       </div>
-                    </button>
-                  )}
+                      <div className="text-[10px] text-slate-600 font-medium">Backend &amp; Dashboard Admin Apps Script (+ Deadline)</div>
+                    </div>
+                  </button>
 
                   {/* Option 2: Drive Folder Explorer (Available for all) */}
                   <button

@@ -10,6 +10,10 @@ import {
   FolderTree,
   Mail,
   CheckCircle2,
+  Calendar,
+  Clock,
+  Timer,
+  AlertCircle,
 } from 'lucide-react';
 import { DocumentItem, DocumentVersion, GoogleDriveStorageInfo, OpdFolderRegistration } from '../types';
 import {
@@ -17,6 +21,7 @@ import {
   createGoogleDriveStorageInfo,
   DEFAULT_GOOGLE_DRIVE_MASTER_NAME,
 } from '../services/googleSheetsWebhook';
+import { calculateDeadlineInfo } from '../utils/deadlineUtils';
 
 interface UploadRevisionModalProps {
   isOpen: boolean;
@@ -192,6 +197,41 @@ Dokumen revisi ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan di Folde
               "{lastReviewerNotes}"
             </p>
           </div>
+
+          {/* Batas Waktu / Deadline Revisi yang Ditetapkan Admin */}
+          {(() => {
+            const dlInfo = calculateDeadlineInfo(document.revisionDeadline);
+            if (!dlInfo.hasDeadline) return null;
+            return (
+              <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 flex-wrap ${
+                dlInfo.isOverdue
+                  ? 'bg-rose-50 border-rose-300 text-rose-950'
+                  : dlInfo.isNearDeadline
+                  ? 'bg-amber-50 border-amber-300 text-amber-950'
+                  : 'bg-blue-50 border-blue-200 text-blue-950'
+              }`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`p-2 rounded-lg text-white shrink-0 ${
+                    dlInfo.isOverdue ? 'bg-rose-600' : 'bg-amber-600'
+                  }`}>
+                    {dlInfo.isOverdue ? <AlertCircle className="w-4 h-4" /> : <Timer className="w-4 h-4" />}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase block">Batas Waktu Pengunggahan Revisi:</span>
+                    <strong className="font-mono text-xs block truncate font-black">{dlInfo.formattedDate}</strong>
+                  </div>
+                </div>
+
+                <div className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold shrink-0 ${
+                  dlInfo.isOverdue
+                    ? 'bg-rose-600 text-white animate-pulse'
+                    : 'bg-white border border-amber-300 text-amber-900'
+                }`}>
+                  {dlInfo.humanDiff}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Version Increment Indicator */}
           <div className="flex items-center justify-center gap-3 py-2 bg-blue-50/60 rounded-xl border border-blue-100 text-xs">

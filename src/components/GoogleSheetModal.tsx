@@ -466,27 +466,50 @@ export function GoogleSheetModal({ isOpen, onClose }: GoogleSheetModalProps) {
                 <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-4 text-xs leading-relaxed text-slate-700">
                   <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                    <span>Langkah Memasang Dashboard Admin di Apps Script (1 Menit):</span>
+                    <span>Langkah Memasang Dashboard Admin &amp; Fitur Deadline di Apps Script:</span>
+                  </div>
+
+                  {/* Highlights New Features */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl">
+                    <div className="space-y-1">
+                      <div className="font-bold text-blue-950 flex items-center gap-1.5">
+                        <span className="text-amber-600 font-mono">⏱️</span>
+                        <span>1. Batas Waktu / Deadline Revisi Admin</span>
+                      </div>
+                      <p className="text-[11px] text-blue-900 leading-normal">
+                        Admin dapat menetapkan deadline revisi dengan pilihan preset (+1, +3, +5, +7, +14 hari) atau tanggal kustom. Tersinkronisasi ke Google Sheet kolom 18 &amp; memicu peringatan keterlambatan otomatis.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="font-bold text-blue-950 flex items-center gap-1.5">
+                        <span className="text-emerald-600 font-mono">🔒</span>
+                        <span>2. Isolasi Privasi Akses per Akun Dinas</span>
+                      </div>
+                      <p className="text-[11px] text-blue-900 leading-normal">
+                        Setiap akun Dinas Pemohon hanya dapat membuka dan melihat dokumen miliknya sendiri. Admin Verifikator memiliki akses penuh memeriksa seluruh antrean berkas OPD.
+                      </p>
+                    </div>
                   </div>
 
                   <ol className="list-decimal pl-5 space-y-2.5 text-slate-700">
                     <li>
-                      <strong>Buka Spreadsheet:</strong> Buka Google Spreadsheet database Anda di peramban.
+                      <strong>Buka Spreadsheet:</strong> Buka Google Spreadsheet database SAKIP Anda di peramban.
                     </li>
                     <li>
                       <strong>Buka Editor Apps Script:</strong> Klik menu <strong>Ekstensi &gt; Apps Script</strong>.
                     </li>
                     <li>
-                      <strong>Tempel File 1 (Code.gs):</strong> Di file <code>Code.gs</code> yang sudah ada, hapus semua kode bawaan lalu tempel kode dari tab <strong>File 1: Code.gs</strong>.
+                      <strong>Tempel File 1 (Code.gs):</strong> Di file <code>Code.gs</code> yang sudah ada, hapus semua kode bawaan lalu tempel kode dari tab <strong>File 1: Code.gs</strong> (sudah mencakup kolom Batas Waktu Revisi &amp; logika isolasi).
                     </li>
                     <li>
-                      <strong>Buat File 2 (Index.html):</strong> Di sebelah kiri editor Apps Script, klik ikon <strong>+ (Tambah file)</strong> &gt; pilih <strong>HTML</strong> &gt; beri nama <code>Index</code> (tanpa .html). Hapus isinya lalu tempel kode dari tab <strong>File 2: Index.html</strong>.
+                      <strong>Buat File 2 (Index.html):</strong> Di sebelah kiri editor Apps Script, klik ikon <strong>+ (Tambah file)</strong> &gt; pilih <strong>HTML</strong> &gt; beri nama <code>Index</code> (tanpa .html). Hapus isinya lalu tempel kode dari tab <strong>File 2: Index.html</strong> (sudah ada kontrol deadline picker, countdown sisa waktu, dan filter akun).
                     </li>
                     <li>
                       <strong>Deploy Web App:</strong> Klik tombol biru <strong>Deploy &gt; New deployment</strong> di pojok kanan atas:
                       <ul className="list-disc pl-5 mt-1.5 space-y-1 text-slate-800 font-medium">
                         <li>Pilih tipe: <strong>Web app</strong> (klik ikon gerigi &gt; Web app)</li>
-                        <li>Description: <strong>Dashboard Admin SAKIP</strong></li>
+                        <li>Description: <strong>Dashboard Admin SAKIP + Fitur Deadline &amp; Isolasi Akun</strong></li>
                         <li>Execute as: <strong>Me (email Google Anda)</strong></li>
                         <li>Who has access: <strong>Anyone</strong> (Wajib agar form User Dinas bisa mengirim berkas)</li>
                       </ul>

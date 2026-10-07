@@ -83,6 +83,26 @@ const STORAGE_KEY_NOTIFICATIONS = 'simverif_notifications_v1';
 const STORAGE_KEY_LAYOUT_MODE = 'simverif_layout_mode_v2';
 const STORAGE_KEY_DELETED_DOCS = 'simverif_deleted_docs_v2';
 
+/**
+ * Strict Privacy & Isolation:
+ * Setiap akun Dinas Pemohon HANYA BISA MEMBUKA DATANYA SENDIRI!
+ */
+export function canUserAccessDocument(doc: DocumentItem, user?: UserAccount | null): boolean {
+  if (!user) return false;
+  if (user.role === 'VERIFIKATOR') return true;
+  if (doc.uploadedByUserId && doc.uploadedByUserId === user.id) return true;
+  if (doc.uploadedByUsername && doc.uploadedByUsername.toLowerCase() === user.username.toLowerCase()) return true;
+  if (doc.opdId && user.opdId && doc.opdId.toUpperCase() === user.opdId.toUpperCase()) return true;
+  if (doc.pemohon?.email && user.email && doc.pemohon.email.toLowerCase() === user.email.toLowerCase()) return true;
+  if (doc.pemohon?.nama && user.nama && doc.pemohon.nama.toLowerCase() === user.nama.toLowerCase()) return true;
+  if (doc.opdName && user.opdName && (
+    doc.opdName.toLowerCase() === user.opdName.toLowerCase() ||
+    doc.opdName.toLowerCase().includes(user.opdName.toLowerCase()) ||
+    user.opdName.toLowerCase().includes(doc.opdName.toLowerCase())
+  )) return true;
+  return false;
+}
+
 export default function App() {
   // Notifications State
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
@@ -130,7 +150,7 @@ export default function App() {
 
   const handleSelectDocumentById = (docId: string) => {
     const found = documents.find((d) => d.id === docId);
-    if (found) {
+    if (found && (!currentUser || canUserAccessDocument(found, currentUser))) {
       setSelectedDocument(found);
       setActiveView('VIEWER');
     }
@@ -600,6 +620,9 @@ export default function App() {
 
   // Handle Document Selection
   const handleSelectDocument = (doc: DocumentItem) => {
+    if (currentUser && !canUserAccessDocument(doc, currentUser)) {
+      return;
+    }
     setSelectedDocument(doc);
     // Auto switch to Viewer when selecting a document in Single View mode
     if (layoutMode === 'SINGLE') {
@@ -957,26 +980,24 @@ export default function App() {
     );
   }
 
-  // Dynamic ticker documents (show all SAKIP documents across Pemkab Nagekeo):
-  const tickerDocuments = documents;
-
   const isDinas = currentUser.role === 'DINAS_PEMOHON';
 
-  const currentOpdDocsCount = documents.filter((d) => {
-    if (d.opdId && (d.opdId === activeOpd.id || d.opdId.toUpperCase() === activeOpd.id.toUpperCase())) return true;
-    if (d.opdName && activeOpd.name && (
-      d.opdName.toLowerCase() === activeOpd.name.toLowerCase() ||
-      d.opdName.toLowerCase().includes(activeOpd.shortName?.toLowerCase() || '') ||
-      activeOpd.name.toLowerCase().includes(d.opdName.toLowerCase())
-    )) return true;
-    if (isDinas && currentUser) {
-      if (currentUser.opdId && (d.opdId === currentUser.opdId || d.opdId?.toUpperCase() === currentUser.opdId.toUpperCase())) return true;
-      if (currentUser.opdName && d.opdName && d.opdName.toLowerCase() === currentUser.opdName.toLowerCase()) return true;
-      if (currentUser.email && d.pemohon?.email && d.pemohon.email.toLowerCase() === currentUser.email.toLowerCase()) return true;
-      if (currentUser.nama && d.pemohon?.nama && d.pemohon.nama.toLowerCase() === currentUser.nama.toLowerCase()) return true;
-    }
-    return false;
-  }).length;
+  // Strict Account Privacy Isolation:
+  // Akun dinas pemohon HANYA BISA MELIHAT & MEMBUKA DATANYA SENDIRI!
+  const accessibleDocuments = isDinas
+    ? documents.filter((d) => canUserAccessDocument(d, currentUser))
+    : documents;
+
+  // Selected Document strictly guarded against unauthorized account access:
+  // Jika akun dinas mencoba membuka dokumen milik dinas lain, otomatis dialihkan ke dokumen miliknya sendiri!
+  const effectiveSelectedDocument = selectedDocument && canUserAccessDocument(selectedDocument, currentUser)
+    ? selectedDocument
+    : (accessibleDocuments.length > 0 ? accessibleDocuments[0] : null);
+
+  // Dynamic ticker documents (hanya dokumen milik akun jika dinas):
+  const tickerDocuments = accessibleDocuments;
+
+  const currentOpdDocsCount = accessibleDocuments.length;
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950 flex flex-col font-sans selection:bg-blue-500/20 font-medium">
@@ -1127,13 +1148,13 @@ export default function App() {
                     <FileText className={`w-4 h-4 shrink-0 ${activeView === 'VIEWER' ? 'text-white' : 'text-blue-600'}`} />
                     <span className="truncate">2. Penampil Dokumen (Lebar &amp; Jelas)</span>
                   </div>
-                  {selectedDocument && (
+                  {effectiveSelectedDocument && (
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold shrink-0 ${
                         activeView === 'VIEWER' ? 'bg-blue-900 text-white' : 'bg-slate-200 text-slate-900'
                       }`}
                     >
-                      v{selectedDocument.currentVersion}
+                      v{effectiveSelectedDocument.currentVersion}
                     </span>
                   )}
                 </button>
@@ -1276,8 +1297,8 @@ export default function App() {
             {activeView === 'LIST' && (
               <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150">
                 <DocumentList
-                  documents={documents}
-                  selectedDocument={selectedDocument}
+                  documents={accessibleDocuments}
+                  selectedDocument={effectiveSelectedDocument}
                   onSelectDocument={handleSelectDocument}
                   activeOpd={activeOpd}
                   appRole={currentUser.role}
@@ -1295,10 +1316,10 @@ export default function App() {
             {/* VIEW 2: PENAMPIL DOKUMEN (BESAR & LEBAR) */}
             {activeView === 'VIEWER' && (
               <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150 space-y-2">
-                {selectedDocument ? (
+                {effectiveSelectedDocument ? (
                   <>
                     <div className="flex-1 min-h-0">
-                      <DocumentViewer document={selectedDocument} />
+                      <DocumentViewer document={effectiveSelectedDocument} />
                     </div>
 
                     {/* Quick Navigation Bar */}
@@ -1313,7 +1334,7 @@ export default function App() {
                         </button>
 
                         <button
-                          onClick={() => handleOpenVerificationForm(selectedDocument)}
+                          onClick={() => handleOpenVerificationForm(effectiveSelectedDocument)}
                           className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-700 to-sky-600 hover:from-blue-800 hover:to-sky-700 text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer"
                         >
                           <ShieldCheck className="w-4 h-4 text-sky-200" />
@@ -1327,11 +1348,11 @@ export default function App() {
 
                       <div className="text-xs text-center hidden md:block">
                         <span className="text-slate-500">Berkas: </span>
-                        <strong className="text-slate-900 font-bold">{selectedDocument.fileName}</strong>
-                        <span className="text-slate-400 ml-1">({selectedDocument.nomorBerkas})</span>
+                        <strong className="text-slate-900 font-bold">{effectiveSelectedDocument.fileName}</strong>
+                        <span className="text-slate-400 ml-1">({effectiveSelectedDocument.nomorBerkas})</span>
                       </div>
 
-                      {selectedDocument.status === 'REVISION' && (
+                      {effectiveSelectedDocument.status === 'REVISION' && (
                         <button
                           onClick={() => setIsRevisionOpen(true)}
                           className="flex items-center gap-2 px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-colors shadow-md cursor-pointer animate-pulse"
@@ -1365,9 +1386,9 @@ export default function App() {
             {/* VIEW 3: FORMULIR & LEMBAR VERIFIKASI / PENGESAHAN */}
             {activeView === 'FORM' && (
               <div className="w-full min-h-[650px] h-[calc(100vh-210px)] flex flex-col animate-in fade-in duration-150">
-                {selectedDocument ? (
+                {effectiveSelectedDocument ? (
                   <VerificationForm
-                    document={selectedDocument}
+                    document={effectiveSelectedDocument}
                     verifier={verifier}
                     appRole={currentUser.role}
                     onUpdateDocument={handleUpdateDocument}
@@ -1400,8 +1421,8 @@ export default function App() {
             {/* COLUMN 1: OPD Documents List */}
             <div className="lg:col-span-5 h-[calc(100vh-190px)] sticky top-28 flex flex-col">
               <DocumentList
-                documents={documents}
-                selectedDocument={selectedDocument}
+                documents={accessibleDocuments}
+                selectedDocument={effectiveSelectedDocument}
                 onSelectDocument={handleSelectDocument}
                 activeOpd={activeOpd}
                 appRole={currentUser.role}
@@ -1417,7 +1438,7 @@ export default function App() {
 
             {/* COLUMN 2: Multi-format Document Viewer & Verification Decision Panel */}
             <div className="lg:col-span-7 h-[calc(100vh-190px)] flex flex-col space-y-2">
-              {selectedDocument ? (
+              {effectiveSelectedDocument ? (
                 <>
                   {/* Split Right Panel Tab Selector */}
                   <div className="flex items-center gap-1.5 p-1 bg-white border border-slate-300 rounded-xl shadow-xs text-xs font-bold shrink-0">
@@ -1454,10 +1475,10 @@ export default function App() {
 
                   <div className="flex-1 min-h-0">
                     {splitRightTab === 'VIEWER' ? (
-                      <DocumentViewer document={selectedDocument} />
+                      <DocumentViewer document={effectiveSelectedDocument} />
                     ) : (
                       <VerificationForm
-                        document={selectedDocument}
+                        document={effectiveSelectedDocument}
                         verifier={verifier}
                         appRole={currentUser.role}
                         onUpdateDocument={handleUpdateDocument}
@@ -1484,12 +1505,10 @@ export default function App() {
       </main>
 
       {/* Modals */}
-      {!isDinas && (
-        <GoogleSheetModal
-          isOpen={isGoogleSheetOpen}
-          onClose={() => setIsGoogleSheetOpen(false)}
-        />
-      )}
+      <GoogleSheetModal
+        isOpen={isGoogleSheetOpen}
+        onClose={() => setIsGoogleSheetOpen(false)}
+      />
 
       <UploadDocumentModal
         isOpen={isUploadOpen}

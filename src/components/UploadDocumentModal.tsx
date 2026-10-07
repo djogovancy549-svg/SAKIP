@@ -161,6 +161,8 @@ Dokumen ini diunggah melalui SIMVERIF SAKIP Nagekeo dan disimpan secara fisik di
       fileName: effectiveFileName,
       status: 'PENDING',
       urgency: 'TINGGI',
+      uploadedByUserId: currentUser?.id,
+      uploadedByUsername: currentUser?.username,
       currentVersion: 1,
       isLocked: false,
       googleDrive: googleDriveInfo,

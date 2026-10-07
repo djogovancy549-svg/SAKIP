@@ -36,6 +36,7 @@ export function EditDocumentModal({
   const [pemohonInstansi, setPemohonInstansi] = useState<string>('');
   const [pemohonKontak, setPemohonKontak] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
+  const [revisionDeadline, setRevisionDeadline] = useState<string>('');
   const [isConfirmingDelete, setIsConfirmingDelete] = useState<boolean>(false);
 
   useEffect(() => {
@@ -48,6 +49,7 @@ export function EditDocumentModal({
       setPemohonInstansi(document.pemohon.instansi);
       setPemohonKontak(document.pemohon.kontak || '');
       setFileName(document.fileName);
+      setRevisionDeadline(document.revisionDeadline || '');
       setIsConfirmingDelete(false);
     }
   }, [document, isOpen]);
@@ -65,6 +67,7 @@ export function EditDocumentModal({
       perihal: perihal.trim() || judul.trim(),
       format,
       fileName: fileName.trim() || document.fileName,
+      revisionDeadline: revisionDeadline.trim() || undefined,
       pemohon: {
         ...document.pemohon,
         nama: pemohonNama.trim(),
@@ -294,6 +297,60 @@ export function EditDocumentModal({
                     className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Batas Waktu / Deadline Revisi */}
+            <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 text-xs">
+                  Batas Waktu (Deadline) Revisi Dokumen :
+                </span>
+                <span className="text-[10px] text-amber-800 font-bold">Admin SAKIP</span>
+              </div>
+              <input
+                type="datetime-local"
+                value={revisionDeadline}
+                onChange={(e) => setRevisionDeadline(e.target.value)}
+                className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-blue-500"
+              />
+              <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                <span className="text-slate-500">Perpanjang Cepat:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 3);
+                    d.setHours(16, 0, 0, 0);
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    setRevisionDeadline(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                  }}
+                  className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded font-bold cursor-pointer"
+                >
+                  +3 Hari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    d.setDate(d.getDate() + 7);
+                    d.setHours(16, 0, 0, 0);
+                    const pad = (n: number) => n.toString().padStart(2, '0');
+                    setRevisionDeadline(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+                  }}
+                  className="px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded font-bold cursor-pointer"
+                >
+                  +7 Hari
+                </button>
+                {revisionDeadline && (
+                  <button
+                    type="button"
+                    onClick={() => setRevisionDeadline('')}
+                    className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded font-bold cursor-pointer ml-auto"
+                  >
+                    Hapus Batas Waktu
+                  </button>
+                )}
               </div>
             </div>
 

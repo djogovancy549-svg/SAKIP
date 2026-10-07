@@ -40,6 +40,25 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     </div>
 
     <div class="flex items-center gap-2.5 flex-wrap">
+      <!-- PENGATURAN AKSES AKUN & ISOLASI PRIVASI DATA -->
+      <div class="flex items-center gap-1.5 bg-slate-950/90 border border-slate-700/80 px-2.5 py-1.5 rounded-xl text-xs shadow-inner">
+        <i class="fa-solid fa-user-lock text-amber-400"></i>
+        <span class="text-slate-400 text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Akses:</span>
+        <select id="userFilterSelect" onchange="applyUserFilter()" class="bg-slate-900 text-white border border-slate-700 rounded-lg px-2 py-1 text-xs font-bold focus:outline-none focus:border-sky-500 cursor-pointer">
+          <option value="ALL">🛡️ Semua Data (Admin Verifikator)</option>
+          <option value="SETDA">🏢 Sekretariat Daerah</option>
+          <option value="BAPELITBANGDA">🏢 Bapelitbangda</option>
+          <option value="INSPEKTORAT">🏢 Inspektorat Daerah</option>
+          <option value="DISKOMINFO">🏢 Dinas Kominfo</option>
+          <option value="BKPSDM">🏢 BKPSDM</option>
+          <option value="DINKES">🏢 Dinas Kesehatan</option>
+          <option value="DINAS_P_DAN_K">🏢 Dinas P &amp; K</option>
+          <option value="DPUPR">🏢 DPUPR</option>
+          <option value="DINSOS">🏢 Dinas Sosial</option>
+          <option value="DISHUB">🏢 Dinas Perhubungan</option>
+        </select>
+      </div>
+
       <button type="button" onclick="triggerAutoCleanManual()" id="btnAutoClean" class="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-amber-600/20 active:scale-95 cursor-pointer">
         <i class="fa-solid fa-broom"></i>
         <span>Pembersihan Otomatis</span>
@@ -400,11 +419,32 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
         <div>
           <label class="block text-[11px] font-bold text-slate-300 mb-1">Keputusan Verifikasi</label>
-          <select id="selectStatus" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500 font-bold">
+          <select id="selectStatus" onchange="handleStatusChange()" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-sky-500 font-bold">
             <option value="APPROVED" class="text-emerald-400">✅ DISAHKAN (Pindahkan ke Dokumen Sah 5 Tahun &amp; Terbitkan BAV)</option>
-            <option value="REVISION" class="text-amber-400">⚠️ PERLU REVISI (Catat di Summary 3 Bulan &amp; Beri Instruksi Perbaikan)</option>
+            <option value="REVISION" class="text-amber-400">⚠️ PERLU REVISI (Tetapkan Batas Waktu / Deadline &amp; Instruksi Perbaikan)</option>
             <option value="REJECTED" class="text-rose-400">❌ DITOLAK (Catat di Summary &amp; Kembalikan Berkas)</option>
           </select>
+        </div>
+
+        <!-- BATAS WAKTU / DEADLINE REVISI YANG DITETAPKAN ADMIN -->
+        <div id="deadlineInputContainer" style="display: none;" class="bg-amber-950/40 border border-amber-500/40 p-3.5 rounded-2xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-amber-300 font-bold text-xs">
+              <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+              <span>Batas Waktu / Deadline Revisi yang Ditetapkan Admin:</span>
+            </div>
+            <span id="deadlineCountdownPreview" class="text-[10px] font-mono bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold">Standar: 3 Hari</span>
+          </div>
+          <input type="datetime-local" id="inputRevisionDeadline" oninput="updateDeadlinePreview()" class="w-full bg-slate-950 border border-amber-500/50 rounded-xl p-2.5 text-white font-mono text-xs focus:outline-none focus:border-amber-400 font-bold">
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-[10px] text-slate-400">Pilihan Cepat:</span>
+            <button type="button" onclick="setDeadlinePreset(1)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-[10px] font-bold border border-slate-700 cursor-pointer">+1 Hari (24 Jam)</button>
+            <button type="button" onclick="setDeadlinePreset(3)" class="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[10px] font-bold shadow-xs cursor-pointer">+3 Hari (Standar)</button>
+            <button type="button" onclick="setDeadlinePreset(5)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-[10px] font-bold border border-slate-700 cursor-pointer">+5 Hari Kerja</button>
+            <button type="button" onclick="setDeadlinePreset(7)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-[10px] font-bold border border-slate-700 cursor-pointer">+7 Hari (1 Minggu)</button>
+            <button type="button" onclick="setDeadlinePreset(14)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded text-[10px] font-bold border border-slate-700 cursor-pointer">+14 Hari (2 Minggu)</button>
+          </div>
+          <p class="text-[10px] text-amber-200/80 italic font-medium">Batas waktu ini otomatis tersinkronisasi ke dashboard OPD dan memicu peringatan keterlambatan (overdue).</p>
         </div>
 
         <div>
@@ -780,15 +820,88 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       }
     }
 
+    var currentAccountFilter = 'ALL';
+
+    function calculateDeadlineInfoJs(deadlineStr) {
+      if (!deadlineStr || !String(deadlineStr).trim()) {
+        return { hasDeadline: false, isOverdue: false, isNearDeadline: false, formattedDate: '-', humanDiff: '-' };
+      }
+      var target = new Date(deadlineStr);
+      if (isNaN(target.getTime())) {
+        return { hasDeadline: true, isOverdue: false, isNearDeadline: false, formattedDate: deadlineStr, humanDiff: '-' };
+      }
+      var now = new Date();
+      var diffMs = target.getTime() - now.getTime();
+      var isOverdue = diffMs < 0;
+      var diffHours = Math.abs(diffMs) / (1000 * 60 * 60);
+      var diffDays = Math.floor(diffHours / 24);
+      var isNearDeadline = !isOverdue && diffHours <= 24;
+
+      var humanDiff = '';
+      if (isOverdue) {
+        if (diffDays >= 1) humanDiff = 'Terlambat ' + diffDays + ' hari';
+        else humanDiff = 'Terlambat ' + Math.ceil(diffHours) + ' jam';
+      } else {
+        if (diffDays >= 1) humanDiff = diffDays + ' hari lagi';
+        else humanDiff = Math.ceil(diffHours) + ' jam lagi';
+      }
+
+      var formatted = target.toLocaleString('id-ID', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      });
+
+      return {
+        hasDeadline: true,
+        isOverdue: isOverdue,
+        isNearDeadline: isNearDeadline,
+        formattedDate: formatted,
+        humanDiff: humanDiff
+      };
+    }
+
+    function applyUserFilter() {
+      var sel = document.getElementById('userFilterSelect');
+      if (sel) {
+        currentAccountFilter = sel.value;
+      }
+      renderAllTables();
+      if (currentAccountFilter !== 'ALL') {
+        showToast('Mode Terisolasi: Hanya menampilkan dokumen milik ' + currentAccountFilter, 'info');
+      } else {
+        showToast('Mode Admin Verifikator: Menampilkan seluruh antrean berkas OPD', 'info');
+      }
+    }
+
+    function filterByAccount(doc) {
+      if (!doc) return false;
+      if (currentAccountFilter === 'ALL') return true;
+      var filterKey = currentAccountFilter.toLowerCase();
+      var dOpdId = String(doc.opdId || '').toLowerCase();
+      var dOpdName = String(doc.opdName || '').toLowerCase();
+      var dInstansi = String((doc.pemohon && doc.pemohon.instansi) || '').toLowerCase();
+      var dEmail = String((doc.pemohon && doc.pemohon.email) || '').toLowerCase();
+
+      return dOpdId === filterKey ||
+        dOpdName.indexOf(filterKey) !== -1 ||
+        filterKey.indexOf(dOpdId) !== -1 ||
+        dInstansi.indexOf(filterKey) !== -1 ||
+        dEmail.indexOf(filterKey) !== -1;
+    }
+
     function renderAllTables() {
-      document.getElementById('statProses').innerText = globalData.prosesDocs.length;
-      document.getElementById('statSah').innerText = globalData.sahDocs.length;
-      document.getElementById('statRevisi').innerText = globalData.summaryDocs.length;
+      var visibleProses = globalData.prosesDocs.filter(filterByAccount);
+      var visibleSah = globalData.sahDocs.filter(filterByAccount);
+      var visibleSummary = globalData.summaryDocs.filter(filterByAccount);
+
+      document.getElementById('statProses').innerText = visibleProses.length;
+      document.getElementById('statSah').innerText = visibleSah.length;
+      document.getElementById('statRevisi').innerText = visibleSummary.length;
       document.getElementById('statUsers').innerText = globalData.users.length;
 
-      document.getElementById('tabCountProses').innerText = globalData.prosesDocs.length;
-      document.getElementById('tabCountSah').innerText = globalData.sahDocs.length;
-      document.getElementById('tabCountSummary').innerText = globalData.summaryDocs.length;
+      document.getElementById('tabCountProses').innerText = visibleProses.length;
+      document.getElementById('tabCountSah').innerText = visibleSah.length;
+      document.getElementById('tabCountSummary').innerText = visibleSummary.length;
 
       renderProsesTable();
       renderSahTable();
@@ -801,7 +914,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var tbody = document.getElementById('prosesTableBody');
       if (!tbody) return;
       var q = (document.getElementById('searchProses')?.value || '').toLowerCase();
-      var docs = globalData.prosesDocs.filter(function(d) {
+      var docs = globalData.prosesDocs.filter(filterByAccount).filter(function(d) {
         return !q || (d.nomorBerkas && d.nomorBerkas.toLowerCase().indexOf(q) !== -1) ||
           (d.judul && d.judul.toLowerCase().indexOf(q) !== -1) ||
           (d.opdName && d.opdName.toLowerCase().indexOf(q) !== -1);
@@ -809,7 +922,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
       if (docs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
-          '<div class="text-sm font-bold text-slate-400 mb-1">Tidak ada berkas yang sedang dalam proses</div>' +
+          '<div class="text-sm font-bold text-slate-400 mb-1">Tidak ada berkas yang sedang dalam proses' + (currentAccountFilter !== 'ALL' ? ' untuk akun ' + currentAccountFilter : '') + '</div>' +
           '<p class="text-xs text-slate-500">Semua berkas telah disahkan ke sheet Sah atau belum ada pengajuan baru dari OPD.</p>' +
           '</td></tr>';
         return;
@@ -819,9 +932,21 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       for (var i = 0; i < docs.length; i++) {
         var d = docs[i];
         var isRev = (d.status === 'REVISION');
+        var dlInfo = calculateDeadlineInfoJs(d.revisionDeadline || (d.verification && d.verification.revisionDeadline));
+
         var stBadge = isRev
           ? '<span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded font-bold text-[10px]"><i class="fa-solid fa-triangle-exclamation mr-1"></i>REVISI</span>'
           : '<span class="px-2 py-0.5 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded font-bold text-[10px]"><i class="fa-solid fa-clock mr-1"></i>PENDING</span>';
+
+        if (isRev && dlInfo.hasDeadline) {
+          if (dlInfo.isOverdue) {
+            stBadge += '<div class="mt-1"><span class="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded font-bold text-[10px] inline-flex items-center gap-1 animate-pulse"><i class="fa-solid fa-circle-exclamation text-rose-400"></i> TERLAMBAT</span><div class="text-[9px] text-rose-400 font-mono mt-0.5">Batas: ' + dlInfo.formattedDate + '</div></div>';
+          } else if (dlInfo.isNearDeadline) {
+            stBadge += '<div class="mt-1"><span class="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded font-bold text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-stopwatch text-amber-400"></i> SEGERA (' + dlInfo.humanDiff + ')</span><div class="text-[9px] text-amber-300 font-mono mt-0.5">Batas: ' + dlInfo.formattedDate + '</div></div>';
+          } else {
+            stBadge += '<div class="mt-1"><span class="px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/40 rounded font-bold text-[10px] inline-flex items-center gap-1"><i class="fa-solid fa-calendar-check text-sky-400"></i> Sisa ' + dlInfo.humanDiff + '</span><div class="text-[9px] text-slate-400 font-mono mt-0.5">Batas: ' + dlInfo.formattedDate + '</div></div>';
+          }
+        }
 
         var fileId = (d.googleDrive && d.googleDrive.fileId) ? d.googleDrive.fileId : '';
         var downloadUrl = fileId ? ('https://drive.google.com/uc?export=download&id=' + fileId) : (d.googleDrive?.downloadUrl || '#');
@@ -867,7 +992,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var tbody = document.getElementById('sahTableBody');
       if (!tbody) return;
       var q = (document.getElementById('searchSah')?.value || '').toLowerCase();
-      var docs = globalData.sahDocs.filter(function(d) {
+      var docs = globalData.sahDocs.filter(filterByAccount).filter(function(d) {
         return !q || (d.nomorBerkas && d.nomorBerkas.toLowerCase().indexOf(q) !== -1) ||
           (d.judul && d.judul.toLowerCase().indexOf(q) !== -1) ||
           (d.bavNumber && d.bavNumber.toLowerCase().indexOf(q) !== -1) ||
@@ -876,7 +1001,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
 
       if (docs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
-          '<div class="text-sm font-bold text-slate-400 mb-1">Belum ada berkas sah pada sheet DOKUMEN_SAH_TERVERIFIKASI</div>' +
+          '<div class="text-sm font-bold text-slate-400 mb-1">Belum ada berkas sah pada sheet DOKUMEN_SAH_TERVERIFIKASI' + (currentAccountFilter !== 'ALL' ? ' untuk akun ' + currentAccountFilter : '') + '</div>' +
           '<p class="text-xs text-slate-500">Berkas yang disahkan akan otomatis disimpan selama 5 tahun di sini.</p>' +
           '</td></tr>';
         return;
@@ -925,11 +1050,11 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     function renderSummaryTable() {
       var tbody = document.getElementById('summaryTableBody');
       if (!tbody) return;
-      var docs = globalData.summaryDocs;
+      var docs = globalData.summaryDocs.filter(filterByAccount);
 
       if (docs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">' +
-          '<div class="text-sm font-bold text-slate-400 mb-1">Belum ada riwayat perbaikan pada sheet SUMMARY_RIWAYAT_REVISI</div>' +
+          '<div class="text-sm font-bold text-slate-400 mb-1">Belum ada riwayat perbaikan pada sheet SUMMARY_RIWAYAT_REVISI' + (currentAccountFilter !== 'ALL' ? ' untuk akun ' + currentAccountFilter : '') + '</div>' +
           '<p class="text-xs text-slate-500">Catatan revisi dan instruksi perbaikan akan tercatat di sini dan dibersihkan otomatis dalam 3 bulan.</p>' +
           '</td></tr>';
         return;
@@ -1179,8 +1304,57 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     // =========================================================================
-    // FUNGSI MODAL VERIFIKASI DOKUMEN
+    // FUNGSI MODAL VERIFIKASI DOKUMEN & BATAS WAKTU / DEADLINE
     // =========================================================================
+    function handleStatusChange() {
+      var st = document.getElementById('selectStatus').value;
+      var dContainer = document.getElementById('deadlineInputContainer');
+      if (st === 'REVISION') {
+        dContainer.style.display = 'block';
+        if (!document.getElementById('inputRevisionDeadline').value) {
+          setDeadlinePreset(3);
+        } else {
+          updateDeadlinePreview();
+        }
+      } else {
+        dContainer.style.display = 'none';
+      }
+    }
+
+    function setDeadlinePreset(days) {
+      var target = new Date();
+      target.setDate(target.getDate() + days);
+      target.setHours(23, 59, 0, 0);
+
+      var year = target.getFullYear();
+      var month = String(target.getMonth() + 1).padStart(2, '0');
+      var day = String(target.getDate()).padStart(2, '0');
+      var hours = String(target.getHours()).padStart(2, '0');
+      var minutes = String(target.getMinutes()).padStart(2, '0');
+
+      var formattedLocal = year + '-' + month + '-' + day + 'T' + hours + ':' + minutes;
+      document.getElementById('inputRevisionDeadline').value = formattedLocal;
+      updateDeadlinePreview();
+    }
+
+    function updateDeadlinePreview() {
+      var val = document.getElementById('inputRevisionDeadline').value;
+      var previewSpan = document.getElementById('deadlineCountdownPreview');
+      if (!val) {
+        previewSpan.innerText = 'Batas Waktu Belum Ditentukan';
+        previewSpan.className = 'text-[10px] font-mono bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-bold';
+        return;
+      }
+      var info = calculateDeadlineInfoJs(val);
+      if (info.isOverdue) {
+        previewSpan.innerText = '⚠️ Waktu Terlampaui (' + info.humanDiff + ')';
+        previewSpan.className = 'text-[10px] font-mono bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-bold animate-pulse';
+      } else {
+        previewSpan.innerText = '⏱️ Sisa ' + info.humanDiff + ' (' + info.formattedDate + ')';
+        previewSpan.className = 'text-[10px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold';
+      }
+    }
+
     function openVerifyModalDirect(doc) {
       selectedVerifyDoc = doc;
       document.getElementById('modalDocNumber').innerText = doc.nomorBerkas;
@@ -1190,8 +1364,32 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var cleanNo = (doc.nomorBerkas || '').replace(/[^a-zA-Z0-9]/g, '');
       document.getElementById('inputBav').value = 'BAV/SAKIP-NGK/' + (doc.opdId || 'OPD') + '/' + new Date().getFullYear() + '/' + (cleanNo.slice(-4) || '001');
       document.getElementById('inputNotes').value = doc.notes || '';
-      document.getElementById('selectStatus').value = 'APPROVED';
+      
+      var defaultStatus = (doc.status === 'REVISION') ? 'REVISION' : 'APPROVED';
+      document.getElementById('selectStatus').value = defaultStatus;
 
+      // Inisialisasi batas waktu deadline jika status revisi
+      if (doc.revisionDeadline) {
+        try {
+          var dObj = new Date(doc.revisionDeadline);
+          if (!isNaN(dObj.getTime())) {
+            var y = dObj.getFullYear();
+            var m = String(dObj.getMonth() + 1).padStart(2, '0');
+            var d = String(dObj.getDate()).padStart(2, '0');
+            var h = String(dObj.getHours()).padStart(2, '0');
+            var min = String(dObj.getMinutes()).padStart(2, '0');
+            document.getElementById('inputRevisionDeadline').value = y + '-' + m + '-' + d + 'T' + h + ':' + min;
+          } else {
+            setDeadlinePreset(3);
+          }
+        } catch (e) {
+          setDeadlinePreset(3);
+        }
+      } else {
+        setDeadlinePreset(3);
+      }
+
+      handleStatusChange();
       document.getElementById('verifyModal').style.display = 'flex';
     }
 
@@ -1213,6 +1411,19 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
       var verifier = document.getElementById('inputVerifier').value;
       var nip = document.getElementById('inputNip').value;
       var notes = document.getElementById('inputNotes').value;
+      var revisionDeadlineVal = '';
+
+      if (status === 'REVISION') {
+        var rawDeadline = document.getElementById('inputRevisionDeadline').value;
+        if (rawDeadline) {
+          var targetD = new Date(rawDeadline);
+          if (!isNaN(targetD.getTime())) {
+            revisionDeadlineVal = targetD.toISOString();
+          } else {
+            revisionDeadlineVal = rawDeadline;
+          }
+        }
+      }
 
       var btn = document.getElementById('btnSubmitVerify');
       if (btn) {
@@ -1250,6 +1461,7 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
         verifierName: verifier,
         verifierNip: nip,
         notes: notes,
+        revisionDeadline: revisionDeadlineVal,
         downloadUrl: (selectedVerifyDoc.googleDrive && selectedVerifyDoc.googleDrive.viewUrl) ? selectedVerifyDoc.googleDrive.viewUrl : '',
         timestamp: new Date().toLocaleString('id-ID')
       };
@@ -1541,6 +1753,33 @@ export const APPS_SCRIPT_INDEX_HTML = `<!DOCTYPE html>
     }
 
     window.addEventListener('DOMContentLoaded', function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var opdParam = params.get('opd') || params.get('user');
+        if (opdParam) {
+          currentAccountFilter = opdParam.trim();
+          var sel = document.getElementById('userFilterSelect');
+          if (sel) {
+            var exists = false;
+            for (var oi = 0; oi < sel.options.length; oi++) {
+              if (sel.options[oi].value.toLowerCase() === opdParam.toLowerCase()) {
+                sel.selectedIndex = oi;
+                exists = true;
+                break;
+              }
+            }
+            if (!exists) {
+              var opt = document.createElement('option');
+              opt.value = opdParam;
+              opt.innerText = '🏢 Akun: ' + opdParam;
+              opt.selected = true;
+              sel.appendChild(opt);
+            }
+            sel.disabled = true;
+          }
+        }
+      } catch (eParam) {}
+
       loadAllData();
       setInterval(function() {
         loadAllData();
