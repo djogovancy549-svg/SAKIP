@@ -25,6 +25,9 @@ import {
   X,
   Activity,
   PlusCircle,
+  UserPlus,
+  FolderTree,
+  FolderPlus,
 } from 'lucide-react';
 import {
   DocumentItem,
@@ -304,6 +307,8 @@ export default function App() {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState<boolean>(false);
   const [isDriveExplorerOpen, setIsDriveExplorerOpen] = useState<boolean>(false);
   const [isFolderRegistrationOpen, setIsFolderRegistrationOpen] = useState<boolean>(false);
+  const [folderRegistrationInitialTab, setFolderRegistrationInitialTab] = useState<'FOLDERS' | 'ACCOUNTS' | 'WEBHOOK_GUIDE'>('FOLDERS');
+  const [folderPrefillUsername, setFolderPrefillUsername] = useState<string>('');
   const [uploadFeedback, setUploadFeedback] = useState<{
     docNumber: string;
     title: string;
@@ -970,13 +975,47 @@ export default function App() {
     }
   };
 
-  // If not logged in, show Login Screen
+  // Open modal handlers for account registration & folder management
+  const handleOpenAccountRegistration = (prefill?: string) => {
+    setFolderRegistrationInitialTab('ACCOUNTS');
+    if (prefill) {
+      setFolderPrefillUsername(prefill);
+    }
+    setIsFolderRegistrationOpen(true);
+  };
+
+  const handleOpenFolderManagement = () => {
+    setFolderRegistrationInitialTab('FOLDERS');
+    setIsFolderRegistrationOpen(true);
+  };
+
+  // If not logged in, show Login Screen with direct access to account registration & folder management
   if (!currentUser) {
     return (
-      <LoginScreen
-        userAccounts={userAccounts}
-        onLoginSuccess={handleLoginSuccess}
-      />
+      <>
+        <LoginScreen
+          userAccounts={userAccounts}
+          onLoginSuccess={handleLoginSuccess}
+          onOpenRegisterAccount={handleOpenAccountRegistration}
+          onOpenManageFolder={handleOpenFolderManagement}
+        />
+        <AdminFolderRegistrationModal
+          isOpen={isFolderRegistrationOpen}
+          onClose={() => {
+            setIsFolderRegistrationOpen(false);
+            setFolderPrefillUsername('');
+          }}
+          opdList={OPD_LIST}
+          folderRegistrations={folderRegistrations}
+          userAccounts={userAccounts}
+          currentUser={currentUser}
+          initialTab={folderRegistrationInitialTab}
+          prefillUsername={folderPrefillUsername}
+          onSaveRegistration={handleSaveRegistration}
+          onSaveAllRegistrations={handleSaveAllRegistrations}
+          onAddUserAccount={handleAddUserAccount}
+        />
+      </>
     );
   }
 
@@ -1022,7 +1061,8 @@ export default function App() {
         onOpenUploadModal={() => setIsUploadOpen(true)}
         onOpenChangePasswordModal={() => setIsChangePasswordOpen(true)}
         onOpenDriveExplorer={() => setIsDriveExplorerOpen(true)}
-        onOpenAdminFolderRegistration={() => setIsFolderRegistrationOpen(true)}
+        onOpenAdminFolderRegistration={handleOpenFolderManagement}
+        onOpenAccountRegistration={() => handleOpenAccountRegistration()}
         onLogout={handleLogout}
         onSync={syncWithGoogleSheet}
         isSyncing={isSyncing}
@@ -1045,7 +1085,7 @@ export default function App() {
             <span className="text-slate-950 font-bold">{currentUser.opdName}</span>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] font-mono">
+          <div className="flex items-center gap-2 text-[11px] font-mono flex-wrap">
             {currentUser.role === 'DINAS_PEMOHON' ? (
               <span className="text-blue-950 bg-blue-50 border border-blue-300 px-2.5 py-0.5 rounded flex items-center gap-1 font-bold">
                 <Lock className="w-3 h-3 text-blue-700" />
@@ -1057,6 +1097,28 @@ export default function App() {
                 Akses Admin Verifikator: Seluruh Antrean Berkas OPD
               </span>
             )}
+
+            {/* Quick Action Shortcuts: Kelola Folder & Daftar Akun */}
+            <button
+              type="button"
+              onClick={handleOpenFolderManagement}
+              className="text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-lg flex items-center gap-1 font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Kelola & Hubungkan Folder Google Drive OPD"
+            >
+              <FolderTree className="w-3.5 h-3.5 text-amber-700" />
+              <span>Kelola Folder</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleOpenAccountRegistration()}
+              className="text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-lg flex items-center gap-1 font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Pendaftaran Akun Dinas Baru & Kelola Pengguna"
+            >
+              <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Daftar Akun</span>
+            </button>
+
             <span className="text-slate-300">|</span>
             <span className="text-slate-800 font-bold">
               Folder Drive: {currentUser.driveFolderName}
@@ -1553,16 +1615,21 @@ export default function App() {
         folderRegistrations={folderRegistrations}
         onSelectDocument={handleSelectDocument}
         onPurgeOldDrafts={handlePurgeOldDrafts}
-        onOpenAdminFolderRegistration={() => setIsFolderRegistrationOpen(true)}
+        onOpenAdminFolderRegistration={handleOpenFolderManagement}
       />
 
       <AdminFolderRegistrationModal
         isOpen={isFolderRegistrationOpen}
-        onClose={() => setIsFolderRegistrationOpen(false)}
+        onClose={() => {
+          setIsFolderRegistrationOpen(false);
+          setFolderPrefillUsername('');
+        }}
         opdList={OPD_LIST}
         folderRegistrations={folderRegistrations}
         userAccounts={userAccounts}
         currentUser={currentUser}
+        initialTab={folderRegistrationInitialTab}
+        prefillUsername={folderPrefillUsername}
         onSaveRegistration={handleSaveRegistration}
         onSaveAllRegistrations={handleSaveAllRegistrations}
         onAddUserAccount={handleAddUserAccount}

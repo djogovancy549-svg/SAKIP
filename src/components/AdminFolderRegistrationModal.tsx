@@ -47,7 +47,9 @@ interface AdminFolderRegistrationModalProps {
   opdList: OPD[];
   folderRegistrations: Record<string, OpdFolderRegistration>;
   userAccounts: UserAccount[];
-  currentUser: UserAccount;
+  currentUser?: UserAccount | null;
+  initialTab?: 'FOLDERS' | 'ACCOUNTS' | 'WEBHOOK_GUIDE';
+  prefillUsername?: string;
   onSaveRegistration: (registration: OpdFolderRegistration) => void;
   onSaveAllRegistrations: (registrations: Record<string, OpdFolderRegistration>) => void;
   onAddUserAccount: (newUser: UserAccount) => void;
@@ -60,11 +62,13 @@ export function AdminFolderRegistrationModal({
   folderRegistrations,
   userAccounts,
   currentUser,
+  initialTab = 'FOLDERS',
+  prefillUsername,
   onSaveRegistration,
   onSaveAllRegistrations,
   onAddUserAccount,
 }: AdminFolderRegistrationModalProps) {
-  const [activeTab, setActiveTab] = useState<'FOLDERS' | 'ACCOUNTS' | 'WEBHOOK_GUIDE'>('FOLDERS');
+  const [activeTab, setActiveTab] = useState<'FOLDERS' | 'ACCOUNTS' | 'WEBHOOK_GUIDE'>(initialTab);
   const [folderViewFilter, setFolderViewFilter] = useState<'REGISTERED_ONLY' | 'ADD_NEW' | 'ALL_38'>('REGISTERED_ONLY');
   const [localRegistrations, setLocalRegistrations] = useState<Record<string, OpdFolderRegistration>>(folderRegistrations);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -92,6 +96,21 @@ export function AdminFolderRegistrationModal({
   useEffect(() => {
     setLocalRegistrations(folderRegistrations);
   }, [folderRegistrations]);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
+  useEffect(() => {
+    if (prefillUsername && prefillUsername.trim()) {
+      const cleanUser = prefillUsername.trim().toLowerCase().replace(/^@+/, '');
+      setNewUsername(cleanUser);
+      setNewEmail(`${cleanUser}@nagekeokab.go.id`);
+      setActiveTab('ACCOUNTS');
+    }
+  }, [prefillUsername, isOpen]);
 
   if (!isOpen) return null;
 
@@ -126,7 +145,7 @@ export function AdminFolderRegistrationModal({
       driveFolderUrl: folderUrl,
       driveFolderId: folderId,
       driveFolderName: folderName,
-      registeredByAdmin: currentUser.nama,
+      registeredByAdmin: currentUser?.nama || 'Admin Sistem / Mandiri',
       registeredAt: timestampNow,
       notes: quickNotes.trim(),
     };
@@ -142,7 +161,7 @@ export function AdminFolderRegistrationModal({
     onSaveRegistration(newReg);
 
     try {
-      await sendFolderRegistrationToGoogleSheet(newReg, currentUser);
+      await sendFolderRegistrationToGoogleSheet(newReg, currentUser || undefined);
       setSuccessToast(`Folder Google Drive untuk "${opd.name}" berhasil didaftarkan dan dicatat di sheet MAPPING_FOLDER_OPD!`);
     } catch {
       setSuccessToast(`Folder Google Drive untuk "${opd.name}" berhasil disimpan secara lokal!`);
@@ -207,7 +226,7 @@ export function AdminFolderRegistrationModal({
     onAddUserAccount(newUser);
 
     try {
-      await sendUserRegistrationToGoogleSheet(newUser, currentUser);
+      await sendUserRegistrationToGoogleSheet(newUser, currentUser || undefined);
       setSuccessToast(`Akun dinas @${newUser.username} (${effectiveEmail}) berhasil didaftarkan dan dicatat ke sheet DATABASE_PENGGUNA!`);
     } catch {
       setSuccessToast(`Akun dinas @${newUser.username} berhasil disimpan secara lokal!`);

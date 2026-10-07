@@ -15,6 +15,11 @@ import {
   Globe,
   Sparkles,
   Mail,
+  UserPlus,
+  FolderTree,
+  FolderPlus,
+  Users,
+  ExternalLink,
 } from 'lucide-react';
 import { UserAccount, AppRole } from '../types';
 import { OPD_LIST } from '../data/opdData';
@@ -23,6 +28,8 @@ import databaseBg from '../assets/images/digital_database_modern_bg_179073417638
 interface LoginScreenProps {
   userAccounts: UserAccount[];
   onLoginSuccess: (user: UserAccount) => void;
+  onOpenRegisterAccount?: (prefillUsername?: string) => void;
+  onOpenManageFolder?: () => void;
 }
 
 const findMatchingOpd = (userStr: string): { opdId: string; opdName: string } => {
@@ -63,7 +70,12 @@ const findMatchingOpd = (userStr: string): { opdId: string; opdName: string } =>
   };
 };
 
-export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) {
+export function LoginScreen({
+  userAccounts,
+  onLoginSuccess,
+  onOpenRegisterAccount,
+  onOpenManageFolder,
+}: LoginScreenProps) {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -168,9 +180,21 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
         {/* Login Box */}
         <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-center gap-2.5 text-xs animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-              <span>{errorMessage}</span>
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs animate-in fade-in space-y-2">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{errorMessage}</span>
+              </div>
+              {onOpenRegisterAccount && (
+                <button
+                  type="button"
+                  onClick={() => onOpenRegisterAccount(username.replace(/^@+/, '').trim())}
+                  className="w-full py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Daftarkan Akun "{username || 'Baru'}" Sekarang</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -231,37 +255,17 @@ export function LoginScreen({ userAccounts, onLoginSuccess }: LoginScreenProps) 
             </button>
           </form>
 
-          {/* Akun Cepat & Privasi Isolasi Demo */}
-          {userAccounts.length > 0 && (
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold">
-                <span>Pilih Akun Demo (Uji Privasi Data):</span>
-                <span className="text-[10px] text-emerald-600 font-mono">1 Klik Masuk</span>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                {userAccounts.slice(0, 4).map((acc) => (
-                  <button
-                    key={acc.id}
-                    type="button"
-                    onClick={() => handleSelectDemoAccount(acc)}
-                    className="p-2 text-left rounded-xl border border-slate-200 hover:border-blue-400 bg-slate-50 hover:bg-blue-50 transition-colors cursor-pointer flex flex-col min-w-0"
-                  >
-                    <div className="flex items-center gap-1 font-bold text-slate-900 truncate">
-                      {acc.role === 'VERIFIKATOR' ? (
-                        <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
-                      ) : (
-                        <Lock className="w-3 h-3 text-blue-600 shrink-0" />
-                      )}
-                      <span className="truncate">{acc.username}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-500 truncate font-mono">
-                      {acc.role === 'VERIFIKATOR' ? 'Admin Verif' : acc.opdId}
-                    </span>
-                  </button>
-                ))}
-              </div>
+          {/* Informasi Pengelolaan Akun & Folder */}
+          <div className="pt-2 border-t border-slate-100 space-y-2">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center space-y-1">
+              <span className="text-[11px] font-bold text-slate-800 block">
+                Pusat Pendaftaran Akun &amp; Mapping Folder
+              </span>
+              <p className="text-[10px] text-slate-500">
+                Pendaftaran akun dinas dan pemetaan folder Google Drive dikelola langsung oleh Administrator melalui <strong>Dashboard Admin Google Apps Script</strong>.
+              </p>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Footer info */}

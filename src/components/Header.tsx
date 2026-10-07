@@ -22,6 +22,8 @@ import {
   LayoutDashboard,
   FileCode,
   Code,
+  UserPlus,
+  Users,
 } from 'lucide-react';
 import { OPD, UserAccount } from '../types';
 import { OPD_LIST } from '../data/opdData';
@@ -38,6 +40,7 @@ interface HeaderProps {
   onOpenChangePasswordModal: () => void;
   onOpenDriveExplorer: () => void;
   onOpenAdminFolderRegistration: () => void;
+  onOpenAccountRegistration?: () => void;
   onLogout: () => void;
   onSync?: () => void;
   isSyncing?: boolean;
@@ -54,6 +57,7 @@ export function Header({
   onOpenChangePasswordModal,
   onOpenDriveExplorer,
   onOpenAdminFolderRegistration,
+  onOpenAccountRegistration,
   onLogout,
   onSync,
   isSyncing = false,
@@ -213,14 +217,36 @@ export function Header({
           {/* 1. Main Action Button: Upload Dokumen */}
           <button
             onClick={onOpenUploadModal}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-blue-500/20 active:scale-95"
+            className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-700 hover:to-sky-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md shadow-blue-500/20 active:scale-95"
             title="Upload Dokumen Baru"
           >
             <PlusCircle className="w-4 h-4 shrink-0" />
             <span className="hidden sm:inline">Upload Dokumen</span>
           </button>
 
-          {/* 2. Consolidated Server & Storage Menu Dropdown */}
+          {/* 2. Direct Action Button: KELOLA FOLDER */}
+          <button
+            type="button"
+            onClick={onOpenAdminFolderRegistration}
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+            title="Kelola & Hubungkan Folder Google Drive OPD"
+          >
+            <FolderTree className="w-4 h-4 text-amber-700 shrink-0" />
+            <span className="hidden md:inline">Kelola Folder</span>
+          </button>
+
+          {/* 3. Direct Action Button: DAFTAR AKUN */}
+          <button
+            type="button"
+            onClick={() => onOpenAccountRegistration?.()}
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+            title="Pendaftaran Akun Dinas Baru & Kelola Pengguna"
+          >
+            <UserPlus className="w-4 h-4 text-emerald-700 shrink-0" />
+            <span className="hidden lg:inline">Daftar Akun</span>
+          </button>
+
+          {/* 4. Consolidated Server & Storage Menu Dropdown */}
           <div className="relative" ref={serverRef}>
             <button
               onClick={() => {
@@ -236,7 +262,7 @@ export function Header({
               title="Menu Server, Google Drive, dan Integrasi Spreadsheet"
             >
               <HardDrive className="w-4 h-4 text-blue-600 shrink-0" />
-              <span className="hidden md:inline">Server &amp; Integrasi</span>
+              <span className="hidden xl:inline">Server &amp; Integrasi</span>
               <ChevronDown className="w-3.5 h-3.5 text-slate-600 shrink-0" />
             </button>
 
@@ -284,41 +310,53 @@ export function Header({
                     </div>
                   </button>
 
-                  {/* Option 3: User & Folder Registration (Admin Only) */}
-                  {!isDinas && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsServerMenuOpen(false);
-                        onOpenAdminFolderRegistration();
-                      }}
-                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="font-bold text-slate-900">Kelola Akun &amp; Folder Dinas</div>
-                        <div className="text-[10px] text-slate-600 font-medium">Tambah akun dinas &amp; mapping folder Google Drive</div>
-                      </div>
-                    </button>
-                  )}
+                  {/* Option 3: Kelola Folder Google Drive OPD (Available for all) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsServerMenuOpen(false);
+                      onOpenAdminFolderRegistration();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-amber-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <FolderPlus className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-slate-900">Kelola &amp; Hubungkan Folder OPD</div>
+                      <div className="text-[10px] text-slate-600 font-medium">Pemetaan link Google Drive per dinas</div>
+                    </div>
+                  </button>
 
-                  {/* Option 4: Self-Check & Diagnostics (Admin Only) */}
-                  {!isDinas && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsServerMenuOpen(false);
-                        onOpenGoogleSheetModal();
-                      }}
-                      className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
-                    >
-                      <Activity className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
-                      <div>
-                        <div className="font-bold text-slate-900">Uji Ping &amp; Pemeriksaan Mandiri</div>
-                        <div className="text-[10px] text-slate-600 font-medium">Uji kirim data &amp; periksa sheet / folder</div>
-                      </div>
-                    </button>
-                  )}
+                  {/* Option 4: Daftar Akun Pengguna Dinas (Available for all) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsServerMenuOpen(false);
+                      onOpenAccountRegistration?.();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-emerald-50 flex items-start gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-slate-900">Daftar Akun Pengguna Baru</div>
+                      <div className="text-[10px] text-slate-600 font-medium">Tambah akun dinas &amp; verifikator SAKIP</div>
+                    </div>
+                  </button>
+
+                  {/* Option 5: Self-Check & Diagnostics */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsServerMenuOpen(false);
+                      onOpenGoogleSheetModal();
+                    }}
+                    className="w-full text-left p-2.5 rounded-xl hover:bg-slate-100 flex items-start gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Activity className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-slate-900">Uji Ping &amp; Pemeriksaan Mandiri</div>
+                      <div className="text-[10px] text-slate-600 font-medium">Uji kirim data &amp; periksa sheet / folder</div>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
