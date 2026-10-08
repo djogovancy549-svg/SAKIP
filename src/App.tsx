@@ -225,13 +225,17 @@ export default function App() {
     return INITIAL_USER_ACCOUNTS;
   });
 
-  // Current Logged In User Session (Always starts at Login Screen)
+  // Current Logged In User Session (Persisted across refreshes)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
-      } catch (e) {}
-    }
+    if (typeof window === 'undefined') return null;
+    try {
+      const saved =
+        sessionStorage.getItem(STORAGE_KEY_CURRENT_USER) ||
+        localStorage.getItem(STORAGE_KEY_CURRENT_USER);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {}
     return null;
   });
 
@@ -564,6 +568,12 @@ export default function App() {
   // Handle Login
   const handleLoginSuccess = (user: UserAccount) => {
     setCurrentUser(user);
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
+        localStorage.setItem(STORAGE_KEY_CURRENT_USER, JSON.stringify(user));
+      } catch (e) {}
+    }
     const userOpd =
       OPD_LIST.find(
         (o) =>
@@ -610,6 +620,13 @@ export default function App() {
   const handleLogout = () => {
     setCurrentUser(null);
     setSelectedDocument(null);
+    setActiveView('LIST');
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+        localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+      } catch (e) {}
+    }
   };
 
   // Handle OPD Selection by Verifier
@@ -1358,7 +1375,10 @@ export default function App() {
         )}
 
         {/* MODE 1: SINGLE VIEW (SATU PER SATU - LEBIH BESAR & LEGA) */}
-        <ErrorBoundary fallbackTitle="Kendala Memuat Panel Lembar Kerja">
+        <ErrorBoundary
+          fallbackTitle="Kendala Memuat Panel Lembar Kerja"
+          onReset={() => setActiveView('LIST')}
+        >
           {layoutMode === 'SINGLE' ? (
             <div className="w-full flex-1 flex flex-col">
             {/* VIEW 1: DAFTAR BERKAS */}

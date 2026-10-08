@@ -97,6 +97,7 @@ export function VerificationForm({
 }: VerificationFormProps) {
   const notesId = useId();
   const isVerifier = appRole === 'VERIFIKATOR' || appRole === 'ADMIN_VERIFIKATOR' || appRole === 'SUPERADMIN';
+  const isAdmin = isVerifier;
   const isDinas = appRole === 'DINAS_PEMOHON';
 
   // State for Admin Form
@@ -925,7 +926,12 @@ Dokumen ini merupakan tanda bukti pengesahan elektronik resmi yang sah.
         )}
 
         {isRevision && (() => {
-          const deadlineInfo = calculateDeadlineInfo(document.revisionDeadline);
+          const effectiveDeadline =
+            document.revisionDeadline ||
+            document.verification?.revisionDeadline ||
+            document.versions?.[document.versions.length - 1]?.revisionDeadline ||
+            createDefaultDeadline(3);
+          const deadlineInfo = calculateDeadlineInfo(effectiveDeadline);
           return (
             <div className={`p-5 rounded-3xl space-y-4 shadow-md border-2 ${
               deadlineInfo.isOverdue

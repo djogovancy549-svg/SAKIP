@@ -4,6 +4,7 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 interface Props {
   children: ReactNode;
   fallbackTitle?: string;
+  onReset?: () => void;
 }
 
 interface State {
@@ -27,7 +28,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private handleReset = () => {
     this.setState({ hasError: false, error: null });
-    window.location.reload();
+    if (this.props.onReset) {
+      this.props.onReset();
+    }
   };
 
   public render() {
